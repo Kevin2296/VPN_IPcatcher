@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+work="${TMPDIR:-/tmp}/vpnipc-bootstrap-test-$$"
+mkdir -p "$work/bin" "$work/payload" "$work/jffs"
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+export BOOTSTRAP_TEST_WORK="$work"
+sed -e "s|/jffs|$work/jffs|g" -e "s|/tmp/vpnipc-install-|$work/stage-|g" \
+  -e "s|^PATH=.*|PATH=\"$work/bin:\$PATH\"|" \
+  -e "s|for directory in /opt/bin /opt/sbin /usr/sbin /usr/bin /sbin /bin;|for directory in $work/bin;|" \
+  -e '/^\[ -t 0 \]/d' install.sh > "$work/bootstrap"
+for tool in awk sed grep sha256sum; do
+  toolpath="$(command -v "$tool")"
+  printf '#!/bin/sh\nexec "%s" "$@"\n' "$toolpath" > "$work/bin/$tool"
+done
+printf '#!/bin/sh\necho 0\n' > "$work/bin/id"
+printf '#!/bin/sh\necho 1\n' > "$work/bin/nvram"
+printf '#!/bin/sh\necho 1111111111111111111111111111111111111111\n' > "$work/bin/jq"
+cat > "$work/bin/curl" <<'EOF'
+#!/bin/sh
+while [ "$#" -gt 0 ]; do
+  case "$1" in https://*) url="$1" ;; -o) shift; target="$1" ;; esac
+  shift
+done
+case "$url" in
+  *api.github.com*) printf '{}\n' > "$target" ;;
+  *) relative="${url#*1111111111111111111111111111111111111111/}"; cp "$BOOTSTRAP_TEST_WORK/payload/$relative" "$target" ;;
+esac
+EOF
+chmod +x "$work/bin/"*
+files="$(sed -n "s/^FILES='\(.*\)'$/\1/p" install.sh)"
+for relative in $files; do
+  mkdir -p "$work/payload/$(dirname "$relative")"
+  printf '#!/bin/sh\nexit 0\n' > "$work/payload/$relative"
+  hash="$(sha256sum "$work/payload/$relative")"; hash="${hash%% *}"
+  printf '%s  %s\n' "$hash" "$relative" >> "$work/payload/SHA256SUMS"
+done
+printf 'corrupt\n' >> "$work/payload/scripts/vpn_ipcatcher.real.sh"
+if sh "$work/bootstrap" install; then echo 'Corrupt bootstrap accepted' >&2; exit 1; fi
+[ ! -e "$work/jffs/scripts/vpn_ipcatcher.sh" ]
+printf '#!/bin/sh\nexit 0\n' > "$work/payload/scripts/vpn_ipcatcher.real.sh"
+sh "$work/bootstrap" install
+[ -f "$work/jffs/scripts/vpn_ipcatcher.conf" ]
+[ -x "$work/jffs/scripts/vpn_ipcatcher.sh" ]
+if sh "$work/bootstrap" install; then echo 'Existing installation overwritten' >&2; exit 1; fi
+echo 'PASS: bootstrap validates downloads before writes and refuses reinstall'

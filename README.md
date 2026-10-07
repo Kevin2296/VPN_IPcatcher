@@ -1,5 +1,41 @@
 # VPN IP Catcher 2.7.0
 
+## Routercommando's: eerste installatie of update
+
+Voer dit uit in een interactief SSH-venster op de router, bijvoorbeeld MobaXterm.
+Vereist: werkende Domain-based VPN Routing-policy, ingeschakelde JFFS-scripts,
+curl, jq en sha256sum. Ontbrekende tools worden gemeld, niet automatisch geinstalleerd.
+Gebruik geen `curl | sh`: de installatie heeft je invoer nodig voor de VPN-keuze.
+
+**Eerste installatie (alleen wanneer IP Catcher nog niet is geinstalleerd):**
+
+```sh
+curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh install
+```
+
+**Bestaande installatie bijwerken (met veilige updater, versie 2.6.0 of nieuwer):**
+
+```sh
+curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh update
+```
+
+De eerste update naar 2.7.0 vraagt om je VPN/lijstkeuze. Configuratie en de bewust
+gestopte status blijven behouden. Oudere installaties zonder veilige updater
+worden geweigerd: gebruik dan de handmatige migratie hieronder met een back-up.
+
+**Volgende updates kunnen ook direct vanuit het menu of met:**
+
+```sh
+/jffs/scripts/vpn_ipcatcher.sh update
+```
+
+De download gebruikt HTTPS en de programmacontrole gebruikt SHA-256 en een vaste
+GitHub-commit. Dit vertrouwt deze openbare repository; het is geen afzonderlijke
+digitale handtekening. De eerste installatie is niet volledig transactioneel:
+bij onderbreking of een afgebroken wizard blijven de geplaatste bestanden staan.
+Herstel de oorzaak en voer dan de installer onder `/jffs/addons/vpn_ipcatcher.d/`
+opnieuw uit. Er worden geen persoonlijke routerbestanden naar GitHub verstuurd.
+
 2.7.0 adds interactive VPN/policy selection during installation and first update.
 Choose an existing Domain-based VPN Routing OpenVPN or WireGuard policy, then
 the LAN interface(s) to observe. Required tools, policy binding, firewall marks,
@@ -63,7 +99,7 @@ This reads information; it does not change settings or start the service.
 
 ## Upgrade the existing installation
 
-The provided archive contains only the nine program files. It excludes personal
+The provided archive contains only the ten program files. It excludes personal
 configuration, startup hooks, logs, keys and unrelated addons. Before installing,
 run the diagnostic and make a backup of the existing program files and hooks.
 Stop the engine and remove its watchdog cron during the one-time migration.
