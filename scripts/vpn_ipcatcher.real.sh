@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.7.0
+# Version: 2.7.1
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -202,6 +202,7 @@ load_config(){
   INTERFACES="${INTERFACES:-br0}"
   IPSET_NAME="${IPSET_NAME:-DVR-StreamsVPNSW-v4}"
   CAND_SET="${IPSET_NAME}_cand"
+  WAIT_SET="${IPSET_NAME}_wait"
   PORTS="${PORTS:-80,443}"
 
   PROMOTE_MODE="${PROMOTE_MODE:-auto}"
@@ -387,7 +388,7 @@ write_web_status(){
   tmp="${WEB_STATUS_FILE}.$$"
   {
     printf '{\n'
-    printf '  "version":"%s",\n' "$(json_safe '2.7.0')"
+    printf '  "version":"%s",\n' "$(json_safe '2.7.1')"
     printf '  "last_update":"%s",\n' "$(json_safe "$now")"
     printf '  "engine":"%s",\n' "$(json_safe "$engine_state")"
     printf '  "engine_pid":"%s",\n' "$(json_safe "$engine_pid")"
@@ -512,6 +513,7 @@ start_promote_worker(){
     while true; do
       check_learning_route
       flow_scan_candidates
+      promote_deferred
       now="$(current_epoch)"
       if [ "$((now - last_promote))" -ge "$PROMOTE_EVERY" ]; then
         promote_candidates
@@ -989,13 +991,48 @@ learning_route_ready(){
   route_age=$(( $(current_epoch) - checked_at ))
   [ "$route_age" -ge 0 ] && [ "$route_age" -le 10 ]
 }
+destination_is_idle(){
+  [ -n "$CT" ] || return 1
+  probe="$CACHE_DIR/promotion-probe"
+  mkdir "$probe" 2>/dev/null || return 1
+  (
+    trap 'rm -f "$probe/connections"; rmdir "$probe" 2>/dev/null' EXIT
+    trap 'exit 1' HUP INT TERM
+    # Check all clients and ports: the DVR destination rule affects them all.
+    $CT -L -f ipv4 > "$probe/connections" 2>/dev/null || exit 1
+    $AWK -v target="$1" '
+      {for(i=1;i<=NF;i++) if($i ~ /^dst=/) {
+        destination=$i; sub(/^dst=/,"",destination);
+        if(destination==target) active=1;
+        break
+      }}
+      END{exit active?1:0}' "$probe/connections"
+  )
+}
+promote_deferred(){
+  $IPSET save "$WAIT_SET" 2>/dev/null | $AWK '$1=="add" {print $3}' |
+  while IFS= read -r deferred_ip; do
+    valid_ipv4 "$deferred_ip" || continue
+    if add_final_immediate "$deferred_ip" 'promoted-after-idle'; then
+      $IPSET del "$WAIT_SET" "$deferred_ip" >/dev/null 2>&1
+      $IPSET del "$CAND_SET" "$deferred_ip" >/dev/null 2>&1
+    fi
+  done
+}
 add_final_immediate(){
+  (
   ip="$1"; comment="$2"
   [ -z "$ip" ] && return 0
   learning_route_ready || return 1
   should_skip_service_ip "final" "$ip" "$comment" && return 0
   comment="$(make_ipset_comment "$comment")"
+  # Refreshing an existing member does not introduce a new destination route.
+  if ! $IPSET test "$IPSET_NAME" "$ip" >/dev/null 2>&1 && ! destination_is_idle "$ip"; then
+    $IPSET add "$WAIT_SET" "$ip" -exist timeout 86400 comment "$comment" >/dev/null 2>&1
+    return 1
+  fi
   $IPSET add "$IPSET_NAME" "$ip" -exist timeout "$FINAL_TIMEOUT" comment "$comment" >/dev/null 2>&1
+  )
 }
 
 enable_conntrack_acct(){
@@ -1253,6 +1290,9 @@ run_engine(){
 
   ensure_set "$CAND_SET" "$CANDIDATE_TIMEOUT" || { log "FOUT: '$CAND_SET'"; cleanup; }
   ensure_set "$IPSET_NAME" "$FINAL_TIMEOUT"   || { log "FOUT: '$IPSET_NAME'"; cleanup; }
+  ensure_set "$WAIT_SET" 86400 || { log "FOUT: '$WAIT_SET'"; cleanup; }
+  rm -f "$CACHE_DIR/promotion-probe/connections"
+  rmdir "$CACHE_DIR/promotion-probe" 2>/dev/null || true
   rebuild_exclude_net_set || { log "FOUT: exclusion IPSet kon niet worden opgebouwd"; cleanup; }
   check_learning_route
 
@@ -1299,7 +1339,7 @@ ipset_member_count(){
 ipset_remove_excluded(){
   load_config
   rebuild_exclude_net_set
-  for setname in "$CAND_SET" "$IPSET_NAME"; do
+  for setname in "$CAND_SET" "$WAIT_SET" "$IPSET_NAME"; do
     $IPSET list "$setname" >/dev/null 2>&1 || continue
     $IPSET list "$setname" 2>/dev/null | $SED -n '/^Members:/,$p' | tail -n +2 | \
     while IFS= read -r line; do
@@ -1408,6 +1448,7 @@ status_report(){
   fi
 
   say "Service"
+  printf '  %-20s %s\n' 'Deferred IPs' "$(ipset_member_count "$WAIT_SET")"
   printf "  %-20s %s
 " "Last refresh" "$now"
   printf "  %-20s %s

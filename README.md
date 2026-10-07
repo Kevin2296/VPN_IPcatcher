@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.7.0](https://img.shields.io/badge/version-2.7.0-087F8C?style=for-the-badge)
+![Version 2.7.1](https://img.shields.io/badge/version-2.7.1-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit waargenomen
 verkeer en voegt deze toe aan een bestaande Domain-based VPN Routing-lijst.
 De routing-addon bepaalt de VPN-uitgang; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.7.0.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.7.1.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > **Voor een gecontroleerde routertest.** Lokaal getest, maar volledige
@@ -112,6 +112,21 @@ oude installatie te overschrijven.
 
 ## Back-up en terugzetten
 
+Maak voor het testen ook een handmatige back-up via SSH:
+
+```sh
+curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/backup.sh -o /tmp/vpn_ipcatcher_backup.sh && sh /tmp/vpn_ipcatcher_backup.sh
+```
+
+Het commando toont het archiefpad onder `/jffs/vpn-ipcatcher-backups/`. Open die
+map in de SFTP-zijbalk van MobaXterm en download het `.tar.gz`-bestand naar je pc.
+Het bevat IP Catcher-addondirectories, instellingen, aanwezige betrokken hooks
+en DVR-configuratie/code. **Dit archief is prive; upload het nooit naar GitHub.**
+Het bevat geen volledige nvram/routerback-up. Controleer voldoende JFFS-ruimte;
+oude addonback-ups kunnen het archief groter maken. Herstel deze handmatige
+snapshot niet blind over een draaiende installatie; rollback hieronder gebruikt
+de afzonderlijke, automatische programmaback-up.
+
 Iedere update bewaart de vorige **programmabestanden** op de router onder:
 
 ```text
@@ -158,6 +173,20 @@ De amtm-updatemanager beheert dit script niet automatisch.
 
 ## Video stopt tijdens afspelen
 
+**Vanaf 2.7.1:** nieuwe finale adressen wachten in de niet-gerouteerde
+`<finale-lijst>_wait`-IPSet zolang conntrack een verbinding naar dat adres toont.
+De controle omvat alle clients/poorten en TCP/UDP. Zodra het adres vrij is, wordt
+het opnieuw op routing en uitsluitingen gecontroleerd en toegevoegd. Bestaande
+finale adressen mogen worden vernieuwd; hun route verandert daarmee niet.
+Bij een mislukte conntrackcontrole wordt een nieuwe toevoeging uitgesteld.
+
+Dit beperkt de vermoedelijke routewissel door IP Catcher tijdens het afspelen,
+maar is geen volledige connection-pinning: tussen controle en toevoeging kan een
+nieuwe verbinding beginnen. Andere addons, bestaande finale leden, verlopen
+lijsten, VPN-uitval en IPv6 kunnen nog steeds invloed hebben. Het kan leren naar
+de finale lijst vertragen; probeer dezelfde site opnieuw na het sluiten van de
+eerste sessie. De wachtlijst bevat alleen eerder gekwalificeerde adressen.
+
 Een stop na ongeveer een minuut bewijst niet dat een website VPN blokkeert.
 IP Catcher kan na een leeftijd/byte-drempel een adres aan de VPN-lijst toevoegen.
 Afhankelijk van de firewallregels kan daardoor de route tijdens een bestaande
@@ -200,6 +229,8 @@ sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
+sh tests/stream-safety-checks.sh
+sh tests/backup-checks.sh
 ```
 
 Tests gebruiken fixtures en namaakdownloads voor configuratieveiligheid,

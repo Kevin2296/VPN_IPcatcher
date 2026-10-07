@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.7.1
+
+- Stel nieuwe finale routes uit zolang conntrack verbindingen naar het adres toont.
+- Bewaar gekwalificeerde adressen in een niet-gerouteerde wacht-IPSet en probeer na idle opnieuw.
+- Bescherm ook andere clients/poorten en UDP; blokkeer toevoegingen bij mislukte conntrackcontrole.
+- Handmatig prive-back-uparchief via `backup.sh`, inclusief instellingen en hooks.
+- Lokale regressietests voor streambescherming. Echte routervalidatie blijft nodig.
+
 ## 2.7.0
 
 - Interactieve keuze van VPN-client, DVR-policy en LAN-capture-interface.

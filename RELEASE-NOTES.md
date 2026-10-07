@@ -1,4 +1,10 @@
-# VPN IP Catcher 2.7.0
+# VPN IP Catcher 2.7.1
+
+Nieuwe finale adressen worden uitgesteld zolang conntrack verbindingen naar dat
+adres toont. Een niet-gerouteerde wachtlijst bewaart gekwalificeerde adressen
+voor een latere poging. Dit vermindert mogelijke routewissels tijdens streams,
+maar biedt geen volledige connection-pinning of garantie tegen alle videofouten.
+`backup.sh` maakt daarnaast een prive-snapshot van code, instellingen en hooks.
 
 POSIX-shell addon voor Asuswrt-Merlin met interactieve VPN/policy-keuze en
 controle van actieve routing voordat adressen worden geleerd. Een bestaande

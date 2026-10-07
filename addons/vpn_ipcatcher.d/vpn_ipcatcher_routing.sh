@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.7.0
+# Version: 2.7.1
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -85,7 +85,7 @@ firewall_check(){
   printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" '
     {name=""; mark=""; for(i=1;i<=NF;i++) {if($i=="--match-set") name=$(i+1); if($i=="--set-xmark" || $i=="--set-mark") mark=$(i+1)}
      if(name==set && mark!="") {if(mark!=expected && mark!=plain) bad=1; else {if($2=="PREROUTING") pre=1; if($2=="OUTPUT") out=1}}
-     if((name==set "_cand" || name==set "_exclude") && mark!="") bad=1}
+     if((name==set "_cand" || name==set "_exclude" || name==set "_wait") && mark!="") bad=1}
     END{exit (bad || !pre || !out)?1:0}' || { error 'Lijstmarkeringen ontbreken of conflicteren. Herstel de gekozen DVR-policy en verwijder conflicterende oude regels gericht.'; return 1; }
 }
 route_check(){

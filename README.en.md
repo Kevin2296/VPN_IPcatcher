@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.7.0](https://img.shields.io/badge/version-2.7.0-087F8C?style=for-the-badge)
+![Version 2.7.1](https://img.shields.io/badge/version-2.7.1-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and adds them
 to an existing Domain-based VPN Routing (DVR) list on Asuswrt-Merlin. The routing
 addon chooses the VPN exit. IP Catcher itself is not a VPN client.
 
-**Version: 2.7.0.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.7.1.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > **Ready for controlled router testing.** Local tests do not prove complete
@@ -110,6 +110,20 @@ installer. Do not overwrite an old installation with the first-install command.
 
 ## Backup and rollback
 
+Before testing, make a private manual backup over SSH:
+
+```sh
+curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/backup.sh -o /tmp/vpn_ipcatcher_backup.sh && sh /tmp/vpn_ipcatcher_backup.sh
+```
+
+The command prints the archive path under `/jffs/vpn-ipcatcher-backups/`. Open
+that folder in MobaXterm's SFTP sidebar and download the `.tar.gz` to your PC.
+It includes IP Catcher addon directories, settings, present affected hooks and
+DVR configuration/code. **Private archive: never upload it to GitHub.** It is
+not a full nvram/router backup. Check JFFS space; existing addon backups can make
+the archive larger. Do not blindly restore it over a running installation.
+Rollback below uses the separate automatic program backup.
+
 Each update saves the previous **program files** locally under:
 
 ```text
@@ -156,6 +170,19 @@ The amtm update manager does not automatically manage this personal script.
 
 ## Video stops during playback
 
+**Since 2.7.1:** new final destinations wait in the unrouted
+`<final-list>_wait` IPSet while conntrack shows a connection to that address.
+Checks cover all clients/ports and TCP/UDP. Once idle, routing and exclusions
+are checked again before addition. Existing final members can be refreshed
+without introducing a new route. Failed conntrack checks defer new additions.
+
+This reduces the suspected mid-stream route change caused by IP Catcher, but
+is not complete connection pinning: a new connection can start between checking
+and adding. Other addons, existing final entries, expiring lists, VPN outages
+and IPv6 may still affect routing. Learning into the final list may be slower;
+retry the site after closing the first session. Only previously qualified
+addresses enter the waiting list.
+
 A stream stopping after about a minute does not prove the website blocks VPNs.
 IP Catcher may add an address to the VPN list after an age/byte threshold. Depending
 on firewall rules, this could change routing during an existing stream. This is
@@ -197,6 +224,8 @@ sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
+sh tests/stream-safety-checks.sh
+sh tests/backup-checks.sh
 ```
 
 Tests use fixtures and mocked downloads for configuration safety, learning,
