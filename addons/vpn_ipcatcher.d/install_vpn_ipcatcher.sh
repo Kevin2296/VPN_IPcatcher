@@ -1,6 +1,6 @@
 #!/bin/sh
 # install_vpn_ipcatcher.sh - safe installer/repair script for vpn_ipcatcher WebGUI setup
-# Version: 2.7.1
+# Version: 2.8.0
 set -e
 
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -137,10 +137,14 @@ main(){
   chmod 600 "$CONF" 2>/dev/null
   chmod 644 "$ASP" 2>/dev/null
 
-  "$ADDON_DIR/vpn_ipcatcher_routing.sh" dependencies
+  "$ADDON_DIR/vpn_ipcatcher_routing.sh" install-dependencies
   "$ENGINE" stop
   # Choose the tunnel and policy interactively before registering startup.
-  "$ADDON_DIR/vpn_ipcatcher_routing.sh" configure
+  if [ -s "$ADDON_DIR/routing-selection" ]; then
+    "$ADDON_DIR/vpn_ipcatcher_routing.sh" prepare
+  else
+    "$ADDON_DIR/vpn_ipcatcher_routing.sh" configure
+  fi
 
   install_service_event_block
   install_services_start_block

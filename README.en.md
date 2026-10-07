@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.7.1](https://img.shields.io/badge/version-2.7.1-087F8C?style=for-the-badge)
+![Version 2.8.0](https://img.shields.io/badge/version-2.8.0-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -21,11 +21,11 @@ IPv4 learning for your Asuswrt-Merlin VPN routing.
 
 ## At a glance
 
-VPN IP Catcher observes traffic, learns suitable IPv4 addresses and adds them
-to an existing Domain-based VPN Routing (DVR) list on Asuswrt-Merlin. The routing
-addon chooses the VPN exit. IP Catcher itself is not a VPN client.
+VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automatically
+manages a corresponding list and its own routing rules. It uses your router/DVR
+VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.7.1.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.0.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > **Ready for controlled router testing.** Local tests do not prove complete
@@ -34,7 +34,8 @@ addon chooses the VPN exit. IP Catcher itself is not a VPN client.
 
 | Component | What to expect |
 | --- | --- |
-| VPN selection | Choose an existing OpenVPN/WireGuard client and DVR policy |
+| VPN selection | Choose a working VPN by number; automatic if only one is available |
+| Lists | Automatically reuse a suitable list or create a dedicated one |
 | Learning | Evaluate IPv4 candidates using configured age/byte thresholds |
 | Routing checks | Check tools, list binding, marks, routing table and tunnel |
 | Recovery | Keep previous program files locally and restore them |
@@ -42,23 +43,29 @@ addon chooses the VPN exit. IP Catcher itself is not a VPN client.
 | Privacy | No router configurations, keys or logs in this repository |
 
 ```text
-LAN traffic  -->  IP Catcher  -->  existing DVR list  -->  selected VPN
+LAN traffic  -->  IP Catcher  -->  automatic list  -->  selected VPN
                      |
                 routing checks
 ```
 
 ## Requirements
 
+**Short version:** run the installation/update command, choose a VPN number if
+needed, done. No list names or LAN settings to enter. Set up your router VPN,
+Entware and DVR once; the script remembers your choice afterwards.
+
 - Asuswrt-Merlin with JFFS custom scripts and configs enabled.
-- A working OpenVPN or WireGuard client and an existing DVR policy.
-- An IPv4 `hash:ip` set supporting `timeout`, `counters` and `comment`.
+- A configured, connected OpenVPN/WireGuard client and an enabled DVR addon.
+- Entware on USB storage for any missing packages.
 - `ip`, `iptables`, `ipset`, `tcpdump`, `nslookup`, `awk`, `sed`, `grep`, `tr`, `cru`.
 - For full learning/updates: `conntrack`, `curl`, `jq`, `sha256sum`.
 - Conntrack accounting, a correct router clock and HTTPS certificates.
 - For the WebUI: Merlin Addons helper and an existing Addons menu.
 
-Missing tools are reported; install them through Entware/amtm. The installer
-does not configure VPN credentials or rebuild incompatible IPSets. Scripts use
+Missing `tcpdump`, `conntrack` and `jq` are installed using your existing Entware.
+Missing router tools are reported. VPN credentials, Entware storage and DVR
+require one-time setup; these are not blindly changed. No manual list creation
+is needed. Incompatible existing lists are left intact. Scripts use
 `/bin/sh`, without bundled architecture-specific binaries.
 
 ## First installation
@@ -70,8 +77,9 @@ Use this only when VPN IP Catcher is not already installed:
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh install
 ```
 
-Choose the VPN client, DVR policy and LAN observation interface(s). The installer
-checks the list binding, firewall marks, routing table and tunnel before learning.
+Choose only your VPN's number; one working VPN is selected automatically.
+Lists and LAN settings are managed and checked automatically. You do not need
+to type policy or interface names.
 Do not use `curl | sh`: the wizard needs interactive input. The installation
 prompts and router menu are currently Dutch; these language links select documentation.
 
@@ -90,7 +98,8 @@ For an existing installation with the safe updater (2.6.0 or later):
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh update
 ```
 
-The first upgrade to 2.7.0 asks for your VPN/list selection. Subsequent updates
+Initial setup asks for at most a VPN number. Updates preserve that choice and
+your settings without new list questions. Subsequent updates
 can run from the menu or directly:
 
 ```sh
@@ -140,6 +149,8 @@ Normal updates and rollback do not replace configuration. This is not a full
 router/configuration backup. The installer separately backs up startup hooks
 it changes. During the first VPN/list migration, the previous configuration is
 also saved locally for failure recovery.
+Since 2.8.0 every update backup also includes private snapshots of configuration,
+VPN selection and update source. Rollback does not automatically restore settings.
 
 Failed startup during an update automatically restores the previous code. A
 deliberately stopped app stays stopped. Power loss cannot be recovered by a
@@ -148,6 +159,12 @@ blindly delete markers. Backups are not automatically pruned; monitor JFFS free
 space and maintain your own router backup as well.
 
 ## Controls and amtm
+
+To change VPN later, use the menu or `routing-setup`. Setup automatically reuses
+a compatible existing DVR list or creates a dedicated `DVR-VIPC-...-v4` list.
+Only its own tagged rules are managed; other DVR policies remain untouched.
+The running app repairs missing owned rules automatically. Diagnostic commands
+(`doctor`, `routing-check`) remain read-only.
 
 ```sh
 /jffs/scripts/vpn_ipcatcher.sh
@@ -222,6 +239,7 @@ sh tests/installer-checks.sh
 sh tests/lifecycle-checks.sh
 sh tests/path-checks.sh
 sh tests/routing-checks.sh
+sh tests/managed-routing-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh

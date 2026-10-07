@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.7.1](https://img.shields.io/badge/version-2.7.1-087F8C?style=for-the-badge)
+![Version 2.8.0](https://img.shields.io/badge/version-2.8.0-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -21,11 +21,11 @@ IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
 ## In het kort
 
-IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit waargenomen
-verkeer en voegt deze toe aan een bestaande Domain-based VPN Routing-lijst.
-De routing-addon bepaalt de VPN-uitgang; IP Catcher is zelf geen VPN-client.
+IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
+regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
+de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.7.1.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.8.0.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > **Voor een gecontroleerde routertest.** Lokaal getest, maar volledige
@@ -34,7 +34,8 @@ De routing-addon bepaalt de VPN-uitgang; IP Catcher is zelf geen VPN-client.
 
 | Onderdeel | Wat je kunt verwachten |
 | --- | --- |
-| VPN-keuze | Bestaande OpenVPN- of WireGuard-client en DVR-policy kiezen |
+| VPN-keuze | Een werkende VPN kiezen met een nummer; bij een VPN automatisch |
+| Lijsten | Automatisch hergebruiken of een eigen lijst maken; geen handwerk |
 | Leren | IPv4-kandidaten beoordelen op ingestelde leeftijd/bytegrenzen |
 | Routingcontrole | Tools, lijstkoppeling, markeringen, routingtabel en tunnel controleren |
 | Herstel | Vorige programmacode lokaal bewaren en terugzetten |
@@ -42,23 +43,29 @@ De routing-addon bepaalt de VPN-uitgang; IP Catcher is zelf geen VPN-client.
 | Privacy | Geen routerconfiguratie, sleutels of logs in deze repository |
 
 ```text
-LAN-verkeer  -->  IP Catcher  -->  bestaande DVR-lijst  -->  gekozen VPN
+LAN-verkeer  -->  IP Catcher  -->  automatische lijst  -->  gekozen VPN
                     |
               routingcontrole
 ```
 
 ## Vereisten
 
+**Kort:** start het installatie/updatecommando, kies zo nodig een VPN-nummer,
+klaar. Geen lijstnamen of LAN-instellingen invullen. Je router-VPN, Entware en
+DVR moeten eenmalig zijn ingesteld; daarna bewaart het script je keuze.
+
 - Asuswrt-Merlin met JFFS custom scripts en configs ingeschakeld.
-- Een werkende OpenVPN- of WireGuard-client met een bestaande DVR-policy.
-- Een IPv4 `hash:ip`-lijst met `timeout`, `counters` en `comment`.
+- Een ingestelde, verbonden OpenVPN- of WireGuard-client en ingeschakelde DVR-addon.
+- Entware op je USB-opslag voor eventueel ontbrekende pakketten.
 - `ip`, `iptables`, `ipset`, `tcpdump`, `nslookup`, `awk`, `sed`, `grep`, `tr`, `cru`.
 - Voor volledige leerfunctie/updates: `conntrack`, `curl`, `jq`, `sha256sum`.
 - Conntrack accounting, correcte routerklok en HTTPS-certificaten.
 - Voor de WebUI: Merlin Addons-helper en een bestaand Addons-menu.
 
-Ontbrekende tools worden gemeld. Installeer deze via Entware/amtm. De installer
-configureert geen VPN-wachtwoorden en bouwt geen onverenigbare IPSet om.
+Ontbrekende `tcpdump`, `conntrack` en `jq` worden via je bestaande Entware
+geinstalleerd. Ontbrekende routertools worden gemeld. VPN-providergegevens,
+Entware-opslag en DVR moet je eenmalig instellen; dat wordt niet blind gewijzigd.
+Je hoeft geen lijst aan te maken. Bestaande onverenigbare lijsten blijven intact.
 De code gebruikt `/bin/sh`, zonder architectuurspecifieke meegeleverde binaries.
 
 ## Eerste installatie
@@ -70,8 +77,9 @@ Alleen uitvoeren wanneer IP Catcher nog niet is geinstalleerd:
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh install
 ```
 
-Kies de VPN-client, DVR-policy en LAN-interface(s). De installer controleert
-lijstkoppeling, firewallmarkering, routingtabel en tunnel voordat leren begint.
+Kies alleen het nummer van je VPN. Bij een werkende VPN gaat dat automatisch.
+De lijst en LAN-instellingen worden automatisch geregeld en gecontroleerd.
+Je hoeft geen policynaam of interface in te typen.
 Gebruik geen `curl | sh`: de wizard heeft je invoer nodig.
 De taalkeuze op GitHub geldt voor de documentatie; installatievragen en het
 routermenu zijn momenteel Nederlands.
@@ -91,7 +99,8 @@ Voor een bestaande installatie met veilige updater (2.6.0 of nieuwer):
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh update
 ```
 
-De eerste update naar 2.7.0 vraagt om je VPN/lijstkeuze. Volgende updates kunnen
+Bij de eerste inrichting kies je hoogstens een VPN-nummer. Updates bewaren deze
+keuze en je instellingen; geen nieuwe lijstvragen. Volgende updates kunnen
 vanuit het menu of met:
 
 ```sh
@@ -143,6 +152,8 @@ Configuratie wordt bij gewone updates en rollback niet vervangen. Dit is geen
 volledige router- of configuratieback-up. De installer bewaart afzonderlijke
 back-ups van startup-hooks die hij wijzigt. Bij de eerste VPN/lijstmigratie wordt
 de oude configuratie lokaal bewaard voor foutherstel.
+Vanaf 2.8.0 bevat iedere updateback-up ook prive-snapshots van de configuratie,
+VPN-keuze en updatebron. Rollback zet deze instellingen niet automatisch terug.
 
 Een mislukte start tijdens de update herstelt automatisch de vorige code. Een
 bewust gestopte app blijft gestopt. Stroomuitval kan niet door een lopende shell
@@ -151,6 +162,13 @@ Verwijder markers niet blind. Back-ups worden niet automatisch opgeruimd;
 controleer vrije JFFS-ruimte en maak daarnaast je eigen routerback-up.
 
 ## Bediening en amtm
+
+Wil je later een andere VPN? Gebruik het menu of `routing-setup`. Dat stelt
+de eigen lijst/regels opnieuw in. De installatie hergebruikt automatisch een
+passende bestaande DVR-lijst, of maakt een eigen `DVR-VIPC-...-v4`-lijst. Alleen
+de eigen, gemarkeerde regels worden beheerd. Andere DVR-policies blijven staan.
+Bij ontbrekende eigen regels herstelt de draaiende app deze automatisch.
+Diagnostiek (`doctor`, `routing-check`) wijzigt niets.
 
 ```sh
 /jffs/scripts/vpn_ipcatcher.sh
@@ -227,6 +245,7 @@ sh tests/installer-checks.sh
 sh tests/lifecycle-checks.sh
 sh tests/path-checks.sh
 sh tests/routing-checks.sh
+sh tests/managed-routing-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh

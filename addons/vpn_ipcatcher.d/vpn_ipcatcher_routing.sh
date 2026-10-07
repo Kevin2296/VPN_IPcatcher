@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.7.1
+# Version: 2.8.0
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -37,6 +37,16 @@ dependencies(){
   done
   [ "$failures" = 0 ]
 }
+install_dependencies(){
+  packages=''
+  for name in tcpdump conntrack jq; do
+    if ! find_bin "/opt/bin/$name" "/opt/sbin/$name" "/usr/sbin/$name" "/usr/bin/$name" "/sbin/$name" "/bin/$name" >/dev/null; then packages="$packages $name"; fi
+  done
+  [ -n "$packages" ] || return 0
+  [ -x /opt/bin/opkg ] || { error 'Entware ontbreekt. Installeer dit eerst via amtm op je USB-opslag; daarna regel ik de pakketten.'; return 1; }
+  echo 'Ontbrekende pakketten worden via je bestaande Entware-installatie opgehaald.'
+  /opt/bin/opkg update && /opt/bin/opkg install $packages
+}
 set_check(){
   header="$($IPSET save "$SET" 2>/dev/null | awk '$1=="create" {print; exit}')"
   printf '%s\n' "$header" | awk '$3=="hash:ip" {for(i=4;i<=NF;i++){if($i=="timeout") t=1; if($i=="counters") c=1; if($i=="comment") m=1; if($i=="inet6") v6=1}} END{exit (!t || !c || !m || v6)?1:0}' || {
@@ -58,18 +68,98 @@ selection_read(){
   [ -f "$SELECTION" ] || { error 'Nog geen VPN/lijst gekozen. Gebruik routing-setup of de installer.'; return 1; }
   POLICY="$(sed -n '1p' "$SELECTION")"
   CONNECTION="$(sed -n '2p' "$SELECTION")"
+  MODE="$(sed -n '3p' "$SELECTION")"
+  case "$MODE" in ''|managed-v1) ;; *) error 'Onbekende installatie-instelling.'; return 1 ;; esac
   valid_policy "$POLICY" && valid_connection "$CONNECTION" || { error 'Ongeldige VPN/lijstselectie.'; return 1; }
   SET="DVR-${POLICY}-v4"
 }
 binding_read(){
   valid_policy "$POLICY" && valid_connection "$CONNECTION" || return 1
+  if [ "${MODE:-}" = managed-v1 ]; then
+    [ "$POLICY" = "VIPC-$CONNECTION" ] || return 1
+  else
   rows="$(awk -F '|' -v policy="$POLICY" '$1==policy {print $4}' "$POLICIES")"
   [ "$rows" = "$CONNECTION" ] || { error 'De geselecteerde lijst ontbreekt, is dubbel of hoort bij een andere VPN.'; return 1; }
+  fi
+  mark_read || return 1
+  SET="DVR-${POLICY}-v4"
+}
+mark_read(){
+  valid_connection "$CONNECTION" || return 1
   key="$(printf '%s' "$CONNECTION" | tr '[:lower:]' '[:upper:]')"
   MARK="$(setting "$GLOBAL" "${key}FWMARK")"
   MASK="$(setting "$GLOBAL" "${key}MASK")"
   printf '%s\n' "$MARK/$MASK" | grep -Eq '^0x[0-9a-fA-F]+/0x[0-9a-fA-F]+$' || { error 'VPN-markering ontbreekt of is ongeldig.'; return 1; }
-  SET="DVR-${POLICY}-v4"
+}
+managed_prepare(){
+  [ "${MODE:-}" = managed-v1 ] || return 0
+  [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || { error 'De VPN-routing addon staat uit.'; return 1; }
+  binding_read && rule_check && route_check || return 1
+  owner="$ADDON/managed-$POLICY"
+  [ -z "$(awk -F '|' -v policy="$POLICY" '$1==policy {print $1}' "$POLICIES")" ] || { error 'De automatische lijstnaam is al door DVR gebruikt; niets gewijzigd.'; return 1; }
+  if [ -f "$owner" ]; then
+    [ "$(sed -n '1p' "$owner")" = "$SET" ] || { error 'Onbekende eigenaar van de automatische lijst.'; return 1; }
+    if [ "$(sed -n '2p' "$owner")" != "$MARK/$MASK" ]; then
+      [ "${ALLOW_REBIND:-no}" = yes ] || { error 'VPN-instelling gewijzigd; kies opnieuw via routing-setup.'; return 1; }
+      remove_managed_rules "$POLICY" || return 1
+      (umask 077; printf '%s\n%s\n' "$SET" "$MARK/$MASK" > "$owner.new") && mv "$owner.new" "$owner" || return 1
+    fi
+  elif $IPSET list "$SET" >/dev/null 2>&1; then
+    error 'Deze lijst bestaat al maar is niet van IP Catcher. Niets overschreven.'; return 1
+  fi
+  if ! $IPSET list "$SET" >/dev/null 2>&1; then
+    $IPSET create "$SET" hash:ip family inet timeout 604800 counters comment || return 1
+  fi
+  set_check || return 1
+  if [ ! -f "$owner" ]; then
+    mkdir -p "$ADDON" || return 1
+    (umask 077; printf '%s\n%s\n' "$SET" "$MARK/$MASK" > "$owner.new") && mv "$owner.new" "$owner" || return 1
+  fi
+  for chain in PREROUTING OUTPUT; do
+    $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null && continue
+    $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
+  done
+}
+remove_managed_rules(){
+  old_policy="$1"
+  case "$old_policy" in VIPC-ovpnc[1-5]|VIPC-wgc[1-5]) ;; *) return 1 ;; esac
+  old_owner="$ADDON/managed-$old_policy"
+  [ -r "$old_owner" ] || return 1
+  old_set="$(sed -n '1p' "$old_owner")"
+  old_mark="$(sed -n '2p' "$old_owner")"
+  [ "$old_set" = "DVR-$old_policy-v4" ] || return 1
+  printf '%s\n' "$old_mark" | grep -Eq '^0x[0-9a-fA-F]+/0x[0-9a-fA-F]+$' || return 1
+  for old_chain in PREROUTING OUTPUT; do
+    count=0
+    while $IPTABLES -t mangle -C "$old_chain" -m set --match-set "$old_set" dst -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" 2>/dev/null; do
+      $IPTABLES -t mangle -D "$old_chain" -m set --match-set "$old_set" dst -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" || return 1
+      count=$((count+1)); [ "$count" -lt 20 ] || return 1
+    done
+  done
+}
+available_connections(){
+  for connection in ovpnc1 ovpnc2 ovpnc3 ovpnc4 ovpnc5 wgc1 wgc2 wgc3 wgc4 wgc5; do
+    if (CONNECTION="$connection"; mark_read && rule_check && route_check) >/dev/null 2>&1; then printf '%s\n' "$connection"; fi
+  done
+}
+connection_label(){
+  case "$1" in
+    ovpnc*) number="${1#ovpnc}"; kind=OpenVPN; name="$(nvram get "vpn_client${number}_desc" 2>/dev/null)" ;;
+    wgc*) number="${1#wgc}"; kind=WireGuard; name="$(nvram get "wgc${number}_desc" 2>/dev/null)" ;;
+  esac
+  name="$(printf '%s' "$name" | tr -cd '[:print:]' | cut -c 1-60)"
+  printf '%s %s%s\n' "$kind" "$number" "${name:+ - $name}"
+}
+automatic_lan(){
+  CAPTURE="$(setting "$CONF" INTERFACES)"
+  if [ -z "$CAPTURE" ]; then
+    CAPTURE="$($IP -o link show 2>/dev/null | awk -F ': ' '$2 ~ /^br[0-9]+$/ && $0 ~ /<([^>]*,)?UP(,|>)/ {print $2}' | tr '\n' ' ')"
+  fi
+  [ -n "$CAPTURE" ] || { error 'Geen actief LAN gevonden; installatie afgebroken.'; return 1; }
+  for interface in $CAPTURE; do
+    case "$interface" in *[!A-Za-z0-9_.:-]*|tun*|tap*|wgc*) error 'Opgeslagen LAN-instelling is ongeldig.'; return 1 ;; esac
+    $IP link show "$interface" >/dev/null 2>&1 || { error 'Opgeslagen LAN is niet aanwezig.'; return 1; }
+  done
 }
 rule_check(){
   rules="$($IP rule show 2>/dev/null)" || return 1
@@ -97,6 +187,7 @@ route_check(){
   printf '%s\n' "$link" | grep -Eq '<([^>]*,)?UP(,|>)' || { error 'VPN-interface staat niet UP.'; return 1; }
 }
 binding_check(){
+  [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || { error 'De VPN-routing addon staat uit.'; return 1; }
   binding_read && rule_check && firewall_check && route_check || return 1
   $IPSET list "$SET" >/dev/null 2>&1 || { error 'De finale DVR-IPSet ontbreekt.'; return 1; }
   set_check || return 1
@@ -112,30 +203,32 @@ list_choices(){
   done
 }
 configure(){
+  install_dependencies || return 1
   dependencies || return 1
   if [ ! -t 0 ]; then error 'VPN-selectie vereist een interactief SSH/menu-venster.'; return 1; fi
-  echo 'Beschikbare VPN-verbindingen met DVR-policy:'
-  policy_rows | cut -d '|' -f 2 | sort -u
-  printf 'Kies verbinding (bijvoorbeeld ovpnc1 of wgc1): '
-  read -r CONNECTION || return 1
-  valid_connection "$CONNECTION" || { error 'Kies een OpenVPN- of WireGuard-client uit de lijst.'; return 1; }
-  echo 'Bijbehorende policies:'
-  policy_rows | awk -F '|' -v connection="$CONNECTION" '$2==connection {print $1}'
-  printf 'Kies policynaam: '
-  read -r POLICY || return 1
-  binding_read && rule_check && firewall_check && route_check || return 1
-  $IPSET list "$SET" >/dev/null 2>&1 || { error 'DVR-IPSet ontbreekt; herstel eerst deze policy via Domain-based VPN Routing.'; return 1; }
-  set_check || return 1
-  echo 'LAN-interface(s) om verkeer te observeren (bijvoorbeeld br0):'
-  $IP -o link show 2>/dev/null | awk -F ': ' '{print $2}'
-  printf 'Interface(s): '
-  read -r CAPTURE || return 1
-  [ -n "$CAPTURE" ] || return 1
-  for interface in $CAPTURE; do
-    case "$interface" in *[!A-Za-z0-9_.:-]*) return 1 ;; esac
-    $IP link show "$interface" >/dev/null 2>&1 || { error "Interface ontbreekt: $interface"; return 1; }
-    case "$interface" in tun*|tap*|wgc*) error 'Kies de LAN-ingang, niet de versleutelde VPN-uitgang.'; return 1 ;; esac
-  done
+  previous_mode="$(sed -n '3p' "$SELECTION" 2>/dev/null)"
+  previous_policy="$(sed -n '1p' "$SELECTION" 2>/dev/null)"
+  choices="$(available_connections)"
+  [ -n "$choices" ] || { error 'Geen werkende VPN gevonden. Zet je gewenste VPN aan in de ASUS WebUI en probeer opnieuw.'; return 1; }
+  total="$(printf '%s\n' "$choices" | wc -l | tr -d ' ')"
+  echo 'Welke VPN wil je gebruiken? De lijsten regel ik automatisch.'
+  index=0
+  for connection in $choices; do index=$((index+1)); printf '  %s) %s\n' "$index" "$(connection_label "$connection")"; done
+  if [ "$total" = 1 ]; then answer=1; echo 'Een werkende VPN gevonden; automatisch geselecteerd.'
+  else printf 'Kies nummer: '; read -r answer || return 1; fi
+  case "$answer" in ''|*[!0-9]*) error 'Vul een nummer uit het overzicht in.'; return 1 ;; esac
+  [ "${#answer}" -le 2 ] && [ "$answer" -ge 1 ] && [ "$answer" -le "$total" ] || return 1
+  CONNECTION="$(printf '%s\n' "$choices" | sed -n "${answer}p")"
+  MODE=managed-v1
+  POLICY="VIPC-$CONNECTION"
+  # Reuse a compatible configured list without asking users for technical names.
+  previous_set="$(setting "$CONF" IPSET_NAME)"
+  reuse="$(policy_rows | awk -F '|' -v set="$previous_set" -v connection="$CONNECTION" '$2==connection && "DVR-"$1"-v4"==set {print $1}')"
+  if valid_policy "$reuse" && (POLICY="$reuse"; MODE=''; binding_read && firewall_check && set_check) >/dev/null 2>&1; then POLICY="$reuse"; MODE=''; fi
+  binding_read && rule_check && route_check && automatic_lan || return 1
+  ALLOW_REBIND=yes
+  managed_prepare || return 1
+  firewall_check && set_check || return 1
   mkdir "$CONFIG_LOCK" 2>/dev/null || { error 'Configuratie is vergrendeld.'; return 1; }
   echo $$ > "$CONFIG_LOCK/pid"
   trap 'rm -f "${CONF}.routing-new" "$SELECTION.new" "$CONFIG_LOCK/pid"; rmdir "$CONFIG_LOCK" 2>/dev/null' EXIT
@@ -153,19 +246,23 @@ configure(){
     chmod 600 "${CONF}.routing-new"
     mv "${CONF}.routing-new" "$CONF" || rc=1
     mkdir -p "$ADDON"
-    printf '%s\n%s\n' "$POLICY" "$CONNECTION" > "$SELECTION.new" || rc=1
+    printf '%s\n%s\n%s\n' "$POLICY" "$CONNECTION" "$MODE" > "$SELECTION.new" || rc=1
     chmod 600 "$SELECTION.new"
     [ "$rc" != 0 ] || mv "$SELECTION.new" "$SELECTION" || rc=1
   fi
   if [ "$rc" != 0 ]; then cp -p "$backup" "$CONF"; fi
   rm -f "${CONF}.routing-new" "$SELECTION.new" "$CONFIG_LOCK/pid"
   rmdir "$CONFIG_LOCK"
-  [ "$rc" = 0 ] && binding_check
+  [ "$rc" = 0 ] && binding_check || return 1
+  if [ "$previous_mode" = managed-v1 ] && [ "$previous_policy" != "$POLICY" ]; then remove_managed_rules "$previous_policy" || return 1; fi
+  echo 'Klaar: VPN gekozen, lijsten en LAN automatisch ingesteld.'
 }
 case "${1:-check}" in
   configure) configure ;;
   check) selection_read && binding_check ;;
+  prepare) selection_read && managed_prepare && binding_check ;;
   list) list_choices ;;
   dependencies) dependencies ;;
+  install-dependencies) install_dependencies && dependencies ;;
   *) error 'Gebruik: routing {configure|check|list|dependencies}' ;;
 esac

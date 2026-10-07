@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.7.1
+# Version: 2.8.0
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -388,7 +388,7 @@ write_web_status(){
   tmp="${WEB_STATUS_FILE}.$$"
   {
     printf '{\n'
-    printf '  "version":"%s",\n' "$(json_safe '2.7.1')"
+    printf '  "version":"%s",\n' "$(json_safe '2.8.0')"
     printf '  "last_update":"%s",\n' "$(json_safe "$now")"
     printf '  "engine":"%s",\n' "$(json_safe "$engine_state")"
     printf '  "engine_pid":"%s",\n' "$(json_safe "$engine_pid")"
@@ -975,7 +975,7 @@ add_candidate_once(){
 }
 
 check_learning_route(){
-  if [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" check >/dev/null 2>&1; then
+  if [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" prepare >/dev/null 2>&1; then
     printf '%s %s\n' "$(current_epoch)" "$IPSET_NAME" > "${ROUTING_STATUS}.new"
     mv "${ROUTING_STATUS}.new" "$ROUTING_STATUS"
   else
@@ -1269,7 +1269,7 @@ capture_iface(){
 run_engine(){
   load_config || exit 1
   validate_prereqs || exit 1
-  [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" check || { log "VPN/lijstselectie is niet klaar. Gebruik routing-setup."; exit 1; }
+  [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" prepare || { log "De gekozen VPN is niet klaar. Zet deze aan of kies opnieuw via routing-setup."; exit 1; }
 
   mkdir -p "$CACHE_DIR" "$PIDDIR"
   [ -f "$CACHE_DOM2IP" ] || : > "$CACHE_DOM2IP"

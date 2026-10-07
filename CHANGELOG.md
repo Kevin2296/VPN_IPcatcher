@@ -1,5 +1,14 @@
 # Wijzigingen
 
+## 2.8.0
+
+- Kies alleen een VPN-nummer; bij een werkende VPN automatisch geselecteerd.
+- LAN automatisch detecteren, geschikte lijst hergebruiken of eigen lijst/regels aanmaken.
+- Eigen regels herstellen zonder andere DVR-policies over te nemen.
+- Benodigde tcpdump/conntrack/jq via bestaande Entware installeren.
+- Updates bewaren keuze en maken ook lokale snapshots van instellingen.
+- Diagnostiek blijft read-only. Routervalidatie blijft nodig.
+
 ## 2.7.1
 
 - Stel nieuwe finale routes uit zolang conntrack verbindingen naar het adres toont.

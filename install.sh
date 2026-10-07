@@ -13,6 +13,7 @@ action="${1:-install}"
 case "$action" in install|update) ;; *) fail 'Gebruik: sh install.sh install|update' ;; esac
 [ "$(id -u)" = 0 ] || fail 'Voer dit uit als root op de router.'
 [ -t 0 ] || fail 'Open een interactief SSH-venster; stuur het script niet via een pipe naar sh.'
+if ! find_bin jq >/dev/null && [ -x /opt/bin/opkg ]; then /opt/bin/opkg update && /opt/bin/opkg install jq; fi
 for tool in curl jq sha256sum awk sed grep; do find_bin "$tool" >/dev/null || fail "Ontbreekt: $tool. Installeer eerst via Entware/amtm."; done
 if [ "$action" = install ]; then
   [ ! -e "$ENGINE" ] && [ ! -e /jffs/scripts/vpn_ipcatcher.real.sh ] || fail 'Bestaande installatie gevonden. Gebruik update, niet install.'
@@ -48,7 +49,7 @@ if [ "$action" = update ]; then
   "$ENGINE" update-source "$REPO" main
   exit 0
 fi
-sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" dependencies
+sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" install-dependencies
 for relative in $FILES; do
   [ ! -e "/jffs/$relative" ] || fail "Bestaand bestand gevonden: $relative. Gebruik geen eerste installatie."
 done

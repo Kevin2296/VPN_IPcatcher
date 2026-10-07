@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.7.1
+# Version: 2.8.0
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
 ADDON="/jffs/addons/vpn_ipcatcher.d"
 # Temporary stop lasts for this boot only; /tmp is cleared on reboot.

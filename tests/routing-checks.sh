@@ -9,7 +9,7 @@ set +e
 set -e
 POLICIES="$work/policies"; GLOBAL="$work/global"; CONF="$work/conf"; TABLES="$work/tables"
 printf 'Streams|domains|addresses|ovpnc2\n' > "$POLICIES"
-printf 'OVPNC2FWMARK=0x2000\nOVPNC2MASK=0xf000\n' > "$GLOBAL"
+printf 'ENABLE=1\nOVPNC2FWMARK=0x2000\nOVPNC2MASK=0xf000\n' > "$GLOBAL"
 printf 'IPSET_NAME="DVR-Streams-v4"\n' > "$CONF"
 printf '200 ovpnc2\n' > "$TABLES"
 printf '2000: from all fwmark 0x2000/0xf000 lookup ovpnc2\n' > "$work/rules"

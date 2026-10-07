@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.7.1
+# Version: 2.8.0
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 find_on_path(){

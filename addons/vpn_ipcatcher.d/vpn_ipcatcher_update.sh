@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.7.1
+# Version: 2.8.0
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -136,8 +136,13 @@ else
     [ "$actual" = "$expected" ] || fail "Checksum klopt niet: $relative"
     case "$relative" in *.sh) sh -n "$STAGE/$relative" || fail "Shellsyntax fout: $relative" ;; esac
   done
+  sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" install-dependencies
   BACKUP="$ADDON/backups/update-$(date +%Y%m%d-%H%M%S)-$$"
   mkdir -p "$BACKUP"
+  cp -p /jffs/scripts/vpn_ipcatcher.conf "$BACKUP/private-config"
+  for private_file in routing-selection update-source; do
+    [ ! -f "$ADDON/$private_file" ] || cp -p "$ADDON/$private_file" "$BACKUP/private-$private_file"
+  done
   for relative in $FILES; do
     mkdir -p "$BACKUP/$(dirname "$relative")"
     if [ ! -s "/jffs/$relative" ]; then
