@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.6.0
+# Version: 2.6.1
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
 ADDON="/jffs/addons/vpn_ipcatcher.d"
 DISABLED="$ADDON/disabled"

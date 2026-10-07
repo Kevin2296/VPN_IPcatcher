@@ -1,4 +1,8 @@
-# VPN IP Catcher 2.6.0
+# VPN IP Catcher 2.6.1
+
+2.6.1 fixes executable detection on router shells where `command -v` is not
+supported. Diagnostics and updates inspect executable paths directly. The WebUI
+also detects cksum without relying on that shell builtin.
 
 Shell addon for Asuswrt-Merlin using the router's POSIX shell.
 Router runtime verification is still required; local tests do not prove VPN

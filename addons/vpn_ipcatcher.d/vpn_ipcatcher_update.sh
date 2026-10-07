@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.6.0
+# Version: 2.6.1
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -17,6 +17,19 @@ WAS_DISABLED=0
 OWN_UPDATE=0
 
 fail(){ printf 'FOUT: %s\n' "$*" >&2; exit 1; }
+find_on_path(){
+  (
+    IFS=:
+    for directory in $PATH; do
+      [ -n "$directory" ] || directory=.
+      if [ -f "$directory/$1" ] && [ -x "$directory/$1" ]; then
+        printf '%s\n' "$directory/$1"
+        exit 0
+      fi
+    done
+    exit 1
+  )
+}
 valid_repo(){
   printf '%s\n' "$1" | grep -Eq '^[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+$'
 }
@@ -85,7 +98,7 @@ if [ "$action" = rollback ]; then
     case "$relative" in *.sh) sh -n "$BACKUP/$relative" || fail "Ongeldige backup: $relative" ;; esac
   done
 else
-  for program in curl jq sha256sum; do command -v "$program" >/dev/null 2>&1 || fail "$program ontbreekt (installeer via Entware)."; done
+  for program in curl jq sha256sum; do find_on_path "$program" >/dev/null || fail "$program ontbreekt (installeer via Entware)."; done
   [ -f "$SOURCE" ] || fail "Stel eerst update-source in met je GitHub repository en branch/tag."
   repo="$(sed -n '1p' "$SOURCE")"
   ref="$(sed -n '2p' "$SOURCE")"
