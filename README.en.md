@@ -1,8 +1,8 @@
 <div align="center">
 
-# VPN IP Catcher
+# 🛡️ VPN IP Catcher
 
-### Observe. Learn. Route.
+### 📡 Observe. 🧠 Learn. 🔀 Route.
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
@@ -11,15 +11,15 @@ IPv4 learning for your Asuswrt-Merlin VPN routing.
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
 
-[Nederlands](README.md) | **English**
+🇳🇱 [Nederlands](README.md) &nbsp; | &nbsp; 🇬🇧 **English**
 
-[Install](#first-installation) &nbsp; / &nbsp; [Update](#updates) &nbsp; / &nbsp; [Restore](#backup-and-rollback) &nbsp; / &nbsp; [Troubleshooting](#video-stops-during-playback)
+[🚀 Install](#first-installation) &nbsp; / &nbsp; [🔄 Update](#updates) &nbsp; / &nbsp; [💾 Restore](#backup-and-rollback) &nbsp; / &nbsp; [🎬 Troubleshooting](#video-stops-during-playback)
 
 </div>
 
 ---
 
-## At a glance
+## ✨ At a glance
 
 VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automatically
 manages a corresponding list and its own routing rules. It uses your router/DVR
@@ -28,19 +28,20 @@ VPN routing tables. IP Catcher itself is not a VPN client.
 **Version: 2.8.0.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
+> [!IMPORTANT]
 > **Ready for controlled router testing.** Local tests do not prove complete
 > compatibility or the actual traffic path on your router. This is not a VPN
 > kill switch or an officially listed amtm addon.
 
 | Component | What to expect |
 | --- | --- |
-| VPN selection | Choose a working VPN by number; automatic if only one is available |
-| Lists | Automatically reuse a suitable list or create a dedicated one |
-| Learning | Evaluate IPv4 candidates using configured age/byte thresholds |
-| Routing checks | Check tools, list binding, marks, routing table and tunnel |
-| Recovery | Keep previous program files locally and restore them |
-| Watchdog | Recover crashes; respect manual Stop until Start or reboot |
-| Privacy | No router configurations, keys or logs in this repository |
+| 🔀 VPN selection | Choose a working VPN by number; automatic if only one is available |
+| 📋 Lists | Automatically reuse a suitable list or create a dedicated one |
+| 🧠 Learning | Evaluate IPv4 candidates using configured age/byte thresholds |
+| 🔎 Routing checks | Check tools, list binding, marks, routing table and tunnel |
+| 💾 Recovery | Keep previous program files locally and restore them |
+| 🔄 Watchdog | Recover crashes; respect manual Stop until Start or reboot |
+| 🔒 Privacy | No router configurations, keys or logs in this repository |
 
 ```text
 LAN traffic  -->  IP Catcher  -->  automatic list  -->  selected VPN
@@ -48,7 +49,7 @@ LAN traffic  -->  IP Catcher  -->  automatic list  -->  selected VPN
                 routing checks
 ```
 
-## Requirements
+## 🧰 Requirements
 
 **Short version:** run the installation/update command, choose a VPN number if
 needed, done. No list names or LAN settings to enter. Set up your router VPN,
@@ -68,7 +69,9 @@ require one-time setup; these are not blindly changed. No manual list creation
 is needed. Incompatible existing lists are left intact. Scripts use
 `/bin/sh`, without bundled architecture-specific binaries.
 
-## First installation
+<a name="first-installation"></a>
+
+## 🚀 First installation
 
 Open an interactive SSH session on the router, for example using MobaXterm.
 Use this only when VPN IP Catcher is not already installed:
@@ -90,7 +93,9 @@ installation or cancelled wizard. Fix the cause and resume using:
 sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 ```
 
-## Updates
+<a name="updates"></a>
+
+## 🔄 Updates
 
 For an existing installation with the safe updater (2.6.0 or later):
 
@@ -117,7 +122,9 @@ configuration and affected hooks privately before manual migration. Place the
 verified program package under `/jffs`, make shell files executable and run the
 installer. Do not overwrite an old installation with the first-install command.
 
-## Backup and rollback
+<a name="backup-and-rollback"></a>
+
+## 💾 Backup and rollback
 
 Before testing, make a private manual backup over SSH:
 
@@ -128,7 +135,7 @@ curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time
 The command prints the archive path under `/jffs/vpn-ipcatcher-backups/`. Open
 that folder in MobaXterm's SFTP sidebar and download the `.tar.gz` to your PC.
 It includes IP Catcher addon directories, settings, present affected hooks and
-DVR configuration/code. **Private archive: never upload it to GitHub.** It is
+DVR configuration/code. **🔒 Private archive: never upload it to GitHub.** It is
 not a full nvram/router backup. Check JFFS space; existing addon backups can make
 the archive larger. Do not blindly restore it over a running installation.
 Rollback below uses the separate automatic program backup.
@@ -158,7 +165,7 @@ running shell: inspect backups, locks and `updating` before resuming. Do not
 blindly delete markers. Backups are not automatically pruned; monitor JFFS free
 space and maintain your own router backup as well.
 
-## Controls and amtm
+## 🎛️ Controls and amtm
 
 To change VPN later, use the menu or `routing-setup`. Setup automatically reuses
 a compatible existing DVR list or creates a dedicated `DVR-VIPC-...-v4` list.
@@ -185,7 +192,9 @@ Add `/jffs/scripts/vpn_ipcatcher.sh` through amtm's personal-script feature.
 The amtm update manager does not automatically manage this personal script.
 [Official amtm documentation](https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM).
 
-## Video stops during playback
+<a name="video-stops-during-playback"></a>
+
+## 🎬 Video stops during playback
 
 **Since 2.7.1:** new final destinations wait in the unrouted
 `<final-list>_wait` IPSet while conntrack shows a connection to that address.
@@ -220,7 +229,7 @@ domains. Conntrack provides byte-based learning data. Hardware acceleration can
 reduce visibility. The final IPv4 list does not cover IPv6 learning. Share
 diagnostics privately, not in public issues containing IPs, logs or configurations.
 
-## Privacy and releases
+## 🔐 Privacy and releases
 
 Only program code, documentation and tests belong in this repository. No
 configuration, keys, logs, VPN selections or router exports. Installation does
@@ -231,7 +240,7 @@ published separately. Until then, installation fetches code from `main`.
 The public release description is in [RELEASE-NOTES.md, Dutch](RELEASE-NOTES.md).
 Never publish a personal router export as a release asset.
 
-## Tests
+## 🧪 Tests
 
 ```sh
 sh tests/engine-checks.sh
@@ -252,5 +261,5 @@ rollback. Kernel, WebUI and real VPN traffic require router-side tests.
 
 ---
 
-**Language:** [Nederlands](README.md) | English  
+**🌍 Language:** 🇳🇱 [Nederlands](README.md) | 🇬🇧 English  
 [Changelog, Dutch](CHANGELOG.md) / [Release notes, Dutch](RELEASE-NOTES.md) / [Repository](https://github.com/Kevin2296/VPN_IPcatcher)

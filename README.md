@@ -1,8 +1,8 @@
 <div align="center">
 
-# VPN IP Catcher
+# 🛡️ VPN IP Catcher
 
-### Observe. Learn. Route.
+### 📡 Observe. 🧠 Learn. 🔀 Route.
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
@@ -11,15 +11,15 @@ IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
 
-**Nederlands** | [English](README.en.md)
+🇳🇱 **Nederlands** &nbsp; | &nbsp; 🇬🇧 [English](README.en.md)
 
-[Installeren](#eerste-installatie) &nbsp; / &nbsp; [Bijwerken](#bijwerken) &nbsp; / &nbsp; [Terugzetten](#back-up-en-terugzetten) &nbsp; / &nbsp; [Probleemoplossing](#video-stopt-tijdens-afspelen)
+[🚀 Installeren](#eerste-installatie) &nbsp; / &nbsp; [🔄 Bijwerken](#bijwerken) &nbsp; / &nbsp; [💾 Terugzetten](#back-up-en-terugzetten) &nbsp; / &nbsp; [🎬 Problemen oplossen](#video-stopt-tijdens-afspelen)
 
 </div>
 
 ---
 
-## In het kort
+## ✨ In het kort
 
 IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
@@ -28,19 +28,20 @@ de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 **Versie: 2.8.0.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
+> [!IMPORTANT]
 > **Voor een gecontroleerde routertest.** Lokaal getest, maar volledige
 > compatibiliteit en de echte verkeersroute moeten op de router worden
 > gecontroleerd. Geen VPN-killswitch of officieel amtm-addon.
 
 | Onderdeel | Wat je kunt verwachten |
 | --- | --- |
-| VPN-keuze | Een werkende VPN kiezen met een nummer; bij een VPN automatisch |
-| Lijsten | Automatisch hergebruiken of een eigen lijst maken; geen handwerk |
-| Leren | IPv4-kandidaten beoordelen op ingestelde leeftijd/bytegrenzen |
-| Routingcontrole | Tools, lijstkoppeling, markeringen, routingtabel en tunnel controleren |
-| Herstel | Vorige programmacode lokaal bewaren en terugzetten |
-| Watchdog | Onverwachte crashes herstellen; bewuste Stop respecteren tot Start of reboot |
-| Privacy | Geen routerconfiguratie, sleutels of logs in deze repository |
+| 🔀 VPN-keuze | Een werkende VPN kiezen met een nummer; bij een VPN automatisch |
+| 📋 Lijsten | Automatisch hergebruiken of een eigen lijst maken; geen handwerk |
+| 🧠 Leren | IPv4-kandidaten beoordelen op ingestelde leeftijd/bytegrenzen |
+| 🔎 Routingcontrole | Tools, lijstkoppeling, markeringen, routingtabel en tunnel controleren |
+| 💾 Herstel | Vorige programmacode lokaal bewaren en terugzetten |
+| 🔄 Watchdog | Onverwachte crashes herstellen; bewuste Stop respecteren tot Start of reboot |
+| 🔒 Privacy | Geen routerconfiguratie, sleutels of logs in deze repository |
 
 ```text
 LAN-verkeer  -->  IP Catcher  -->  automatische lijst  -->  gekozen VPN
@@ -48,7 +49,7 @@ LAN-verkeer  -->  IP Catcher  -->  automatische lijst  -->  gekozen VPN
               routingcontrole
 ```
 
-## Vereisten
+## 🧰 Vereisten
 
 **Kort:** start het installatie/updatecommando, kies zo nodig een VPN-nummer,
 klaar. Geen lijstnamen of LAN-instellingen invullen. Je router-VPN, Entware en
@@ -68,7 +69,9 @@ Entware-opslag en DVR moet je eenmalig instellen; dat wordt niet blind gewijzigd
 Je hoeft geen lijst aan te maken. Bestaande onverenigbare lijsten blijven intact.
 De code gebruikt `/bin/sh`, zonder architectuurspecifieke meegeleverde binaries.
 
-## Eerste installatie
+<a name="eerste-installatie"></a>
+
+## 🚀 Eerste installatie
 
 Open een interactief SSH-venster op de router, bijvoorbeeld MobaXterm.
 Alleen uitvoeren wanneer IP Catcher nog niet is geinstalleerd:
@@ -91,7 +94,9 @@ afgebroken wizard blijven geplaatste bestanden staan. Herstel de oorzaak en herv
 sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 ```
 
-## Bijwerken
+<a name="bijwerken"></a>
+
+## 🔄 Bijwerken
 
 Voor een bestaande installatie met veilige updater (2.6.0 of nieuwer):
 
@@ -119,7 +124,9 @@ migratie vereist het gecontroleerde programmapakket onder `/jffs`, uitvoerbare
 shellbestanden en daarna de installer. Gebruik geen eerste installatie om een
 oude installatie te overschrijven.
 
-## Back-up en terugzetten
+<a name="back-up-en-terugzetten"></a>
+
+## 💾 Back-up en terugzetten
 
 Maak voor het testen ook een handmatige back-up via SSH:
 
@@ -130,7 +137,7 @@ curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time
 Het commando toont het archiefpad onder `/jffs/vpn-ipcatcher-backups/`. Open die
 map in de SFTP-zijbalk van MobaXterm en download het `.tar.gz`-bestand naar je pc.
 Het bevat IP Catcher-addondirectories, instellingen, aanwezige betrokken hooks
-en DVR-configuratie/code. **Dit archief is prive; upload het nooit naar GitHub.**
+en DVR-configuratie/code. **🔒 Dit archief is prive; upload het nooit naar GitHub.**
 Het bevat geen volledige nvram/routerback-up. Controleer voldoende JFFS-ruimte;
 oude addonback-ups kunnen het archief groter maken. Herstel deze handmatige
 snapshot niet blind over een draaiende installatie; rollback hieronder gebruikt
@@ -161,7 +168,7 @@ worden hersteld: inspecteer dan back-ups, locks en `updating` voordat je hervat.
 Verwijder markers niet blind. Back-ups worden niet automatisch opgeruimd;
 controleer vrije JFFS-ruimte en maak daarnaast je eigen routerback-up.
 
-## Bediening en amtm
+## 🎛️ Bediening en amtm
 
 Wil je later een andere VPN? Gebruik het menu of `routing-setup`. Dat stelt
 de eigen lijst/regels opnieuw in. De installatie hergebruikt automatisch een
@@ -189,7 +196,9 @@ Voeg `/jffs/scripts/vpn_ipcatcher.sh` toe via amtm's personal-scriptfunctie.
 De amtm-updatemanager beheert dit script niet automatisch.
 [Officiele amtm-uitleg](https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM).
 
-## Video stopt tijdens afspelen
+<a name="video-stopt-tijdens-afspelen"></a>
+
+## 🎬 Video stopt tijdens afspelen
 
 **Vanaf 2.7.1:** nieuwe finale adressen wachten in de niet-gerouteerde
 `<finale-lijst>_wait`-IPSet zolang conntrack een verbinding naar dat adres toont.
@@ -226,7 +235,7 @@ HTTPS-domeinen. Conntrack levert bytegebaseerde leerinformatie. Hardwareversnell
 kan de zichtbaarheid verminderen. Deze finale IPv4-lijst dekt geen IPv6-learning.
 Deel diagnosegegevens prive, niet als openbare issue met IP's, logs of config.
 
-## Privacy en releases
+## 🔐 Privacy en releases
 
 Alleen programmacode, documentatie en tests horen in deze repository.
 Geen configuratie, sleutels, logs, VPN-keuzes of routerexports. De installatie
@@ -237,7 +246,7 @@ apart worden gepubliceerd. Tot die tijd haalt het installatiecommando code van
 `main` op. De publieke releasebeschrijving staat in [RELEASE-NOTES.md](RELEASE-NOTES.md).
 Publiceer nooit een eigen routerexport als release-asset.
 
-## Tests
+## 🧪 Tests
 
 ```sh
 sh tests/engine-checks.sh
@@ -258,5 +267,5 @@ instellingen en rollback. Kernel, WebUI en echt VPN-verkeer vereisen routertests
 
 ---
 
-**Taal:** Nederlands | [English](README.en.md)  
+**🌍 Taal:** 🇳🇱 Nederlands | 🇬🇧 [English](README.en.md)  
 [Wijzigingen](CHANGELOG.md) / [Releasebeschrijving](RELEASE-NOTES.md) / [Repository](https://github.com/Kevin2296/VPN_IPcatcher)
