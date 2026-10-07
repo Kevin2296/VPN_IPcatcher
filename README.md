@@ -1,4 +1,25 @@
+<div align="center">
+
 # VPN IP Catcher
+
+### Observe. Learn. Route.
+
+IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
+
+![Version 2.7.0](https://img.shields.io/badge/version-2.7.0-087F8C?style=for-the-badge)
+![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
+![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
+![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
+
+**Nederlands** | [English](README.en.md)
+
+[Installeren](#eerste-installatie) &nbsp; / &nbsp; [Bijwerken](#bijwerken) &nbsp; / &nbsp; [Terugzetten](#back-up-en-terugzetten) &nbsp; / &nbsp; [Probleemoplossing](#video-stopt-tijdens-afspelen)
+
+</div>
+
+---
+
+## In het kort
 
 IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit waargenomen
 verkeer en voegt deze toe aan een bestaande Domain-based VPN Routing-lijst.
@@ -7,8 +28,24 @@ De routing-addon bepaalt de VPN-uitgang; IP Catcher is zelf geen VPN-client.
 **Versie: 2.7.0.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
-Lokaal getest, maar volledige compatibiliteit en de echte verkeersroute moeten
-op de router worden gecontroleerd. Geen VPN-killswitch of officieel amtm-addon.
+> **Voor een gecontroleerde routertest.** Lokaal getest, maar volledige
+> compatibiliteit en de echte verkeersroute moeten op de router worden
+> gecontroleerd. Geen VPN-killswitch of officieel amtm-addon.
+
+| Onderdeel | Wat je kunt verwachten |
+| --- | --- |
+| VPN-keuze | Bestaande OpenVPN- of WireGuard-client en DVR-policy kiezen |
+| Leren | IPv4-kandidaten beoordelen op ingestelde leeftijd/bytegrenzen |
+| Routingcontrole | Tools, lijstkoppeling, markeringen, routingtabel en tunnel controleren |
+| Herstel | Vorige programmacode lokaal bewaren en terugzetten |
+| Watchdog | Onverwachte crashes herstellen; bewuste Stop respecteren tot Start of reboot |
+| Privacy | Geen routerconfiguratie, sleutels of logs in deze repository |
+
+```text
+LAN-verkeer  -->  IP Catcher  -->  bestaande DVR-lijst  -->  gekozen VPN
+                    |
+              routingcontrole
+```
 
 ## Vereisten
 
@@ -36,6 +73,8 @@ curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time
 Kies de VPN-client, DVR-policy en LAN-interface(s). De installer controleert
 lijstkoppeling, firewallmarkering, routingtabel en tunnel voordat leren begint.
 Gebruik geen `curl | sh`: de wizard heeft je invoer nodig.
+De taalkeuze op GitHub geldt voor de documentatie; installatievragen en het
+routermenu zijn momenteel Nederlands.
 
 Een eerste installatie is niet volledig transactioneel. Na een onderbreking of
 afgebroken wizard blijven geplaatste bestanden staan. Herstel de oorzaak en hervat:
@@ -166,3 +205,8 @@ sh tests/bootstrap-checks.sh
 Tests gebruiken fixtures en namaakdownloads voor configuratieveiligheid,
 leren, stop/crashgedrag, routingkoppeling, beschadigde downloads, behoud van
 instellingen en rollback. Kernel, WebUI en echt VPN-verkeer vereisen routertests.
+
+---
+
+**Taal:** Nederlands | [English](README.en.md)  
+[Wijzigingen](CHANGELOG.md) / [Releasebeschrijving](RELEASE-NOTES.md) / [Repository](https://github.com/Kevin2296/VPN_IPcatcher)
