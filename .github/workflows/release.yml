@@ -1,0 +1,59 @@
+name: Test and Publish Release
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Shell checks
+        run: |
+          set -eu
+          for test in tests/*-checks.sh; do sh "$test"; done
+      - name: WebUI checks
+        run: node tests/webui-checks.js
+
+  release:
+    needs: test
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Build public packages
+        shell: pwsh
+        run: |
+          ./tools/build-release.ps1
+          git diff --exit-code -- SHA256SUMS
+          if ($LASTEXITCODE -ne 0) { throw 'Manifest differs from committed hashes' }
+      - name: Publish test release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid version' }
+          $tag = "v$version"
+          gh release view $tag --json tagName 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "$tag already exists; published releases are not overwritten."
+            exit 0
+          }
+          gh release create $tag "release/vpn-ipcatcher-$version.tar.gz" "release/vpn-ipcatcher-$version-github.zip" SHA256SUMS --target $env:GITHUB_SHA --title "VPN IP Catcher $version" --notes-file RELEASE-NOTES.md --prerelease
+          if ($LASTEXITCODE -ne 0) { throw 'Release publishing failed' }

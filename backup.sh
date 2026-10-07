@@ -3,6 +3,9 @@
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
+if [ -f /jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh ]; then
+  exec sh /jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh "${1:-full}"
+fi
 umask 077
 [ "$(id -u)" = 0 ] || { echo 'Voer de back-up als root op de router uit.' >&2; exit 1; }
 UPDATE_LOCK=/tmp/vpn_ipcatcher_update.lock

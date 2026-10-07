@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 2.8.1
+
+- Menu 24: kleine of uitgebreide privéback-up, zonder SSH-commando.
+- Automatische kleine privéback-up voor installatie/update; update stopt bij back-upfouten.
+- Menu 25: amtm personal-script-registratie met controle op ondersteuning, dubbelen en vier plaatsen.
+- Reset van leerinstellingen behoudt de gekozen VPN/lijst en maakt eerst een back-up.
+- WebUI toont de wachtlijst en bruikbare status in plaats van een tijdelijke placeholder; backend-, JavaScript- en NL/EN-tests toegevoegd.
+- Volledig hoofdmenu en submenu-overzicht in beide talen op dezelfde GitHub-startpagina.
+- Release-workflow test en publiceert openbare downloads als testrelease; routervalidatie blijft nodig.
+
 ## 2.8.0
 
 - Kies alleen een VPN-nummer; bij een werkende VPN automatisch geselecteerd.

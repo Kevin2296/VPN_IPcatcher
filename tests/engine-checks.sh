@@ -11,9 +11,9 @@ set +e
 set -e
 AWK=awk; SED=sed; GREP=grep; TR=tr; TAIL=tail
 CONF="$TMP/config"
-cp "$ROOT/scripts/vpn_ipcatcher.conf" "$CONF"
+default_config > "$CONF"
 load_config
-[ "$PROMOTE_EVERY" = 60 ]
+[ "$PROMOTE_EVERY" = 15 ]
 EXCLUDE_DOMAINS="google.com"
 domain_is_excluded google.com
 domain_is_excluded video.google.com

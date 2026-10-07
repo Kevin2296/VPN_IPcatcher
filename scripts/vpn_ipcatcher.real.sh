@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.8.0
+# Version: 2.8.1
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -388,7 +388,7 @@ write_web_status(){
   tmp="${WEB_STATUS_FILE}.$$"
   {
     printf '{\n'
-    printf '  "version":"%s",\n' "$(json_safe '2.8.0')"
+    printf '  "version":"%s",\n' "$(json_safe '2.8.1')"
     printf '  "last_update":"%s",\n' "$(json_safe "$now")"
     printf '  "engine":"%s",\n' "$(json_safe "$engine_state")"
     printf '  "engine_pid":"%s",\n' "$(json_safe "$engine_pid")"
@@ -2686,6 +2686,26 @@ print_header(){
   say "------------------------------------------------------------"
 }
 
+reset_config(){
+  load_config || return 1
+  /jffs/scripts/vpn_ipcatcher.sh backup small || return 1
+  config_write_lock || return 1
+  tmp="${CONF}.$$"
+  # Reset learning settings without losing the installer's VPN/list binding.
+  if ! default_config | $AWK -v list="$IPSET_NAME" -v interfaces="$INTERFACES" '
+    /^IPSET_NAME=/ {print "IPSET_NAME=\"" list "\""; next}
+    /^INTERFACES=/ {print "INTERFACES=\"" interfaces "\""; next}
+    {print}
+  ' > "$tmp"; then
+    rm -f "$tmp"; config_write_unlock; return 1
+  fi
+  chmod 600 "$tmp" && mv "$tmp" "$CONF" || { rm -f "$tmp"; config_write_unlock; return 1; }
+  config_write_unlock
+  : > "$CACHE_DOM2IP"
+  say "Leerinstellingen teruggezet. VPN/lijstkeuze behouden; back-up gemaakt."
+  maybe_restart_after_config_change
+}
+
 menu_loop(){
   # Belangrijk: Ctrl+C in live schermen mag het hoofdmenu niet doden.
   trap ':' INT
@@ -2704,7 +2724,7 @@ menu_loop(){
     say
     say "Views"
     say "  8) Candidate IPs        Tijdelijke IPs voor promotie"
-    say "  9) Final IPs            IPs die VPN Director gebruikt"
+    say "  9) Final IPs            IPs gekoppeld aan de gekozen VPN-route"
     say " 10) Show config          Lees huidige configuratie"
     say
     say "Settings / cleanup"
@@ -2722,6 +2742,8 @@ menu_loop(){
     say " 21) Restore previous version"
     say " 22) VPN / routing setup"
     say " 23) Check VPN / list routing"
+    say " 24) Maak back-up         Klein (code/settings/hooks) of uitgebreid"
+    say " 25) Toevoegen aan amtm   Registreren als persoonlijk script"
     say " 17) Exit"
     printf "Choose: "
     read -r choice
@@ -2741,7 +2763,7 @@ menu_loop(){
       12) profile_menu ;;
       13) preset_exclusion_menu ;;
       14) edit_config; say; say "Opslaan in nano: Ctrl+O, Enter, Ctrl+X. Opslaan in vi: Esc, :wq, Enter."; press_enter ;;
-      15) default_config > "$CONF"; chmod 600 "$CONF" 2>/dev/null; : > "$CACHE_DOM2IP"; say "Standaard config teruggezet en DNS-cache geleegd."; maybe_restart_after_config_change; press_enter ;;
+      15) reset_config; press_enter ;;
       16) ipset_remove_excluded; press_enter ;;
       17|q|Q|exit) trap - INT; exit 0 ;;
       18) /jffs/scripts/vpn_ipcatcher.sh check-update; press_enter ;;
@@ -2750,6 +2772,16 @@ menu_loop(){
       21) /jffs/scripts/vpn_ipcatcher.sh rollback; exec /jffs/scripts/vpn_ipcatcher.sh menu ;;
       22) /jffs/scripts/vpn_ipcatcher.sh routing-setup; press_enter ;;
       23) /jffs/scripts/vpn_ipcatcher.sh routing-check; press_enter ;;
+      24)
+        say "1) Kleine back-up: code, instellingen en hooks"
+        say "2) Uitgebreid: ook DVR-configuratie en addonhistorie"
+        printf "Keuze [1/2, Enter=terug]: "; read -r backup_choice
+        case "$backup_choice" in
+          1) /jffs/scripts/vpn_ipcatcher.sh backup small; press_enter ;;
+          2) /jffs/scripts/vpn_ipcatcher.sh backup full; press_enter ;;
+        esac
+        ;;
+      25) /jffs/scripts/vpn_ipcatcher.sh amtm-add; press_enter ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done

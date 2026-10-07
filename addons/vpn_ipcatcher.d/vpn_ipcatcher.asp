@@ -406,6 +406,7 @@ var loadedConfigRevision = '', externalConfigWarningShown = false;
 var vpnipcLanguageMode='auto', vpnipcCurrentLanguage='nl';
 var VPNIPC_I18N={
   nl:{
+    waiting:'Wachtlijst',
     browserTitle:'VPN IP Catcher - ASUS Merlin', language:'Taal', autoRouter:'Automatisch (router)', updated:'bijgewerkt', openResolvedIps:'Opgeloste IP’s openen', openExcludeRanges:'Uitsluitbereiken openen',
     title:'VPN IP Catcher-dashboard', subtitle:'ASUS Merlin WebUI - stabiele runtime en betere uitsluitingen/presets',
     engine:'Engine', finalIps:'Definitieve IP’s', candidateIps:'Kandidaat-IP’s', candidateHint:'tijdelijke leerset',
@@ -441,6 +442,7 @@ var VPNIPC_I18N={
     domainsCount:'domeinen', rangesCount:'bereiken', detailsDomains:'Domeinen', detailsRanges:'Bereiken'
   },
   en:{
+    waiting:'Waiting',
     browserTitle:'VPN IP Catcher - ASUS Merlin', language:'Language', autoRouter:'Auto (router)', updated:'updated', openResolvedIps:'Open resolved IPs', openExcludeRanges:'Open exclude ranges',
     title:'VPN IP Catcher Dashboard', subtitle:'ASUS Merlin WebUI - stable runtime and improved exclusions/presets',
     engine:'Engine', finalIps:'Final IPs', candidateIps:'Candidate IPs', candidateHint:'temporary learning set',
@@ -790,6 +792,7 @@ function renderLiveTab(){
   if(currentTab==='log') txt=dataCache.log_text;
   if(currentTab==='status') txt=dataCache.status_text;
   if(currentTab==='candidate') txt=dataCache.candidate_text;
+  if(currentTab==='waiting') txt=dataCache.waiting_text;
   if(currentTab==='final') txt=dataCache.final_text;
   if(currentTab==='resolved') txt=dataCache.resolved_text;
   if(currentTab==='excludenets') txt=dataCache.exclude_net_text;
@@ -803,7 +806,7 @@ function renderLiveTab(){
   } else if(currentTab==='status'){
     var rows=parseKeyValueStatus(txt).map(function(r){return r.section?'<td colspan="2"><strong>'+escapeHtml(r.label)+'</strong></td>':td(r.key)+td(r.value);});
     html=renderTable([t('field'),t('value')], rows);
-  } else if(currentTab==='candidate' || currentTab==='final'){
+  } else if(currentTab==='candidate' || currentTab==='waiting' || currentTab==='final'){
     var dump=parseIpsetDump(txt), meta=dump.meta.length?'<pre>'+escapeHtml(dump.meta.join('\n'))+'</pre>':'';
     var rows=dump.rows.map(function(r){return r.raw?'<td colspan="6" class="mono">'+escapeHtml(r.raw)+'</td>':td(r.ip,'mono')+td(r.timeout,'mono')+td(r.packets,'mono')+td(r.bytes,'mono')+td(r.seen,'mono')+td(r.source);});
     html='<div class="ipsetDump">'+meta+renderTable(['IP',t('timeout'),t('packets'),t('bytes'),t('seen'),t('source')], rows)+'</div>';
@@ -1069,6 +1072,7 @@ window.addEventListener('load', function(){
                         <button type="button" id="tab_log" class="tab" onclick="setTab('log')" data-i18n="log">Log</button>
                         <button type="button" id="tab_status" class="tab" onclick="setTab('status')" data-i18n="status">Status</button>
                         <button type="button" id="tab_candidate" class="tab" onclick="setTab('candidate')" data-i18n="candidate">Candidate</button>
+                        <button type="button" id="tab_waiting" class="tab" onclick="setTab('waiting')" data-i18n="waiting">Wachtlijst</button>
                         <button type="button" id="tab_final" class="tab" onclick="setTab('final')" data-i18n="final">Final</button>
                         <button type="button" id="tab_resolved" class="tab" onclick="setTab('resolved')" data-i18n="resolvedIps">Resolved IPs</button>
                         <button type="button" id="tab_excludenets" class="tab" onclick="setTab('excludenets')" data-i18n="excludeRanges">Exclude ranges</button>

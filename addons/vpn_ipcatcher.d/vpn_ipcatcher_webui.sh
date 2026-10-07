@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.8.0
+# Version: 2.8.1
 
 ADDON_NAME="vpn_ipcatcher"
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -192,21 +192,32 @@ publish_status(){
 
   IPSET_NAME="$(cfg_get IPSET_NAME)"; [ -z "$IPSET_NAME" ] && IPSET_NAME="DVR-StreamsVPNSW-v4"
   CAND_SET="${IPSET_NAME}_cand"
+  WAIT_SET="${IPSET_NAME}_wait"
   EXCLUDE_NET_SET="${IPSET_NAME}_exclude"
   if is_running; then engine="running"; engine_pid="$(cat "$LOCK" 2>/dev/null)"; else engine="stopped"; engine_pid="-"; fi
   td_count="0"
   if [ -n "$PSBIN" ]; then td_count="$($PSBIN 2>/dev/null | ${AWK:-awk} '/tcpdump/ && / -A / && / -l / && $0 !~ /awk/ {c++} END{print c+0}')"; fi
   cand_count="$(ipset_count "$CAND_SET")"
+  wait_count="$(ipset_count "$WAIT_SET")"
   final_count="$(ipset_count "$IPSET_NAME")"
   last_update="$(${DATEBIN:-date} '+%F %T' 2>/dev/null)"
 
-  status_text="$(echo "Status via directe engine-call tijdelijk uitgeschakeld." | json_escape)"
+  # Build the Status tab from the same snapshot, without a potentially blocking engine call.
+  status_text="$(
+    printf 'Service\n  %-20s %s\n  %-20s %s\n  %-20s %s\n' \
+      Engine "$engine" 'Engine PID' "$engine_pid" Capture "$td_count"
+    printf 'Config\n  %-20s %s\n  %-20s %s\n' IPSet "$IPSET_NAME" Interfaces "$(cfg_get INTERFACES)"
+    printf 'Activity\n  %-20s %s\n  %-20s %s\n  %-20s %s\n' \
+      'Candidate IPs' "$cand_count" 'Deferred IPs' "$wait_count" 'Final IPs' "$final_count"
+  )"
+  status_text="$(printf '%s' "$status_text" | json_escape)"
   if [ -f "$LOGFILE" ]; then
     log_text="$(${TAIL:-tail} -n 120 "$LOGFILE" 2>/dev/null | json_escape)"
   else
     log_text="$(echo 'Nog geen logbestand.' | json_escape)"
   fi
   cand_text="$(ipset_text "$CAND_SET" 120 | json_escape)"
+  wait_text="$(ipset_text "$WAIT_SET" 120 | json_escape)"
   final_text="$(ipset_text "$IPSET_NAME" 120 | json_escape)"
   flows_text="$(live_flows_text | json_escape)"
   exclude_net_count="$(ipset_count "$EXCLUDE_NET_SET")"
@@ -234,12 +245,14 @@ publish_status(){
   tmp_json="${STATUS_JSON}.$$"
   cat > "$tmp_json" <<JSON
 {
-  "version":"2.8.0",
+  "version":"2.8.1",
   "last_update":"$last_update",
   "engine":"$engine",
   "engine_pid":"$engine_pid",
   "tcpdump_count":"$td_count",
   "candidate_count":"$cand_count",
+  "waiting_count":"$wait_count",
+  "waiting_text":"$wait_text",
   "final_count":"$final_count",
   "resolved_count":"$resolved_count",
   "exclude_net_count":"$exclude_net_count",

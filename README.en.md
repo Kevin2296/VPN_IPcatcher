@@ -6,12 +6,12 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.8.0](https://img.shields.io/badge/version-2.8.0-087F8C?style=for-the-badge)
+![Version 2.8.1](https://img.shields.io/badge/version-2.8.1-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
 
-🇳🇱 [Nederlands](README.md) &nbsp; | &nbsp; 🇬🇧 **English**
+🇳🇱 [Nederlands](https://github.com/Kevin2296/VPN_IPcatcher#nederlands) &nbsp; | &nbsp; 🇬🇧 [English](https://github.com/Kevin2296/VPN_IPcatcher#english)
 
 [🚀 Install](#first-installation) &nbsp; / &nbsp; [🔄 Update](#updates) &nbsp; / &nbsp; [💾 Restore](#backup-and-rollback) &nbsp; / &nbsp; [🎬 Troubleshooting](#video-stops-during-playback)
 
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.0.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.1.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -97,6 +97,9 @@ sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 
 ## 🔄 Updates
 
+**Upgrading 2.8.0 to 2.8.1:** use the README update command once to install the
+new backup/amtm helpers. Future updates can use the menu.
+
 For an existing installation with the safe updater (2.6.0 or later):
 
 ```sh
@@ -126,7 +129,19 @@ installer. Do not overwrite an old installation with the first-install command.
 
 ## 💾 Backup and rollback
 
-Before testing, make a private manual backup over SSH:
+**No command needed:** open the IP Catcher menu and select **24 · Maak back-up**:
+
+- **1 · Small:** program code, settings, VPN selection, update source and existing hooks.
+- **2 · Full:** also both addon directories/history and DVR configuration/code.
+
+Installation backs up existing files/hooks before placing the addon. Every
+update automatically creates a small private archive and separately preserves
+the previous program version for menu **21**. A completely empty first install
+has nothing to back up. Backup failures stop the update. Archives stay under
+`/jffs/vpn-ipcatcher-backups/`, never on the public WebUI path. They are not
+automatically pruned; monitor JFFS space and keep important copies on your PC.
+
+For older installations without this menu option:
 
 ```sh
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/backup.sh -o /tmp/vpn_ipcatcher_backup.sh && sh /tmp/vpn_ipcatcher_backup.sh
@@ -166,6 +181,75 @@ blindly delete markers. Backups are not automatically pruned; monitor JFFS free
 space and maintain your own router backup as well.
 
 ## 🎛️ Controls and amtm
+
+Choose **25 · Toevoegen aan amtm** to register IP Catcher as a personal script.
+Existing entries are preserved; duplicates and the four-slot limit are checked.
+Reopen amtm to see it under `p1`–`p4`. Update amtm first if unsupported.
+This is not an official amtm addon. Its own updater manages updates.
+
+### 📋 Complete main menu
+
+| No. | Option | Purpose |
+| --- | --- | --- |
+| 1 | Start service | Start and enable crash recovery |
+| 2 | Stop service | Stop until Start/Restart or reboot |
+| 3 | Restart service | Reload configuration |
+| 4 | Refresh status | View current status |
+| 5 | Live activity | Live list/capture overview |
+| 6 | Live log | Follow logs |
+| 7 | Live stream flows | Inspect traffic and byte growth |
+| 8 | Candidate IPs | Inspect temporary candidates |
+| 9 | Final IPs | Learned destinations for the VPN route |
+| 10 | Show config | Read settings |
+| 11 | Guided settings | Advanced settings with explanations |
+| 12 | Profielen | Choose a learning profile |
+| 13 | Exclusion manager | Manage exclusions and presets |
+| 14 | Edit full config | Manual editing, advanced users only |
+| 15 | Reset config | Reset learning settings; preserve VPN choice; back up first |
+| 16 | Clean excluded IPs | Remove excluded addresses from sets |
+| 17 | Exit | Leave menu without stopping service |
+| 18 | Check update | Check GitHub version |
+| 19 | Install update | Update with backups |
+| 20 | Compatibility check | Check router/tools |
+| 21 | Restore previous version | Restore previous program files |
+| 22 | VPN / routing setup | Choose VPN; manage lists/rules automatically |
+| 23 | Check VPN / list routing | Check VPN/list binding |
+| **24** | **Maak back-up** | **1 small · 2 full · Enter back** |
+| **25** | **Toevoegen aan amtm** | **Register a personal script** |
+
+**Profiles (12):** 1 Stable TV, 2 Cautious learning, 3 Fast zapping,
+4 Analysis/review, 5 Existing list only, 6 Back.
+
+**Guided settings (11):** 1 Interfaces, 2 IPSet name, 3 Ports, 4 Promotion mode,
+5 Minimum age, 6 Minimum bytes, 7 Excluded domains, 8 Excluded IPs, 8b Network ranges,
+9 Profiles, 10 Exclusion manager, 11 Timers/cleanup, 12 Generic host scan,
+13 External DNS, 14 Streamflow scan, 15 Source IPs, 16 Stream threshold,
+17 Stream growth, 18 Stream target, 19 Back. Change VPN via **22**, not a made-up list name.
+
+**Exclusion manager (13):** 1 Show all, 2 Safe defaults, 3 DNS, 4 Social/messaging,
+5 Camera/IoT, 6 GitHub/dev-CDN, 7 Games, 8 OS/app updates, 9 TV telemetry,
+10 Streaming services, 11 Custom domains, 12 Custom IPs, 13 Resolver/cache,
+14 Remove excluded addresses, 15 Back. Within a group: numbers toggle services,
+`a` add all, `r` remove all, `v` details, `q` back.
+
+### 🧠 Automatic lists
+
+You do **not** create lists manually. Final holds VPN destinations; `_cand`
+holds candidates, `_wait` holds qualified destinations with active connections,
+and `_exclude` holds excluded ranges. Temporary lists receive no VPN marking.
+This does not guarantee every existing connection or video website uses your VPN.
+
+### 🌐 Web interface
+
+Views: Overview, Live view, Configuration, Exclusions, Preset lists. Actions:
+Start, Stop, Restart, Refresh, Resolve exclusions, Safe defaults, Repair exclusions,
+Clean excluded IPs, Clear log. Live tabs: Flows, Log, Status, Candidate, Waiting,
+Final, Resolved IPs, Exclude ranges. Save, Save + restart, Reload and NL/EN/auto
+language selection are present. Backup/amtm registration are SSH-menu actions.
+
+Local JavaScript, language and rendering checks are included. Actual Merlin
+mounting, saving through `service-event`, and router status still require a
+router test. Full WebUI operation is **not yet guaranteed**.
 
 To change VPN later, use the menu or `routing-setup`. Setup automatically reuses
 a compatible existing DVR list or creates a dedicated `DVR-VIPC-...-v4` list.
@@ -230,6 +314,11 @@ reduce visibility. The final IPv4 list does not cover IPv6 learning. Share
 diagnostics privately, not in public issues containing IPs, logs or configurations.
 
 ## 🔐 Privacy and releases
+
+When `VERSION` changes, GitHub Actions tests the public code and publishes a
+**prerelease** with a version tag, router archive, public source archive and
+checksums. Existing releases are not overwritten. It can also be run manually
+from Actions. Publishing never updates the router automatically.
 
 Only program code, documentation and tests belong in this repository. No
 configuration, keys, logs, VPN selections or router exports. Installation does

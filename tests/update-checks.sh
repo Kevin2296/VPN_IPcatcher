@@ -5,7 +5,7 @@ TMP="${TMPDIR:-/tmp}/vpnipc-update-tests-$$"
 mkdir -p "$TMP/jffs/addons/vpn_ipcatcher.d" "$TMP/jffs/scripts" "$TMP/bin" "$TMP/runtime" "$TMP/remote"
 trap 'rm -rf "$TMP"' EXIT
 TEST_BIN="$TMP/bin"; TEST_REMOTE="$TMP/remote"; export TEST_BIN TEST_REMOTE
-FILES="scripts/vpn_ipcatcher.sh scripts/vpn_ipcatcher.real.sh scripts/vpn_ipcatcher_watchdog.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_presets.sh addons/vpn_ipcatcher.d/vpn_ipcatcher.asp addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh"
+FILES="scripts/vpn_ipcatcher.sh scripts/vpn_ipcatcher.real.sh scripts/vpn_ipcatcher_watchdog.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_presets.sh addons/vpn_ipcatcher.d/vpn_ipcatcher.asp addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_amtm.sh"
 for f in $FILES; do
   mkdir -p "$TMP/remote/$(dirname "$f")"
   printf '#!/bin/sh\n# Version: 2.6.0\nexit 0\n' > "$TMP/jffs/$f"

@@ -1,35 +1,41 @@
-# VPN IP Catcher 2.8.0
+# 🛡️ VPN IP Catcher 2.8.1 · Testrelease / Prerelease
 
-Eenvoudige installatie: kies alleen een VPN-nummer, of laat de enige werkende VPN
-automatisch kiezen. LAN en geschikte lijsten/eigen regels worden automatisch
-geregeld. Updates bewaren de keuze. Bestaande Entware installeert zo nodig
-tcpdump, conntrack en jq. Je VPN, USB-opslag/Entware en DVR moeten wel zijn ingesteld.
+🇳🇱 [Nederlandse uitleg](https://github.com/Kevin2296/VPN_IPcatcher#nederlands) · 🇬🇧 [English documentation](https://github.com/Kevin2296/VPN_IPcatcher#english)
 
-Nieuwe finale adressen worden uitgesteld zolang conntrack verbindingen naar dat
-adres toont. Een niet-gerouteerde wachtlijst bewaart gekwalificeerde adressen
-voor een latere poging. Dit vermindert mogelijke routewissels tijdens streams,
-maar biedt geen volledige connection-pinning of garantie tegen alle videofouten.
-`backup.sh` maakt daarnaast een prive-snapshot van code, instellingen en hooks.
+## 🇳🇱 Nieuw
 
-POSIX-shell addon voor Asuswrt-Merlin met interactieve VPN/policy-keuze en
-controle van actieve routing voordat adressen worden geleerd. Een werkende
-VPN en ingestelde Domain-based VPN Routing-addon zijn vereist; lijsten worden
-automatisch geregeld.
+- 💾 Menu **24 · Maak back-up**: klein of uitgebreid, zonder los commando.
+- 🔒 Automatische kleine privéback-up voor installatie/update; fout = update stopt.
+- 🎛️ Menu **25 · Toevoegen aan amtm**: persoonlijke registratie, geen dubbele vermeldingen.
+- 🧠 Automatische candidate/final/wait/exclude-lijsten; wachtlijst zichtbaar in de WebUI.
+- 🔧 Reset van leerinstellingen behoudt de gekozen VPN/lijst en maakt eerst een back-up.
+- 📚 Alle hoofdmenuopties uitgelegd, NL en EN op dezelfde repositorypagina.
 
-Gebruik de installatie/updatecommando's in [README.md](README.md) via interactief
-SSH. Oude installaties zonder veilige updater vereisen handmatige migratie en
-een persoonlijke back-up.
+Gebruik het installatie/updatecommando in de README. **Voor de overgang van
+2.8.0 naar 2.8.1 gebruik je eenmaal het README-updatecommando**, zodat ook de
+nieuwe helpers worden meegenomen. Daarna zijn menu-updates weer voldoende.
+De downloads bevatten uitsluitend openbare code, documentatie en tests.
+Privé-back-ups blijven op de router en horen nooit op GitHub.
 
-De updater bewaart vorige programmabestanden lokaal. Terugzetten:
-`/jffs/scripts/vpn_ipcatcher.sh rollback`. Persoonlijke instellingen blijven
-staan; dit is geen volledige routerback-up.
+## 🇬🇧 What's New
 
-## Beperkingen
+- 💾 Menu **24** creates a small/full private backup without a separate command.
+- 🔒 Automatic small backup before install/update; backup failures stop the update.
+- 🎛️ Menu **25** registers the addon as an amtm personal script without duplicates.
+- 🧠 Automatic lists and a visible Waiting tab in the WebUI.
+- 🔧 Learning-settings reset preserves the VPN/list binding and backs up first.
+- 📚 Full main-menu overview, Dutch and English on the same repository page.
 
-- Routervalidatie blijft nodig; lokale tests bewijzen geen volledige compatibiliteit.
-- Geen VPN-killswitch en geen IPv6-learning via de IPv4-lijst.
-- Dynamische routing kan afhankelijk van firewallregels streams verstoren.
-- Eerste installatie is niet volledig transactioneel bij onderbreking.
+**Use the README update command once when upgrading 2.8.0 to 2.8.1**, to install
+the newly added helpers. Future updates can use the menu. Downloads contain
+public files only; private backups remain on your router.
 
-Publiceer alleen gecontroleerde programmacode en publieke documentatie.
-Geen configuratie, sleutels, logs, opgeslagen VPN-keuzes of routerexports.
+## ⚠️ Status / Limitations
+
+Local tests do not prove full RT-AX86U Pro / Merlin WebUI compatibility. Validate
+on the router before treating this as stable. No VPN killswitch, no IPv6 learning,
+and no guarantee against every streaming-site error. A first installation is not
+fully transactional if interrupted. Archives are not full router/nvram backups.
+
+The router archive includes runtime code, VERSION and SHA256SUMS. The source ZIP
+also includes docs and tests. Prefer the verified installer over manual extraction.
