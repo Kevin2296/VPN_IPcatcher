@@ -1,6 +1,6 @@
 #!/bin/sh
 # install_vpn_ipcatcher.sh - safe installer/repair script for vpn_ipcatcher WebGUI setup
-# Version: 2.6.2
+# Version: 2.7.0
 set -e
 
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -119,6 +119,7 @@ main(){
   ensure_file "$ADDON_DIR/vpn_ipcatcher_presets.sh" || ok=0
   ensure_file "$ADDON_DIR/vpn_ipcatcher_update.sh" || ok=0
   ensure_file "$ADDON_DIR/vpn_ipcatcher_doctor.sh" || ok=0
+  ensure_file "$ADDON_DIR/vpn_ipcatcher_routing.sh" || ok=0
   ensure_file "$CONF" || ok=0
   ensure_file "$WATCHDOG" || ok=0
   ensure_file "$WEBUI" || ok=0
@@ -129,11 +130,17 @@ main(){
   ensure_executable /jffs/scripts/vpn_ipcatcher.real.sh
   ensure_executable "$ADDON_DIR/vpn_ipcatcher_update.sh"
   ensure_executable "$ADDON_DIR/vpn_ipcatcher_doctor.sh"
+  ensure_executable "$ADDON_DIR/vpn_ipcatcher_routing.sh"
   ensure_executable "$WATCHDOG"
   ensure_executable "$WEBUI"
   ensure_executable "$0"
   chmod 600 "$CONF" 2>/dev/null
   chmod 644 "$ASP" 2>/dev/null
+
+  "$ADDON_DIR/vpn_ipcatcher_routing.sh" dependencies
+  "$ENGINE" stop
+  # Choose the tunnel and policy interactively before registering startup.
+  "$ADDON_DIR/vpn_ipcatcher_routing.sh" configure
 
   install_service_event_block
   install_services_start_block
@@ -151,6 +158,7 @@ main(){
   fi
 
   log "Status publiceren."
+  "$ENGINE" start
   /jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh publish >/dev/null 2>&1
 
   log "Klaar. Test met: /jffs/scripts/vpn_ipcatcher.sh status"

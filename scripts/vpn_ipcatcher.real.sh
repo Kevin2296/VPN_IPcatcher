@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.6.2
+# Version: 2.7.0
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -21,6 +21,8 @@ STATUS_FILE="$CACHE_DIR/runtime.status"
 WEB_STATUS_FILE="/www/user/vpn_ipcatcher_status.json"
 WEBUI_HELPER="/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh"
 PRESET_LIB="/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_presets.sh"
+ROUTING_HELPER="/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh"
+ROUTING_STATUS="$CACHE_DIR/routing.ok"
 CONFIG_WRITE_LOCK="/tmp/vpn_ipcatcher_config.lock"
 EXCLUDE_CACHE_LOCK="/tmp/vpn_ipcatcher_exclude_cache.lock"
 SELF="${0##*/}"
@@ -385,7 +387,7 @@ write_web_status(){
   tmp="${WEB_STATUS_FILE}.$$"
   {
     printf '{\n'
-    printf '  "version":"%s",\n' "$(json_safe '2.6.2')"
+    printf '  "version":"%s",\n' "$(json_safe '2.7.0')"
     printf '  "last_update":"%s",\n' "$(json_safe "$now")"
     printf '  "engine":"%s",\n' "$(json_safe "$engine_state")"
     printf '  "engine_pid":"%s",\n' "$(json_safe "$engine_pid")"
@@ -508,6 +510,7 @@ start_promote_worker(){
   (
     last_promote=0
     while true; do
+      check_learning_route
       flow_scan_candidates
       now="$(current_epoch)"
       if [ "$((now - last_promote))" -ge "$PROMOTE_EVERY" ]; then
@@ -969,9 +972,27 @@ add_candidate_once(){
   $IPSET add "$CAND_SET" "$ip" -exist timeout "$CANDIDATE_TIMEOUT" comment "$comment" >/dev/null 2>&1
 }
 
+check_learning_route(){
+  if [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" check >/dev/null 2>&1; then
+    printf '%s %s\n' "$(current_epoch)" "$IPSET_NAME" > "${ROUTING_STATUS}.new"
+    mv "${ROUTING_STATUS}.new" "$ROUTING_STATUS"
+  else
+    rm -f "$ROUTING_STATUS"
+    log "Routingcontrole faalt; geen nieuwe IPs naar de finale lijst."
+  fi
+}
+learning_route_ready(){
+  [ -r "$ROUTING_STATUS" ] || return 1
+  read -r checked_at checked_set < "$ROUTING_STATUS"
+  case "$checked_at" in ''|*[!0-9]*) return 1 ;; esac
+  [ "$checked_set" = "$IPSET_NAME" ] || return 1
+  route_age=$(( $(current_epoch) - checked_at ))
+  [ "$route_age" -ge 0 ] && [ "$route_age" -le 10 ]
+}
 add_final_immediate(){
   ip="$1"; comment="$2"
   [ -z "$ip" ] && return 0
+  learning_route_ready || return 1
   should_skip_service_ip "final" "$ip" "$comment" && return 0
   comment="$(make_ipset_comment "$comment")"
   $IPSET add "$IPSET_NAME" "$ip" -exist timeout "$FINAL_TIMEOUT" comment "$comment" >/dev/null 2>&1
@@ -1095,13 +1116,11 @@ promote_candidates(){
 
     case "$mode" in
       immediate)
-        add_final_immediate "$ip" "promoted-immediate"
-        $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
+        add_final_immediate "$ip" "promoted-immediate" && $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
         ;;
       age)
         [ "$age" -lt "$MIN_AGE" ] && continue
-        add_final_immediate "$ip" "promoted-age"
-        $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
+        add_final_immediate "$ip" "promoted-age" && $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
         ;;
       bytes)
         [ "$age" -lt "$MIN_AGE" ] && continue
@@ -1121,8 +1140,7 @@ promote_candidates(){
           END {printf "%.0f\n",sum+0}')"
         [ -z "$total_bytes" ] && total_bytes=0
         if [ "$total_bytes" -ge "$MIN_BYTES" ]; then
-          add_final_immediate "$ip" "promoted-bytes"
-          $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
+          add_final_immediate "$ip" "promoted-bytes" && $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
         fi
         ;;
     esac
@@ -1214,6 +1232,7 @@ capture_iface(){
 run_engine(){
   load_config || exit 1
   validate_prereqs || exit 1
+  [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" check || { log "VPN/lijstselectie is niet klaar. Gebruik routing-setup."; exit 1; }
 
   mkdir -p "$CACHE_DIR" "$PIDDIR"
   [ -f "$CACHE_DOM2IP" ] || : > "$CACHE_DOM2IP"
@@ -1235,6 +1254,7 @@ run_engine(){
   ensure_set "$CAND_SET" "$CANDIDATE_TIMEOUT" || { log "FOUT: '$CAND_SET'"; cleanup; }
   ensure_set "$IPSET_NAME" "$FINAL_TIMEOUT"   || { log "FOUT: '$IPSET_NAME'"; cleanup; }
   rebuild_exclude_net_set || { log "FOUT: exclusion IPSet kon niet worden opgebouwd"; cleanup; }
+  check_learning_route
 
   enable_conntrack_acct
   build_bpf || { log "Ongeldig SOURCE_IPS filter"; cleanup; }
@@ -2659,6 +2679,8 @@ menu_loop(){
     say " 19) Install update"
     say " 20) Compatibility check"
     say " 21) Restore previous version"
+    say " 22) VPN / routing setup"
+    say " 23) Check VPN / list routing"
     say " 17) Exit"
     printf "Choose: "
     read -r choice
@@ -2685,6 +2707,8 @@ menu_loop(){
       19) /jffs/scripts/vpn_ipcatcher.sh update; exec /jffs/scripts/vpn_ipcatcher.sh menu ;;
       20) /jffs/scripts/vpn_ipcatcher.sh doctor; press_enter ;;
       21) /jffs/scripts/vpn_ipcatcher.sh rollback; exec /jffs/scripts/vpn_ipcatcher.sh menu ;;
+      22) /jffs/scripts/vpn_ipcatcher.sh routing-setup; press_enter ;;
+      23) /jffs/scripts/vpn_ipcatcher.sh routing-check; press_enter ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done

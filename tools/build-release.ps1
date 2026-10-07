@@ -9,7 +9,8 @@ $files = @(
     'addons/vpn_ipcatcher.d/vpn_ipcatcher.asp',
     'addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh',
     'addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh',
-    'addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh'
+    'addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh',
+    'addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh'
 )
 $manifest = foreach ($relative in $files) {
     $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $projectRoot $relative)).Hash.ToLowerInvariant()
@@ -22,7 +23,7 @@ $version = (Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'VERSION')).Tr
 $packageRoot = Join-Path $releaseRoot "vpn-ipcatcher-$version"
 New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
 $publishFiles = $files + @('VERSION', 'SHA256SUMS', 'README.md', '.gitattributes',
-    'tests/engine-checks.sh', 'tests/update-checks.sh', 'tests/lifecycle-checks.sh', 'tests/installer-checks.sh', 'tests/path-checks.sh', 'tools/build-release.ps1')
+    'tests/engine-checks.sh', 'tests/update-checks.sh', 'tests/lifecycle-checks.sh', 'tests/installer-checks.sh', 'tests/path-checks.sh', 'tests/routing-checks.sh', 'tools/build-release.ps1')
 foreach ($relative in $publishFiles) {
     $target = Join-Path $packageRoot $relative
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null

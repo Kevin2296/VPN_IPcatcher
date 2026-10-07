@@ -1,4 +1,17 @@
-# VPN IP Catcher 2.6.2
+# VPN IP Catcher 2.7.0
+
+2.7.0 adds interactive VPN/policy selection during installation and first update.
+Choose an existing Domain-based VPN Routing OpenVPN or WireGuard policy, then
+the LAN interface(s) to observe. Required tools, policy binding, firewall marks,
+routing table, tunnel and IPSet schema are checked before learning starts.
+Use the menu or `/jffs/scripts/vpn_ipcatcher.sh routing-setup` to change selection.
+The private selection and configuration remain on the router, not in GitHub.
+
+The routing addon must already have a working IPv4 policy with a hash:ip set
+supporting timeout, counters and comment. Incompatible existing sets are rejected,
+not recreated. This installer does not configure VPN credentials, install DVR,
+or rewrite other addons' policies. Learning pauses when routing checks fail;
+this is not a VPN kill switch and does not prove every client's traffic path.
 
 2.6.2 makes Stop temporary for the current boot. The watchdog leaves an explicitly
 stopped service alone until Start or Restart is selected. Reboot automatically

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.6.2
+# Version: 2.7.0
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
 ADDON="/jffs/addons/vpn_ipcatcher.d"
 # Temporary stop lasts for this boot only; /tmp is cleared on reboot.
@@ -46,6 +46,17 @@ case "$1" in
     exec "$ADDON/vpn_ipcatcher_update.sh" "$action" "$@"
     ;;
   doctor) exec "$ADDON/vpn_ipcatcher_doctor.sh" ;;
+  routing-check) exec "$ADDON/vpn_ipcatcher_routing.sh" check ;;
+  routing-list) exec "$ADDON/vpn_ipcatcher_routing.sh" list ;;
+  routing-setup)
+    lock || exit 1
+    [ ! -f "$UPDATING" ] || { echo 'Update bezig; configuratie overgeslagen.'; exit 1; }
+    : > "$DISABLED"
+    VPNIPC_INTERNAL=1 "$REAL" stop || exit 1
+    "$ADDON/vpn_ipcatcher_routing.sh" configure || exit 1
+    rm -f "$DISABLED"
+    VPNIPC_INTERNAL=1 "$REAL" start
+    ;;
   guard-status) "$REAL" status ;;
   *) exec "$REAL" "$@" ;;
 esac

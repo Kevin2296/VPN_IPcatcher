@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.6.2
+# Version: 2.7.0
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 find_on_path(){
@@ -49,4 +49,13 @@ echo '=== IP Catcher mark rules ==='
 iptables -t mangle -S 2>/dev/null | grep 'DVR-StreamsVPNSW-v4' || true
 echo '=== VPN IP Catcher cron ==='
 cru l 2>/dev/null | grep vpn_ipcatcher || true
+echo '=== Routing addon / geselecteerde VPN ==='
+routing_helper=/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh
+if [ -f "$routing_helper" ]; then
+  sh "$routing_helper" dependencies || rc=1
+  sh "$routing_helper" list || true
+  sh "$routing_helper" check || rc=1
+else
+  echo 'VPN/lijstkeuze vereist installatie van de routing-helper.'
+fi
 exit "$rc"
