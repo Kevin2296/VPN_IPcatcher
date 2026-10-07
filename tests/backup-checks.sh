@@ -4,6 +4,7 @@ work="${TMPDIR:-/tmp}/vpnipc-backup-test-$$"
 mkdir -p "$work/bin" "$work/jffs/scripts" "$work/jffs/addons/vpn_ipcatcher.d" "$work/tmp"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 sed -e "s|/jffs|$work/jffs|g" -e "s|/tmp/vpn_ipcatcher|$work/tmp/vpn_ipcatcher|g" \
+  -e "s|for directory in /opt/bin /opt/sbin /usr/sbin /usr/bin /sbin /bin;|for directory in $work/bin;|" \
   -e "s|^PATH=.*|PATH=\"$work/bin:\$PATH\"|" backup.sh > "$work/backup"
 printf '#!/bin/sh\necho 0\n' > "$work/bin/id"
 chmod +x "$work/bin/id"
@@ -24,6 +25,16 @@ if sh "$work/backup"; then echo 'Concurrent update lock ignored' >&2; exit 1; fi
 [ -d "$work/tmp/vpn_ipcatcher_update.lock" ]
 echo 'PASS: private backup includes settings/hooks, cleans owned locks, respects update lock'
 rmdir "$work/tmp/vpn_ipcatcher_update.lock"
+sed -e "s|for directory in /opt/bin /opt/sbin /usr/sbin /usr/bin /sbin /bin;|for directory in $work/bin;|" \
+  -e "s|/proc/self/status|$work/process-status|g" "$work/backup" > "$work/backup-no-id"
+rm "$work/bin/id"
+printf 'Uid:\t1000\t0\t0\t0\n' > "$work/process-status"
+sh "$work/backup-no-id"
+printf 'Uid:\t0\t1000\t0\t0\n' > "$work/process-status"
+if sh "$work/backup-no-id"; then echo 'Non-root backup accepted' >&2; exit 1; fi
+printf '#!/bin/sh\necho 0\n' > "$work/bin/id"
+chmod +x "$work/bin/id"
+echo 'PASS: legacy backup works without id and rejects non-root effective UID'
 sed -e "s|/jffs|$work/jffs|g" -e "s|/tmp/vpn_ipcatcher|$work/tmp/vpn_ipcatcher|g" \
   -e "s|^PATH=.*|PATH=\"$work/bin:\$PATH\"|" \
   addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh > "$work/helper"
