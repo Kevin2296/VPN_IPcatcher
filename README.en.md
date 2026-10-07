@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.8.1](https://img.shields.io/badge/version-2.8.1-087F8C?style=for-the-badge)
+![Version 2.8.2](https://img.shields.io/badge/version-2.8.2-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.1.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.2.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -97,7 +97,7 @@ sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 
 ## 🔄 Updates
 
-**Upgrading 2.8.0 to 2.8.1:** use the README update command once to install the
+**Upgrading 2.8.0 to 2.8.1 or newer:** use the README update command once to install the
 new backup/amtm helpers. Future updates can use the menu.
 
 For an existing installation with the safe updater (2.6.0 or later):

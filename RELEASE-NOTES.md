@@ -1,4 +1,7 @@
-# 🛡️ VPN IP Catcher 2.8.1 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.2 · Testrelease / Prerelease
+
+**WebUI-fix:** tabs/controltekens in logregels breken de status-JSON niet meer.
+**WebUI fix:** tabs/control characters in logs no longer invalidate status JSON.
 
 🇳🇱 [Nederlandse uitleg](https://github.com/Kevin2296/VPN_IPcatcher#nederlands) · 🇬🇧 [English documentation](https://github.com/Kevin2296/VPN_IPcatcher#english)
 
@@ -12,7 +15,7 @@
 - 📚 Alle hoofdmenuopties uitgelegd, NL en EN op dezelfde repositorypagina.
 
 Gebruik het installatie/updatecommando in de README. **Voor de overgang van
-2.8.0 naar 2.8.1 gebruik je eenmaal het README-updatecommando**, zodat ook de
+2.8.0 naar 2.8.1 of nieuwer gebruik je eenmaal het README-updatecommando**, zodat ook de
 nieuwe helpers worden meegenomen. Daarna zijn menu-updates weer voldoende.
 De downloads bevatten uitsluitend openbare code, documentatie en tests.
 Privé-back-ups blijven op de router en horen nooit op GitHub.
@@ -26,7 +29,7 @@ Privé-back-ups blijven op de router en horen nooit op GitHub.
 - 🔧 Learning-settings reset preserves the VPN/list binding and backs up first.
 - 📚 Full main-menu overview, Dutch and English on the same repository page.
 
-**Use the README update command once when upgrading 2.8.0 to 2.8.1**, to install
+**Use the README update command once when upgrading 2.8.0 to 2.8.1 or newer**, to install
 the newly added helpers. Future updates can use the menu. Downloads contain
 public files only; private backups remain on your router.
 

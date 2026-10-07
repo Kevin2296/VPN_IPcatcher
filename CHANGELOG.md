@@ -1,5 +1,11 @@
 # Wijzigingen
 
+## 2.8.2
+
+- WebUI-status-JSON blijft geldig bij tabs, aanhalingstekens, backslashes en andere log-controltekens.
+- Regresstest controleert deze logregels in de echte statuspublisher.
+- Automatische GitHub-testrelease met openbare downloads; 2.8.1 blijft onveranderd beschikbaar.
+
 ## 2.8.1
 
 - Menu 24: kleine of uitgebreide privéback-up, zonder SSH-commando.
