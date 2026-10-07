@@ -9,9 +9,19 @@ ADDON="/jffs/addons/vpn_ipcatcher.d"
 FILES='scripts/vpn_ipcatcher.sh scripts/vpn_ipcatcher.real.sh scripts/vpn_ipcatcher_watchdog.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_presets.sh addons/vpn_ipcatcher.d/vpn_ipcatcher.asp addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_amtm.sh'
 fail(){ echo "Installatie: $*" >&2; exit 1; }
 find_bin(){ for directory in /opt/bin /opt/sbin /usr/sbin /usr/bin /sbin /bin; do [ -f "$directory/$1" ] && [ -x "$directory/$1" ] && { echo "$directory/$1"; return; }; done; return 1; }
+effective_uid(){
+  identity="$(find_bin id)" || identity=''
+  if [ -n "$identity" ]; then "$identity" -u; return; fi
+  # Merlin may omit id; the kernel exposes the effective UID directly.
+  [ -r /proc/self/status ] || return 1
+  while read -r field real effective rest; do
+    case "$field" in Uid:) printf '%s\n' "$effective"; return 0 ;; esac
+  done < /proc/self/status
+  return 1
+}
 action="${1:-install}"
 case "$action" in install|update) ;; *) fail 'Gebruik: sh install.sh install|update' ;; esac
-[ "$(id -u)" = 0 ] || fail 'Voer dit uit als root op de router.'
+[ "$(effective_uid)" = 0 ] || fail 'Rootrechten konden niet worden bevestigd. Voer dit uit als root op de router.'
 [ -t 0 ] || fail 'Open een interactief SSH-venster; stuur het script niet via een pipe naar sh.'
 if ! find_bin jq >/dev/null && [ -x /opt/bin/opkg ]; then /opt/bin/opkg update && /opt/bin/opkg install jq; fi
 for tool in curl jq sha256sum awk sed grep; do find_bin "$tool" >/dev/null || fail "Ontbreekt: $tool. Installeer eerst via Entware/amtm."; done

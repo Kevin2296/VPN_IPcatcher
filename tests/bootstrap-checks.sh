@@ -43,3 +43,16 @@ sh "$work/bootstrap" install
 [ -x "$work/jffs/scripts/vpn_ipcatcher.sh" ]
 if sh "$work/bootstrap" install; then echo 'Existing installation overwritten' >&2; exit 1; fi
 echo 'PASS: bootstrap validates downloads before writes and refuses reinstall'
+sed '/^action=/,$d' "$work/bootstrap" > "$work/identity-library"
+. "$work/identity-library"
+[ "$(effective_uid)" = 0 ]
+rm "$work/bin/id"
+sed "s|/proc/self/status|$work/process-status|g" "$work/identity-library" > "$work/identity-fallback"
+. "$work/identity-fallback"
+printf 'Name:\ttest\nUid:\t1000\t0\t0\t0\n' > "$work/process-status"
+[ "$(effective_uid)" = 0 ]
+printf 'Uid:\t0\t1000\t0\t0\n' > "$work/process-status"
+[ "$(effective_uid)" = 1000 ]
+printf 'Name:\ttest\n' > "$work/process-status"
+if effective_uid; then echo 'Missing UID accepted' >&2; exit 1; fi
+echo 'PASS: root check supports missing id and uses the effective, not real, UID'
