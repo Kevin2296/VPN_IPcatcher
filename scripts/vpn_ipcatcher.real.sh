@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.6.1
+# Version: 2.6.2
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -385,7 +385,7 @@ write_web_status(){
   tmp="${WEB_STATUS_FILE}.$$"
   {
     printf '{\n'
-    printf '  "version":"%s",\n' "$(json_safe '2.6.1')"
+    printf '  "version":"%s",\n' "$(json_safe '2.6.2')"
     printf '  "last_update":"%s",\n' "$(json_safe "$now")"
     printf '  "engine":"%s",\n' "$(json_safe "$engine_state")"
     printf '  "engine_pid":"%s",\n' "$(json_safe "$engine_pid")"

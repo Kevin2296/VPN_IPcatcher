@@ -14,15 +14,26 @@ printf '%s\n' "$1" >> "$STATE"
 EOF
 chmod 755 "$TMP/jffs/scripts/vpn_ipcatcher.real.sh"
 sh "$TMP/guard" stop
-[ -f "$TMP/jffs/addons/vpn_ipcatcher.d/disabled" ]
+[ -f "$TMP/runtime/vpn_ipcatcher.disabled" ]
 sh "$TMP/guard" watchdog
 [ "$(cat "$STATE")" = stop ]
 sh "$TMP/guard" start
-[ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/disabled" ]
+[ ! -f "$TMP/runtime/vpn_ipcatcher.disabled" ]
 [ "$(cat "$STATE")" = "$(printf 'stop\nstart')" ]
 : > "$TMP/jffs/addons/vpn_ipcatcher.d/updating"
 sh "$TMP/guard" watchdog
 if sh "$TMP/guard" start; then echo 'Started during update'; exit 1; fi
 [ "$(cat "$STATE")" = "$(printf 'stop\nstart')" ]
 [ ! -d "$TMP/runtime/vpn_ipcatcher_lifecycle.lock" ]
-echo 'PASS: explicit stop survives watchdog; explicit start re-enables; update blocks starts'
+rm "$TMP/jffs/addons/vpn_ipcatcher.d/updating"
+# Repeated watchdog calls model an unexpected engine exit after explicit Start.
+sh "$TMP/guard" watchdog
+[ "$(tail -n 1 "$STATE")" = start ]
+sh "$TMP/guard" stop
+sh "$TMP/guard" watchdog
+[ "$(tail -n 1 "$STATE")" = stop ]
+# A reboot clears volatile /tmp, but preserves the addon directory.
+rm "$TMP/runtime/vpn_ipcatcher.disabled"
+sh "$TMP/guard" watchdog
+[ "$(tail -n 1 "$STATE")" = start ]
+echo 'PASS: stop suppresses watchdog until Start or reboot; crash recovery resumes; update blocks starts'

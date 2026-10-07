@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.6.1
+# Version: 2.6.2
 
 ADDON_NAME="vpn_ipcatcher"
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -234,7 +234,7 @@ publish_status(){
   tmp_json="${STATUS_JSON}.$$"
   cat > "$tmp_json" <<JSON
 {
-  "version":"2.6.1",
+  "version":"2.6.2",
   "last_update":"$last_update",
   "engine":"$engine",
   "engine_pid":"$engine_pid",

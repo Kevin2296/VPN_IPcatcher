@@ -1,4 +1,8 @@
-# VPN IP Catcher 2.6.1
+# VPN IP Catcher 2.6.2
+
+2.6.2 makes Stop temporary for the current boot. The watchdog leaves an explicitly
+stopped service alone until Start or Restart is selected. Reboot automatically
+re-enables startup and crash recovery. The stop marker is stored only in `/tmp`.
 
 2.6.1 fixes executable detection on router shells where `command -v` is not
 supported. Diagnostics and updates inspect executable paths directly. The WebUI
@@ -62,7 +66,7 @@ The installer checks all required program files. It backs up service-event and
 services-start, replaces only recognized VPN IP Catcher blocks, and checks hook
 syntax before replacement. Other addons remain in those hooks. Existing
 `/jffs/scripts/vpn_ipcatcher.conf` is required and preserved. A stopped service
-stays stopped across watchdog runs and reboots until explicitly started.
+stays stopped across watchdog runs until explicitly started or the router reboots.
 
 ## GitHub updates
 

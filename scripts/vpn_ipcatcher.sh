@@ -1,8 +1,9 @@
 #!/bin/sh
-# Version: 2.6.1
+# Version: 2.6.2
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
 ADDON="/jffs/addons/vpn_ipcatcher.d"
-DISABLED="$ADDON/disabled"
+# Temporary stop lasts for this boot only; /tmp is cleared on reboot.
+DISABLED="/tmp/vpn_ipcatcher.disabled"
 UPDATING="$ADDON/updating"
 LIFECYCLE_LOCK="/tmp/vpn_ipcatcher_lifecycle.lock"
 

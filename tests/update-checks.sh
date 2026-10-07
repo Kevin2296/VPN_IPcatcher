@@ -50,11 +50,11 @@ if sh "$TMP/updater" update; then echo 'Corrupt update accepted'; exit 1; fi
 grep -q '2.6.0' "$TMP/jffs/scripts/vpn_ipcatcher.sh"
 echo 'PASS: corrupt update rejected without changing installed files'
 (cd "$TMP/remote"; sha256sum $FILES) > "$TMP/remote/SHA256SUMS"
-: > "$TMP/jffs/addons/vpn_ipcatcher.d/disabled"
+: > "$TMP/runtime/vpn_ipcatcher.disabled"
 sh "$TMP/updater" update
 grep -q '2.6.1' "$TMP/jffs/scripts/vpn_ipcatcher.sh"
 grep -q PRIVATE_CONFIG_KEEP "$TMP/jffs/scripts/vpn_ipcatcher.conf"
-[ -f "$TMP/jffs/addons/vpn_ipcatcher.d/disabled" ]
+[ -f "$TMP/runtime/vpn_ipcatcher.disabled" ]
 [ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/updating" ]
 echo 'PASS: update preserves configuration and intentionally stopped state'
 sh "$TMP/updater" rollback
