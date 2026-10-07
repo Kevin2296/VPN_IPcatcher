@@ -1,176 +1,168 @@
-# VPN IP Catcher 2.7.0
+# VPN IP Catcher
 
-## Routercommando's: eerste installatie of update
+IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit waargenomen
+verkeer en voegt deze toe aan een bestaande Domain-based VPN Routing-lijst.
+De routing-addon bepaalt de VPN-uitgang; IP Catcher is zelf geen VPN-client.
 
-Voer dit uit in een interactief SSH-venster op de router, bijvoorbeeld MobaXterm.
-Vereist: werkende Domain-based VPN Routing-policy, ingeschakelde JFFS-scripts,
-curl, jq en sha256sum. Ontbrekende tools worden gemeld, niet automatisch geinstalleerd.
-Gebruik geen `curl | sh`: de installatie heeft je invoer nodig voor de VPN-keuze.
+**Versie: 2.7.0.** [Wijzigingen](CHANGELOG.md) |
+[Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
-**Eerste installatie (alleen wanneer IP Catcher nog niet is geinstalleerd):**
+Lokaal getest, maar volledige compatibiliteit en de echte verkeersroute moeten
+op de router worden gecontroleerd. Geen VPN-killswitch of officieel amtm-addon.
+
+## Vereisten
+
+- Asuswrt-Merlin met JFFS custom scripts en configs ingeschakeld.
+- Een werkende OpenVPN- of WireGuard-client met een bestaande DVR-policy.
+- Een IPv4 `hash:ip`-lijst met `timeout`, `counters` en `comment`.
+- `ip`, `iptables`, `ipset`, `tcpdump`, `nslookup`, `awk`, `sed`, `grep`, `tr`, `cru`.
+- Voor volledige leerfunctie/updates: `conntrack`, `curl`, `jq`, `sha256sum`.
+- Conntrack accounting, correcte routerklok en HTTPS-certificaten.
+- Voor de WebUI: Merlin Addons-helper en een bestaand Addons-menu.
+
+Ontbrekende tools worden gemeld. Installeer deze via Entware/amtm. De installer
+configureert geen VPN-wachtwoorden en bouwt geen onverenigbare IPSet om.
+De code gebruikt `/bin/sh`, zonder architectuurspecifieke meegeleverde binaries.
+
+## Eerste installatie
+
+Open een interactief SSH-venster op de router, bijvoorbeeld MobaXterm.
+Alleen uitvoeren wanneer IP Catcher nog niet is geinstalleerd:
 
 ```sh
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh install
 ```
 
-**Bestaande installatie bijwerken (met veilige updater, versie 2.6.0 of nieuwer):**
+Kies de VPN-client, DVR-policy en LAN-interface(s). De installer controleert
+lijstkoppeling, firewallmarkering, routingtabel en tunnel voordat leren begint.
+Gebruik geen `curl | sh`: de wizard heeft je invoer nodig.
+
+Een eerste installatie is niet volledig transactioneel. Na een onderbreking of
+afgebroken wizard blijven geplaatste bestanden staan. Herstel de oorzaak en hervat:
+
+```sh
+sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
+```
+
+## Bijwerken
+
+Voor een bestaande installatie met veilige updater (2.6.0 of nieuwer):
 
 ```sh
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh update
 ```
 
-De eerste update naar 2.7.0 vraagt om je VPN/lijstkeuze. Configuratie en de bewust
-gestopte status blijven behouden. Oudere installaties zonder veilige updater
-worden geweigerd: gebruik dan de handmatige migratie hieronder met een back-up.
-
-**Volgende updates kunnen ook direct vanuit het menu of met:**
+De eerste update naar 2.7.0 vraagt om je VPN/lijstkeuze. Volgende updates kunnen
+vanuit het menu of met:
 
 ```sh
-/jffs/scripts/vpn_ipcatcher.sh update
-```
-
-De download gebruikt HTTPS en de programmacontrole gebruikt SHA-256 en een vaste
-GitHub-commit. Dit vertrouwt deze openbare repository; het is geen afzonderlijke
-digitale handtekening. De eerste installatie is niet volledig transactioneel:
-bij onderbreking of een afgebroken wizard blijven de geplaatste bestanden staan.
-Herstel de oorzaak en voer dan de installer onder `/jffs/addons/vpn_ipcatcher.d/`
-opnieuw uit. Er worden geen persoonlijke routerbestanden naar GitHub verstuurd.
-
-2.7.0 adds interactive VPN/policy selection during installation and first update.
-Choose an existing Domain-based VPN Routing OpenVPN or WireGuard policy, then
-the LAN interface(s) to observe. Required tools, policy binding, firewall marks,
-routing table, tunnel and IPSet schema are checked before learning starts.
-Use the menu or `/jffs/scripts/vpn_ipcatcher.sh routing-setup` to change selection.
-The private selection and configuration remain on the router, not in GitHub.
-
-The routing addon must already have a working IPv4 policy with a hash:ip set
-supporting timeout, counters and comment. Incompatible existing sets are rejected,
-not recreated. This installer does not configure VPN credentials, install DVR,
-or rewrite other addons' policies. Learning pauses when routing checks fail;
-this is not a VPN kill switch and does not prove every client's traffic path.
-
-2.6.2 makes Stop temporary for the current boot. The watchdog leaves an explicitly
-stopped service alone until Start or Restart is selected. Reboot automatically
-re-enables startup and crash recovery. The stop marker is stored only in `/tmp`.
-
-2.6.1 fixes executable detection on router shells where `command -v` is not
-supported. Diagnostics and updates inspect executable paths directly. The WebUI
-also detects cksum without relying on that shell builtin.
-
-Shell addon for Asuswrt-Merlin using the router's POSIX shell.
-Router runtime verification is still required; local tests do not prove VPN
-traffic actually follows the intended tunnel.
-
-## amtm
-
-VPN IP Catcher is a personal script, not an officially listed amtm addon.
-Add `/jffs/scripts/vpn_ipcatcher.sh` using amtm's personal-script feature.
-This opens its own menu, including check-update, update, doctor and rollback.
-The official amtm update manager does not automatically manage a personal script.
-No modification of amtm itself is required.
-
-Reference: https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM
-
-## Router requirements
-
-Enable JFFS custom scripts and configs. The engine needs ipset with hash:ip,
-timeouts, counters and comments, tcpdump, nslookup, awk, sed and grep.
-Byte-based learning needs conntrack and nf_conntrack_acct. Entware supplies
-missing binaries for the router architecture. HTTPS updates additionally need
-curl, jq, sha256sum and a functioning certificate store and router clock.
-The WebUI uses the Merlin helper and requires an existing Addons menu.
-
-The scripts use the router's `/bin/sh`; they do not contain architecture-specific
-binaries. HTTPS payload is encrypted: ASCII tcpdump output cannot reliably
-extract HTTPS Host/SNI information. The conntrack flow scanner is the main
-learning mechanism for encrypted streams, including UDP flows.
-Hardware flow acceleration can reduce visibility into packets and byte counters;
-validate on the router rather than changing acceleration automatically.
-
-## Run the diagnostic without installing
-
-Upload `addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh` to `/tmp` using MobaXterm:
-
-```sh
-sh /tmp/vpn_ipcatcher_doctor.sh
-```
-
-This reads information; it does not change settings or start the service.
-
-## Upgrade the existing installation
-
-The provided archive contains only the ten program files. It excludes personal
-configuration, startup hooks, logs, keys and unrelated addons. Before installing,
-run the diagnostic and make a backup of the existing program files and hooks.
-Stop the engine and remove its watchdog cron during the one-time migration.
-Extract the archive to `/jffs`, set the shell files executable, then run:
-
-```sh
-sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
-/jffs/scripts/vpn_ipcatcher.sh doctor
-/jffs/scripts/vpn_ipcatcher.sh start
-```
-
-The installer checks all required program files. It backs up service-event and
-services-start, replaces only recognized VPN IP Catcher blocks, and checks hook
-syntax before replacement. Other addons remain in those hooks. Existing
-`/jffs/scripts/vpn_ipcatcher.conf` is required and preserved. A stopped service
-stays stopped across watchdog runs until explicitly started or the router reboots.
-
-## GitHub updates
-
-Publish only the allowlisted program files, VERSION, SHA256SUMS, documentation
-and tests. Do not publish the original router export. A public repository is
-required by this updater; private-repository authentication is not implemented.
-Choose a stable branch or release tag, then configure it once:
-
-```sh
-/jffs/scripts/vpn_ipcatcher.sh update-source OWNER/REPOSITORY main
 /jffs/scripts/vpn_ipcatcher.sh check-update
 /jffs/scripts/vpn_ipcatcher.sh update
 ```
 
-For this project the configured command is:
+De updater gebruikt een vaste GitHub-commit, SHA-256 en shellsyntaxcontrole
+voordat de app wordt gestopt. Dit vertrouwt de repository; hashes zijn geen
+afzonderlijke digitale handtekening. Publiceren op GitHub voert niet automatisch
+een update op de router uit.
 
-```sh
-/jffs/scripts/vpn_ipcatcher.sh update-source Kevin2296/VPN_IPcatcher main
+Oude installaties zonder veilige updater worden geweigerd. Maak eerst een
+persoonlijke back-up van programma's, configuratie en betrokken hooks. Handmatige
+migratie vereist het gecontroleerde programmapakket onder `/jffs`, uitvoerbare
+shellbestanden en daarna de installer. Gebruik geen eerste installatie om een
+oude installatie te overschrijven.
+
+## Back-up en terugzetten
+
+Iedere update bewaart de vorige **programmabestanden** op de router onder:
+
+```text
+/jffs/addons/vpn_ipcatcher.d/backups/update-<datum>-<tijd>-<pid>/
 ```
 
-Repository: https://github.com/Kevin2296/VPN_IPcatcher
-
-Updates also work through
-menu items 18 and 19. Publishing a commit to GitHub does not itself execute
-commands on the router. Run update over SSH or through the personal script's menu.
-
-The updater resolves the selected ref to one immutable GitHub commit before
-downloading. It checks each allowlisted file's SHA-256 hash and shell syntax
-before stopping the service. It backs up the program files, preserves config,
-and restarts only if the engine was running. Failed startup restores old files.
-Hashes detect mismatched/corrupt files; they are not a separate signature and
-do not protect against compromise of the trusted repository.
+`last-backup` verwijst naar de laatste geslaagde updateback-up. Terugzetten:
 
 ```sh
 /jffs/scripts/vpn_ipcatcher.sh rollback
 ```
 
-Backups are retained under `/jffs/addons/vpn_ipcatcher.d/backups/`; monitor flash
-space and remove obsolete backups deliberately. A power interruption cannot
-be rolled back by a running shell trap. After an interrupted update, inspect the
-backup and `updating` marker before restarting. An abandoned lock with no PID
-requires inspection; the code does not automatically erase an unowned lock.
+Configuratie wordt bij gewone updates en rollback niet vervangen. Dit is geen
+volledige router- of configuratieback-up. De installer bewaart afzonderlijke
+back-ups van startup-hooks die hij wijzigt. Bij de eerste VPN/lijstmigratie wordt
+de oude configuratie lokaal bewaard voor foutherstel.
 
-## Validation
+Een mislukte start tijdens de update herstelt automatisch de vorige code. Een
+bewust gestopte app blijft gestopt. Stroomuitval kan niet door een lopende shell
+worden hersteld: inspecteer dan back-ups, locks en `updating` voordat je hervat.
+Verwijder markers niet blind. Back-ups worden niet automatisch opgeruimd;
+controleer vrije JFFS-ruimte en maak daarnaast je eigen routerback-up.
+
+## Bediening en amtm
+
+```sh
+/jffs/scripts/vpn_ipcatcher.sh
+/jffs/scripts/vpn_ipcatcher.sh start
+/jffs/scripts/vpn_ipcatcher.sh stop
+/jffs/scripts/vpn_ipcatcher.sh status
+/jffs/scripts/vpn_ipcatcher.sh doctor
+/jffs/scripts/vpn_ipcatcher.sh routing-check
+/jffs/scripts/vpn_ipcatcher.sh routing-setup
+```
+
+Stop onderdrukt de watchdog tot Start/Restart of reboot. Na reboot wordt
+automatisch gestart; onverwachte crashes worden ongeveer iedere minuut
+gecontroleerd. Bij een mislukte routingcontrole worden geen nieuwe adressen aan
+de finale lijst toegevoegd. Dit schakelt bestaande VPN-routing niet uit.
+
+Voeg `/jffs/scripts/vpn_ipcatcher.sh` toe via amtm's personal-scriptfunctie.
+De amtm-updatemanager beheert dit script niet automatisch.
+[Officiele amtm-uitleg](https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM).
+
+## Video stopt tijdens afspelen
+
+Een stop na ongeveer een minuut bewijst niet dat een website VPN blokkeert.
+IP Catcher kan na een leeftijd/byte-drempel een adres aan de VPN-lijst toevoegen.
+Afhankelijk van de firewallregels kan daardoor de route tijdens een bestaande
+stream veranderen. Dit is een mogelijke oorzaak, geen bevestigde diagnose.
+
+Andere mogelijkheden: nieuwe CDN-adressen, afwijkende IPv6/DNS-routing, QUIC/UDP,
+MTU-problemen of een blokkade van de VPN-uitgang. Een browser-VPN kan bovendien
+een andere uitgang of protocol gebruiken.
+
+Vergelijk dezelfde website met het hele testapparaat vanaf het begin via
+dezelfde router-VPN. Werkt dat wel, onderzoek dan dynamische lijstrouting.
+Een vooraf ingestelde DVR-policy kan helpen, maar moet ook de juiste CDN's
+omvatten; start daarna een nieuwe browsersessie. Wis niet blind lijsten of
+conntrack-verbindingen en verlaag niet zomaar leerdrempels: daarmee kan een
+routewissel juist eerder plaatsvinden.
+
+HTTPS-inhoud is versleuteld; tcpdump-tekst herkent niet betrouwbaar alle
+HTTPS-domeinen. Conntrack levert bytegebaseerde leerinformatie. Hardwareversnelling
+kan de zichtbaarheid verminderen. Deze finale IPv4-lijst dekt geen IPv6-learning.
+Deel diagnosegegevens prive, niet als openbare issue met IP's, logs of config.
+
+## Privacy en releases
+
+Alleen programmacode, documentatie en tests horen in deze repository.
+Geen configuratie, sleutels, logs, VPN-keuzes of routerexports. De installatie
+verstuurt geen persoonlijke routerconfiguratie naar GitHub.
+
+Een versie in `VERSION` of een commit is nog geen GitHub Release. Releases moeten
+apart worden gepubliceerd. Tot die tijd haalt het installatiecommando code van
+`main` op. De publieke releasebeschrijving staat in [RELEASE-NOTES.md](RELEASE-NOTES.md).
+Publiceer nooit een eigen routerexport als release-asset.
+
+## Tests
 
 ```sh
 sh tests/engine-checks.sh
-sh tests/update-checks.sh
-sh tests/lifecycle-checks.sh
 sh tests/installer-checks.sh
+sh tests/lifecycle-checks.sh
+sh tests/path-checks.sh
+sh tests/routing-checks.sh
+sh tests/update-checks.sh
+sh tests/bootstrap-checks.sh
 ```
 
-Tests cover non-executable configuration, invalid numeric settings, exclusion
-boundaries, capture source filters, stable candidate age, bidirectional byte
-promotion, corrupt updates, preserved configuration/stopped state, rollback and
-failed-startup recovery. Downloads and router processes are mocked in update tests.
-Kernel modules, Merlin WebUI, busybox specifics, VPN routing and accelerated
-traffic require router-side verification.
+Tests gebruiken fixtures en namaakdownloads voor configuratieveiligheid,
+leren, stop/crashgedrag, routingkoppeling, beschadigde downloads, behoud van
+instellingen en rollback. Kernel, WebUI en echt VPN-verkeer vereisen routertests.
