@@ -27,7 +27,9 @@ trap finish EXIT
 trap 'exit 1' HUP INT TERM
 if [ "${2:-}" = --update-owner ]; then
   # The updater already holds this lock; only its direct child may reuse it.
-  [ "${3:-}" = "$PPID" ] && [ "$(cat "$UPDATE_LOCK/pid" 2>/dev/null)" = "$PPID" ] || {
+  parent="${PPID:-}"
+  [ -n "$parent" ] || parent="$(awk '$1=="PPid:" {print $2; exit}' "/proc/$$/status")"
+  [ "${3:-}" = "$parent" ] && [ "$(cat "$UPDATE_LOCK/pid" 2>/dev/null)" = "$parent" ] || {
     echo 'Ongeldige update-lock eigenaar.' >&2; exit 1;
   }
 else

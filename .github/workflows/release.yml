@@ -3,7 +3,7 @@ name: Test and Publish Release
 on:
   push:
     branches: [main]
-    paths: [VERSION]
+    paths: [VERSION, .github/workflows/release.yml]
   workflow_dispatch:
 
 permissions:
@@ -23,7 +23,22 @@ jobs:
       - name: Shell checks
         run: |
           set -eu
-          for test in tests/*-checks.sh; do sh "$test"; done
+          for test in tests/*-checks.sh; do
+            echo "Checking $test"
+            if sh "$test" > "$RUNNER_TEMP/fixture.log" 2>&1; then
+              cat "$RUNNER_TEMP/fixture.log"
+            else
+              cat "$RUNNER_TEMP/fixture.log"
+              echo "::error file=$test::Fixture failed: $test"
+              {
+                echo "## Failed fixture: $test"
+                echo '```text'
+                cat "$RUNNER_TEMP/fixture.log"
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+          done
       - name: WebUI checks
         run: node tests/webui-checks.js
 
