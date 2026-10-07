@@ -70,3 +70,10 @@ SOURCE_IPS="192.168.1.99"
 promote_candidates
 [ ! -f "$TMP/promoted" ]
 echo 'PASS: promotion includes download bytes and respects source filter'
+sed "s|^CONF=.*|CONF=\"$TMP/cli-config\"|" "$ROOT/scripts/vpn_ipcatcher.real.sh" > "$TMP/validator"
+default_config > "$TMP/cli-config"
+sh "$TMP/validator" validate-config
+printf 'INTERFACES="$(touch %s)"\n' "$TMP/cli-executed" > "$TMP/cli-config"
+if sh "$TMP/validator" validate-config; then echo 'CLI validator accepted executable config'; exit 1; fi
+[ ! -e "$TMP/cli-executed" ]
+echo 'PASS: migration CLI validates configuration without executing it or starting the engine'

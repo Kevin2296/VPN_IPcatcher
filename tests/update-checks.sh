@@ -74,3 +74,64 @@ grep -q '2.6.0' "$TMP/jffs/scripts/vpn_ipcatcher.sh"
 grep -q PRIVATE_CONFIG_KEEP "$TMP/jffs/scripts/vpn_ipcatcher.conf"
 [ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/updating" ]
 echo 'PASS: failed startup automatically restores previous files'
+# A legacy installation has only the core scripts, private config and old hooks.
+rm "$TMP/runtime/vpn_ipcatcher_pids/engine.pid"
+for f in $FILES; do
+  case "$f" in scripts/*) ;; *) rm -f "$TMP/jffs/$f" ;; esac
+done
+rm -f "$TMP/jffs/addons/vpn_ipcatcher.d/routing-selection"
+printf '#!/bin/sh\n# Version: 2.6.1\nexit 0\n' > "$TMP/remote/scripts/vpn_ipcatcher.real.sh"
+printf '#!/bin/sh\necho old-hook\n' > "$TMP/jffs/scripts/services-start"
+printf '#!/bin/sh\necho old-event\n' > "$TMP/jffs/scripts/service-event"
+export TEST_LEGACY_ROOT="$TMP/jffs"
+cat > "$TMP/bin/cru" <<'EOF'
+#!/bin/sh
+case "$1" in
+  l) echo '* * * * * old-watchdog #vpn_ipcatcher_watchdog#' ;;
+  *) printf '%s\n' "$*" >> "$TEST_LEGACY_ROOT/cron-events" ;;
+esac
+EOF
+chmod +x "$TMP/bin/cru"
+cat > "$TMP/remote/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" <<'EOF'
+#!/bin/sh
+case "$1" in
+  configure)
+    printf 'CHANGED_CONFIG\n' > "$TEST_LEGACY_ROOT/scripts/vpn_ipcatcher.conf"
+    printf 'ExamplePolicy\novpnc1\n\n' > "$TEST_LEGACY_ROOT/addons/vpn_ipcatcher.d/routing-selection"
+    [ ! -f "$TEST_LEGACY_ROOT/cancel-routing" ]
+    ;;
+  *) exit 0 ;;
+esac
+EOF
+: > "$TMP/jffs/cancel-routing"
+(cd "$TMP/remote"; sha256sum $FILES) > "$TMP/remote/SHA256SUMS"
+if sh "$TMP/updater" migrate example/vpn-ipcatcher main; then echo 'Canceled migration accepted'; exit 1; fi
+grep -q PRIVATE_CONFIG_KEEP "$TMP/jffs/scripts/vpn_ipcatcher.conf"
+[ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh" ]
+[ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/routing-selection" ]
+grep -q 'a vpn_ipcatcher_watchdog .*old-watchdog' "$TMP/jffs/cron-events"
+echo 'PASS: canceled legacy routing restores configuration and watchdog without installing files'
+rm "$TMP/jffs/cancel-routing"
+cat > "$TMP/remote/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh" <<'EOF'
+#!/bin/sh
+[ "$1" = hooks ] || exit 1
+printf '#!/bin/sh\necho new-hook\n' > "$TEST_LEGACY_ROOT/scripts/services-start"
+[ ! -f "$TEST_LEGACY_ROOT/fail-hooks" ]
+EOF
+: > "$TMP/jffs/fail-hooks"
+(cd "$TMP/remote"; sha256sum $FILES) > "$TMP/remote/SHA256SUMS"
+if sh "$TMP/updater" migrate example/vpn-ipcatcher main; then echo 'Failed hooks accepted'; exit 1; fi
+grep -q old-hook "$TMP/jffs/scripts/services-start"
+grep -q PRIVATE_CONFIG_KEEP "$TMP/jffs/scripts/vpn_ipcatcher.conf"
+[ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh" ]
+[ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/routing-selection" ]
+echo 'PASS: failed legacy hook installation restores files, missing helpers, hooks and private config'
+rm "$TMP/jffs/fail-hooks"
+sh "$TMP/updater" migrate example/vpn-ipcatcher main
+for f in $FILES; do [ -s "$TMP/jffs/$f" ]; done
+grep -q new-hook "$TMP/jffs/scripts/services-start"
+[ -f "$TMP/runtime/vpn_ipcatcher.disabled" ]
+[ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/updating" ]
+grep -q 'a vpn_ipcatcher_watchdog .*vpn_ipcatcher_watchdog.sh' "$TMP/jffs/cron-events"
+if sh "$TMP/updater" rollback; then echo 'Incomplete legacy menu rollback accepted'; exit 1; fi
+echo 'PASS: legacy migration installs missing helpers, registers watchdog, preserves stopped state and rejects unsafe legacy rollback'

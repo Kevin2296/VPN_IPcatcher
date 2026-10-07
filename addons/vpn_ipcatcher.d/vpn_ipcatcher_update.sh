@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.8.2
+# Version: 2.8.3
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -17,6 +17,11 @@ WAS_RUNNING=0
 WAS_DISABLED=0
 OWN_UPDATE=0
 SELECTION_CHANGED=0
+HOOKS_CHANGED=0
+HOOKS='scripts/services-start scripts/service-event'
+CRON_CHANGED=0
+WATCHDOG_JOB=''
+STATUS_JOB=''
 
 fail(){ printf 'FOUT: %s\n' "$*" >&2; exit 1; }
 find_on_path(){
@@ -40,10 +45,12 @@ valid_ref(){
   [ "${#1}" -le 100 ]
 }
 restore_files(){
-  for relative in $FILES; do
+  restore_list="$FILES"
+  [ "$HOOKS_CHANGED" != 1 ] || restore_list="$restore_list $HOOKS"
+  for relative in $restore_list; do
     if [ -f "$BACKUP/$relative.missing" ]; then rm -f "/jffs/$relative"; continue; fi
     [ -f "$BACKUP/$relative" ] || continue
-    cp "$BACKUP/$relative" "/jffs/$relative.restore" || return 1
+    cp -p "$BACKUP/$relative" "/jffs/$relative.restore" || return 1
     mv "/jffs/$relative.restore" "/jffs/$relative" || return 1
   done
 }
@@ -52,6 +59,7 @@ finish(){
   trap - EXIT INT TERM
   if [ "$MODIFIED" = 1 ] && [ "$result" != 0 ]; then
     echo "Update mislukt; vorige bestanden herstellen."
+    VPNIPC_INTERNAL=1 /jffs/scripts/vpn_ipcatcher.real.sh stop || WAS_RUNNING=0
     if ! restore_files; then
       echo "Herstel mislukt. Backup: $BACKUP" >&2
       result=1
@@ -59,6 +67,12 @@ finish(){
     fi
   fi
   if [ "$SELECTION_CHANGED" = 1 ] && [ "$result" != 0 ]; then
+    # A failed wizard can have created our own empty routing rules.
+    if [ -s "$ADDON/routing-selection" ] && [ "$(sed -n '3p' "$ADDON/routing-selection")" = managed-v1 ]; then
+      policy="$(sed -n '1p' "$ADDON/routing-selection")"
+      sed '/^case "${1:-check}" in/,$d' "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" > "$STAGE/routing-library"
+      sh -c '. "$1"; remove_managed_rules "$2"' sh "$STAGE/routing-library" "$policy" || result=1
+    fi
     cp -p "$BACKUP/private-config" /jffs/scripts/vpn_ipcatcher.conf || result=1
     rm -f "$ADDON/routing-selection"
   fi
@@ -68,6 +82,12 @@ finish(){
     if [ "$WAS_RUNNING" = 1 ]; then
       "$ENGINE" start || result=1
     fi
+  fi
+  if [ "$CRON_CHANGED" = 1 ] && [ "$result" != 0 ]; then
+    cru d vpn_ipcatcher_watchdog >/dev/null 2>&1 || result=1
+    cru d vpn_ipcatcher_status >/dev/null 2>&1 || result=1
+    [ -z "$WATCHDOG_JOB" ] || cru a vpn_ipcatcher_watchdog "$WATCHDOG_JOB" || result=1
+    [ -z "$STATUS_JOB" ] || cru a vpn_ipcatcher_status "$STATUS_JOB" || result=1
   fi
   [ -z "$STAGE" ] || rm -rf "$STAGE"
   rm -f "$LOCK/pid"
@@ -91,7 +111,12 @@ if [ "$action" = update-source ]; then
   exit 0
 fi
 
-case "$action" in check-update|update|rollback) ;; *) fail "Onbekende actie: $action" ;; esac
+case "$action" in check-update|update|rollback|migrate) ;; *) fail "Onbekende actie: $action" ;; esac
+if [ "$action" = migrate ]; then
+  [ "$#" = 3 ] && valid_repo "$2" && valid_ref "$3" || fail 'Gebruik: migrate eigenaar/repository commit'
+  [ -s "$ENGINE" ] && [ -s /jffs/scripts/vpn_ipcatcher.real.sh ] && [ -f /jffs/scripts/vpn_ipcatcher.conf ] || fail 'Oude engine/configuratie ontbreekt.'
+  [ ! -s "$ADDON/vpn_ipcatcher_update.sh" ] && [ ! -e "$ADDON/routing-selection" ] || fail 'Gebruik update voor een installatie met updater/VPN-selectie.'
+fi
 STAGE="/tmp/vpn_ipcatcher_update-$(date +%Y%m%d-%H%M%S)-$$"
 mkdir "$STAGE"
 
@@ -100,6 +125,9 @@ if [ "$action" = rollback ]; then
   BACKUP="$(cat "$ADDON/last-backup")"
   case "$BACKUP" in "$ADDON"/backups/update-*) ;; *) fail "Ongeldig backuppad." ;; esac
   [ -d "$BACKUP" ] || fail "Backup ontbreekt."
+  if [ -f "$BACKUP/legacy-migration" ]; then
+    fail "Dit is een legacy-migratiebackup. Gebruik de volledige prive-back-up voor herstel van de oude addon en hooks; menu-rollback is alleen voor gewone updates."
+  fi
   for relative in $FILES; do
     [ ! -f "$BACKUP/$relative.missing" ] || continue
     [ -s "$BACKUP/$relative" ] || fail "Backup is onvolledig: $relative"
@@ -107,9 +135,12 @@ if [ "$action" = rollback ]; then
   done
 else
   for program in curl jq sha256sum; do find_on_path "$program" >/dev/null || fail "$program ontbreekt (installeer via Entware)."; done
-  [ -f "$SOURCE" ] || fail "Stel eerst update-source in met je GitHub repository en branch/tag."
-  repo="$(sed -n '1p' "$SOURCE")"
-  ref="$(sed -n '2p' "$SOURCE")"
+  if [ "$action" = migrate ]; then repo="$2"; ref="$3"
+  else
+    [ -f "$SOURCE" ] || fail "Stel eerst update-source in met je GitHub repository en branch/tag."
+    repo="$(sed -n '1p' "$SOURCE")"
+    ref="$(sed -n '2p' "$SOURCE")"
+  fi
   valid_repo "$repo" && valid_ref "$ref" || fail "Ongeldige updatebron."
   curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 \
     "https://api.github.com/repos/$repo/commits/$ref" -o "$STAGE/commit.json"
@@ -136,7 +167,12 @@ else
     [ "$actual" = "$expected" ] || fail "Checksum klopt niet: $relative"
     case "$relative" in *.sh) sh -n "$STAGE/$relative" || fail "Shellsyntax fout: $relative" ;; esac
   done
-  sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh" small --update-owner "$$"
+  backup_mode=small
+  [ "$action" != migrate ] || backup_mode=full
+  if [ "$action" = migrate ]; then
+    sh "$STAGE/scripts/vpn_ipcatcher.real.sh" validate-config || fail 'De oude configuratie is niet compatibel; niets vervangen. Pas geen instellingen blind aan.'
+  fi
+  sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh" "$backup_mode" --update-owner "$$"
   sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" install-dependencies
   BACKUP="$ADDON/backups/update-$(date +%Y%m%d-%H%M%S)-$$"
   mkdir -p "$BACKUP"
@@ -149,13 +185,21 @@ else
     if [ ! -s "/jffs/$relative" ]; then
       case "$relative" in
         addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh|addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh|addons/vpn_ipcatcher.d/vpn_ipcatcher_amtm.sh) ;;
-        *) fail "Huidige installatie onvolledig: $relative" ;;
+        *) [ "$action" = migrate ] || fail "Huidige installatie onvolledig: $relative" ;;
       esac
       : > "$BACKUP/$relative.missing"
       continue
     fi
     cp -p "/jffs/$relative" "$BACKUP/$relative"
   done
+  if [ "$action" = migrate ]; then
+    : > "$BACKUP/legacy-migration"
+    for relative in $HOOKS; do
+      mkdir -p "$BACKUP/$(dirname "$relative")"
+      if [ -e "/jffs/$relative" ]; then cp -p "/jffs/$relative" "$BACKUP/$relative"
+      else : > "$BACKUP/$relative.missing"; fi
+    done
+  fi
 fi
 
 [ ! -f "$ADDON/updating" ] || fail "Een update of herstel staat al als actief geregistreerd."
@@ -164,8 +208,17 @@ pid="$(cat /tmp/vpn_ipcatcher_pids/engine.pid 2>/dev/null || true)"
 case "$pid" in ''|*[!0-9]*) ;; *) if kill -0 "$pid" 2>/dev/null; then WAS_RUNNING=1; fi ;; esac
 : > "$ADDON/updating"
 OWN_UPDATE=1
+if [ "$action" = migrate ]; then
+  WATCHDOG_JOB="$(cru l | awk '/#vpn_ipcatcher_watchdog#$/ {sub(/[[:space:]]*#vpn_ipcatcher_watchdog#$/, ""); print}')"
+  STATUS_JOB="$(cru l | awk '/#vpn_ipcatcher_status#$/ {sub(/[[:space:]]*#vpn_ipcatcher_status#$/, ""); print}')"
+  case "$WATCHDOG_JOB$STATUS_JOB" in *'
+'*) fail 'Meerdere watchdog-cronregels gevonden; migratie afgebroken.' ;; esac
+  CRON_CHANGED=1
+  cru d vpn_ipcatcher_watchdog
+  cru d vpn_ipcatcher_status
+fi
 "$ENGINE" stop
-if [ "$action" = update ] && [ ! -f "$ADDON/routing-selection" ]; then
+if [ "$action" != rollback ] && [ ! -f "$ADDON/routing-selection" ]; then
   cp -p /jffs/scripts/vpn_ipcatcher.conf "$BACKUP/private-config"
   SELECTION_CHANGED=1
   sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" configure
@@ -176,16 +229,27 @@ if [ "$action" = rollback ]; then
   restore_files
 else
   for relative in $FILES; do
+    mkdir -p "/jffs/$(dirname "$relative")"
     cp "$STAGE/$relative" "/jffs/$relative.new"
     case "$relative" in *.sh) chmod 755 "/jffs/$relative.new" ;; *) chmod 644 "/jffs/$relative.new" ;; esac
     mv "/jffs/$relative.new" "/jffs/$relative"
   done
 fi
+if [ "$action" = migrate ]; then
+  HOOKS_CHANGED=1
+  sh "$ADDON/install_vpn_ipcatcher.sh" hooks
+  # An unrecognized legacy running state stays stopped until explicit Start.
+  [ "$WAS_RUNNING" = 1 ] || WAS_DISABLED=1
+fi
 # Check startup before accepting the new files; finish restores them on failure.
 if [ "$WAS_RUNNING" = 1 ]; then
   VPNIPC_INTERNAL=1 /jffs/scripts/vpn_ipcatcher.real.sh start
 fi
+if [ "$action" = migrate ]; then
+  cru a vpn_ipcatcher_watchdog '* * * * * /jffs/scripts/vpn_ipcatcher_watchdog.sh'
+  "$ADDON/vpn_ipcatcher_webui.sh" cron
+fi
 MODIFIED=0
-if [ "$action" = update ]; then printf '%s\n' "$BACKUP" > "$ADDON/last-backup"; fi
+if [ "$action" != rollback ]; then printf '%s\n' "$BACKUP" > "$ADDON/last-backup"; fi
 "$ADDON/vpn_ipcatcher_webui.sh" mount || echo "WebUI mount niet gelukt; controleer doctor."
 echo "Bestanden bijgewerkt. Persoonlijke configuratie behouden."

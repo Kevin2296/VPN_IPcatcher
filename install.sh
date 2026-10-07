@@ -20,13 +20,17 @@ effective_uid(){
   return 1
 }
 action="${1:-install}"
-case "$action" in install|update) ;; *) fail 'Gebruik: sh install.sh install|update' ;; esac
+case "$action" in install|update|migrate) ;; *) fail 'Gebruik: sh install.sh install|update|migrate' ;; esac
 [ "$(effective_uid)" = 0 ] || fail 'Rootrechten konden niet worden bevestigd. Voer dit uit als root op de router.'
 [ -t 0 ] || fail 'Open een interactief SSH-venster; stuur het script niet via een pipe naar sh.'
 if ! find_bin jq >/dev/null && [ -x /opt/bin/opkg ]; then /opt/bin/opkg update && /opt/bin/opkg install jq; fi
 for tool in curl jq sha256sum awk sed grep; do find_bin "$tool" >/dev/null || fail "Ontbreekt: $tool. Installeer eerst via Entware/amtm."; done
 if [ "$action" = install ]; then
   [ ! -e "$ENGINE" ] && [ ! -e /jffs/scripts/vpn_ipcatcher.real.sh ] || fail 'Bestaande installatie gevonden. Gebruik update, niet install.'
+  [ "$(nvram get jffs2_scripts)" = 1 ] || fail 'Schakel JFFS custom scripts en configs in.'
+elif [ "$action" = migrate ]; then
+  [ -s "$ENGINE" ] && [ -s /jffs/scripts/vpn_ipcatcher.real.sh ] && [ -f /jffs/scripts/vpn_ipcatcher.conf ] || fail 'Migratie vereist een bestaande engine en configuratie.'
+  [ ! -s "$ADDON/vpn_ipcatcher_update.sh" ] || fail 'Deze installatie heeft al een updater. Gebruik update.'
   [ "$(nvram get jffs2_scripts)" = 1 ] || fail 'Schakel JFFS custom scripts en configs in.'
 else
   [ -s "$ENGINE" ] && [ -s "$ADDON/vpn_ipcatcher_update.sh" ] || fail 'Deze oude installatie heeft geen veilige updater. Maak eerst een back-up; automatische legacy-migratie wordt niet uitgevoerd.'
@@ -52,6 +56,12 @@ for relative in $FILES; do
   [ "$actual" = "$expected" ] || fail "Checksum verschilt: $relative"
   case "$relative" in *.sh) sh -n "$STAGE/$relative" ;; esac
 done
+if [ "$action" = migrate ]; then
+  sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh" migrate "$REPO" "$commit"
+  "$ENGINE" update-source "$REPO" main
+  echo 'Migratie voltooid. Gebruik /jffs/scripts/vpn_ipcatcher.sh start als de addon gestopt bleef.'
+  exit 0
+fi
 if [ "$action" = update ]; then
   # Use the new updater to support migration to a newly added program file.
   "$ENGINE" update-source "$REPO" "$commit"

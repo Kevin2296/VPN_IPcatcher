@@ -1,5 +1,16 @@
 # Wijzigingen
 
+## 2.8.3
+
+- Aparte `migrate`-optie voor bestaande legacy-installaties zonder updater.
+- Migratie controleert downloads en maakt een volledige prive-back-up voor wijzigingen.
+- Ontbrekende helpers worden aangevuld; VPN-keuze wordt eenmalig gecontroleerd.
+- Fouten tijdens migratie herstellen programma's, gewijzigde hooks en configuratie.
+- Gestopte/onbekende engine blijft gestopt; gewone updates en crashherstel blijven beschikbaar.
+- Installer en back-ups werken ook zonder het losse `id`-commando.
+- Entry-point heeft nu een expliciete PATH voor cron/watchdog.
+- Legacy terugzetten vereist de volledige back-up; geen onvolledige menu-rollback.
+
 ## 2.8.2
 
 - WebUI-status-JSON blijft geldig bij tabs, aanhalingstekens, backslashes en andere log-controltekens.

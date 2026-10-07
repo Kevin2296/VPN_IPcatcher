@@ -37,6 +37,7 @@ chmod +x "$work/bin/id"
 echo 'PASS: legacy backup works without id and rejects non-root effective UID'
 sed -e "s|/jffs|$work/jffs|g" -e "s|/tmp/vpn_ipcatcher|$work/tmp/vpn_ipcatcher|g" \
   -e "s|^PATH=.*|PATH=\"$work/bin:\$PATH\"|" \
+  -e "s|for directory in /opt/bin /opt/sbin /usr/sbin /usr/bin /sbin /bin;|for directory in $work/bin;|" \
   addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh > "$work/helper"
 mkdir -p "$work/jffs/addons/vpn_ipcatcher.d/backups/history"
 printf 'Private history\n' > "$work/jffs/addons/vpn_ipcatcher.d/backups/history/old"
@@ -55,3 +56,12 @@ sh -c 'echo $$ > "$BACKUP_TEST_LOCK/pid"; sh "$BACKUP_HELPER" small --update-own
 if sh "$work/helper" small --update-owner 999999; then echo 'Wrong lock owner accepted' >&2; exit 1; fi
 [ -f "$work/tmp/vpn_ipcatcher_update.lock/pid" ]
 echo 'PASS: small/full archives, parent update-lock reuse, invalid lock owner refused'
+rm "$work/tmp/vpn_ipcatcher_update.lock/pid"
+rmdir "$work/tmp/vpn_ipcatcher_update.lock"
+rm "$work/bin/id"
+sed "s|/proc/self/status|$work/process-status|g" "$work/helper" > "$work/helper-no-id"
+printf 'Uid:\t1000\t0\t0\t0\n' > "$work/process-status"
+sh "$work/helper-no-id" small
+printf 'Uid:\t0\t1000\t0\t0\n' > "$work/process-status"
+if sh "$work/helper-no-id" small; then echo 'Non-root helper backup accepted' >&2; exit 1; fi
+echo 'PASS: runtime backup helper supports missing id and checks effective UID'

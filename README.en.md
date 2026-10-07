@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.8.2](https://img.shields.io/badge/version-2.8.2-087F8C?style=for-the-badge)
+![Version 2.8.3](https://img.shields.io/badge/version-2.8.3-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.2.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.3.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -120,10 +120,21 @@ validation before stopping the app. You still trust this repository: hashes are
 not independent digital signatures. Publishing on GitHub does not automatically
 execute an update on your router.
 
-Old installations without the safe updater are rejected. Back up program files,
-configuration and affected hooks privately before manual migration. Place the
-verified program package under `/jffs`, make shell files executable and run the
-installer. Do not overwrite an old installation with the first-install command.
+**Old installation without an updater?** Create a private backup using `backup.sh`
+and download it to your computer. Then run the dedicated migration once:
+
+```sh
+curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh migrate
+```
+
+Migration verifies downloads, creates a full private backup, asks which active
+VPN to use and installs missing helpers. Other settings are preserved; the chosen
+VPN/list and LAN setting are updated. The old hyphenated directory is retained.
+Failures while replacing files restore the previous files and modified hooks.
+A stopped or unrecognized engine stays off until you select **Start**.
+Future updates work through the menu. **Returning to the legacy addon requires
+the full private backup; menu rollback is only supported for ordinary updates.**
+Do not overwrite an existing installation with the first-install command.
 
 <a name="backup-and-rollback"></a>
 

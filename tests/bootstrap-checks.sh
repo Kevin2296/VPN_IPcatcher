@@ -43,6 +43,21 @@ sh "$work/bootstrap" install
 [ -x "$work/jffs/scripts/vpn_ipcatcher.sh" ]
 if sh "$work/bootstrap" install; then echo 'Existing installation overwritten' >&2; exit 1; fi
 echo 'PASS: bootstrap validates downloads before writes and refuses reinstall'
+if sh "$work/bootstrap" migrate; then echo 'Modern installation migrated again' >&2; exit 1; fi
+rm "$work/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh"
+cat > "$work/payload/addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" > "$BOOTSTRAP_TEST_WORK/migration-action"
+cp "$0" "$BOOTSTRAP_TEST_WORK/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh"
+EOF
+: > "$work/payload/SHA256SUMS"
+for relative in $files; do
+  hash="$(sha256sum "$work/payload/$relative")"; hash="${hash%% *}"
+  printf '%s  %s\n' "$hash" "$relative" >> "$work/payload/SHA256SUMS"
+done
+sh "$work/bootstrap" migrate
+grep -q '^migrate Kevin2296/VPN_IPcatcher 1111111111111111111111111111111111111111$' "$work/migration-action"
+echo 'PASS: bootstrap dispatches explicit legacy migration without calling the old update interface'
 sed '/^action=/,$d' "$work/bootstrap" > "$work/identity-library"
 . "$work/identity-library"
 [ "$(effective_uid)" = 0 ]

@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.8.2](https://img.shields.io/badge/version-2.8.2-087F8C?style=for-the-badge)
+![Version 2.8.3](https://img.shields.io/badge/version-2.8.3-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -27,7 +27,7 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.8.2.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.8.3.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -123,11 +123,22 @@ voordat de app wordt gestopt. Dit vertrouwt de repository; hashes zijn geen
 afzonderlijke digitale handtekening. Publiceren op GitHub voert niet automatisch
 een update op de router uit.
 
-Oude installaties zonder veilige updater worden geweigerd. Maak eerst een
-persoonlijke back-up van programma's, configuratie en betrokken hooks. Handmatige
-migratie vereist het gecontroleerde programmapakket onder `/jffs`, uitvoerbare
-shellbestanden en daarna de installer. Gebruik geen eerste installatie om een
-oude installatie te overschrijven.
+**Oude installatie zonder updater?** Maak eerst een prive-back-up met `backup.sh`
+en download die naar je computer. Gebruik daarna eenmaal de aparte migratie:
+
+```sh
+curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh migrate
+```
+
+De migratie controleert de downloads, maakt een volledige prive-back-up, vraagt
+welke actieve VPN je wilt gebruiken en vult ontbrekende helpers aan. Andere
+instellingen blijven behouden; de gekozen VPN/lijst en LAN-instelling worden
+bijgewerkt. De oude map met een koppelteken blijft staan als referentie. Bij een
+fout tijdens vervangen worden de vorige bestanden en aangepaste hooks hersteld.
+Een gestopte of niet herkende engine blijft uit: kies daarna zelf **Start**.
+Na migratie werken gewone updates via het menu. **Terug naar de oude legacy-addon
+vereist de volledige prive-back-up; menu-rollback is alleen voor gewone updates.**
+Gebruik niet `install` om een bestaande installatie te overschrijven.
 
 <a name="back-up-en-terugzetten"></a>
 
@@ -391,7 +402,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.2.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.3.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -486,10 +497,21 @@ validation before stopping the app. You still trust this repository: hashes are
 not independent digital signatures. Publishing on GitHub does not automatically
 execute an update on your router.
 
-Old installations without the safe updater are rejected. Back up program files,
-configuration and affected hooks privately before manual migration. Place the
-verified program package under `/jffs`, make shell files executable and run the
-installer. Do not overwrite an old installation with the first-install command.
+**Old installation without an updater?** Create a private backup using `backup.sh`
+and download it to your computer. Then run the dedicated migration once:
+
+```sh
+curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh migrate
+```
+
+Migration verifies downloads, creates a full private backup, asks which active
+VPN to use and installs missing helpers. Other settings are preserved; the chosen
+VPN/list and LAN setting are updated. The old hyphenated directory is retained.
+Failures while replacing files restore the previous files and modified hooks.
+A stopped or unrecognized engine stays off until you select **Start**.
+Future updates work through the menu. **Returning to the legacy addon requires
+the full private backup; menu rollback is only supported for ordinary updates.**
+Do not overwrite an existing installation with the first-install command.
 
 <a name="backup-and-rollback"></a>
 

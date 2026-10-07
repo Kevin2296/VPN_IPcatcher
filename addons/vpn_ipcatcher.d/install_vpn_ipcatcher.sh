@@ -1,6 +1,6 @@
 #!/bin/sh
 # install_vpn_ipcatcher.sh - safe installer/repair script for vpn_ipcatcher WebGUI setup
-# Version: 2.8.2
+# Version: 2.8.3
 set -e
 
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -111,6 +111,11 @@ EOS
 }
 
 main(){
+  if [ "${1:-}" = hooks ]; then
+    install_service_event_block
+    install_services_start_block
+    return
+  fi
   mkdir -p "$ADDON_DIR" /jffs/scripts /www/user 2>/dev/null
 
   ok=1

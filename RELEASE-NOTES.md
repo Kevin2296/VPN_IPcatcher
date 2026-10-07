@@ -1,7 +1,17 @@
-# 🛡️ VPN IP Catcher 2.8.2 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.3 · Testrelease / Prerelease
 
-**WebUI-fix:** tabs/controltekens in logregels breken de status-JSON niet meer.
-**WebUI fix:** tabs/control characters in logs no longer invalidate status JSON.
+**Migratie:** aparte `migrate`-optie voor oudere installaties zonder updater,
+met gecontroleerde downloads, een volledige prive-back-up en herstel bij fouten
+tijdens het vervangen. De VPN-keuze wordt eenmalig gecontroleerd. Back-ups werken
+nu ook zonder `id`; de wrapper heeft een expliciete PATH voor cron/watchdog.
+
+**Migration:** dedicated `migrate` action for legacy installations without an
+updater, verified downloads, full private backup and recovery from replacement
+failures. One-time VPN selection; backups support missing `id`; explicit wrapper PATH.
+
+**Legacy rollback:** terug naar de oude addon vereist de volledige prive-back-up.
+Returning to the legacy addon requires the full private backup. Menu rollback
+is supported for ordinary updates only. Power-loss recovery is not guaranteed.
 
 🇳🇱 [Nederlandse uitleg](https://github.com/Kevin2296/VPN_IPcatcher#nederlands) · 🇬🇧 [English documentation](https://github.com/Kevin2296/VPN_IPcatcher#english)
 
