@@ -372,7 +372,7 @@ instellingen en rollback. Kernel, WebUI en echt VPN-verkeer vereisen routertests
 
 ---
 
-**🌍 Taal:** 🇳🇱 Nederlands | 🇬🇧 [English](README.en.md)  
+**🌍 Taal:** 🇳🇱 [Nederlands](#nederlands) | 🇬🇧 [English](#english)  
 [Wijzigingen](CHANGELOG.md) / [Releasebeschrijving](RELEASE-NOTES.md) / [Repository](https://github.com/Kevin2296/VPN_IPcatcher)
 
 <!-- ENGLISH_SECTION -->
@@ -716,5 +716,5 @@ rollback. Kernel, WebUI and real VPN traffic require router-side tests.
 
 ---
 
-**🌍 Language:** 🇳🇱 [Nederlands](README.md) | 🇬🇧 English  
+**🌍 Language:** 🇳🇱 [Nederlands](https://github.com/Kevin2296/VPN_IPcatcher#nederlands) | 🇬🇧 [English](https://github.com/Kevin2296/VPN_IPcatcher#english)  
 [Changelog, Dutch](CHANGELOG.md) / [Release notes, Dutch](RELEASE-NOTES.md) / [Repository](https://github.com/Kevin2296/VPN_IPcatcher)
