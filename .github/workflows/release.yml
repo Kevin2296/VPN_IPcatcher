@@ -3,7 +3,7 @@ name: Test and Publish Release
 on:
   push:
     branches: [main]
-    paths: [VERSION, .github/workflows/release.yml]
+    paths: [VERSION, .github/workflows/release.yml, 'tests/**']
   workflow_dispatch:
 
 permissions:
