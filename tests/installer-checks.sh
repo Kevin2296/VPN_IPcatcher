@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+TMP="${TMPDIR:-/tmp}/vpnipc-installer-tests-$$"
+mkdir -p "$TMP/jffs/scripts"
+trap 'rm -rf "$TMP"' EXIT
+cp "$ROOT/scripts/service-event" "$TMP/jffs/scripts/service-event"
+cp "$ROOT/scripts/services-start" "$TMP/jffs/scripts/services-start"
+sed -e '/^main "\$@"/,$d' -e "s|/jffs/|$TMP/jffs/|g" \
+  "$ROOT/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh" > "$TMP/library"
+. "$TMP/library"
+log(){ :; }
+install_service_event_block
+install_services_start_block
+install_service_event_block
+install_services_start_block
+sh -n "$SERVICE_EVENT"
+sh -n "$SERVICES_START"
+[ "$(grep -c '# BEGIN vpn_ipcatcher WebGUI' "$SERVICE_EVENT")" = 1 ]
+[ "$(grep -c '# BEGIN vpn_ipcatcher startup' "$SERVICES_START")" = 1 ]
+if grep -q '### vpn_ipcatcher WebUI start' "$SERVICE_EVENT"; then exit 1; fi
+if grep -q '# BEGIN vpn_ipcatcher SAFE' "$SERVICES_START"; then exit 1; fi
+grep -q 'vipcR\*|vipcA\*|vipcZ\*|vipcX\*' "$SERVICE_EVENT"
+grep -q '/jffs/scripts/YazDHCP startup' "$SERVICES_START"
+grep -q '/jffs/scripts/firewall webui' "$SERVICE_EVENT"
+grep -q 'vpn_ipcatcher.sh watchdog' "$SERVICES_START"
+echo 'PASS: installer preserves other addons, migrates legacy blocks, handles current WebUI events and is repeatable'
