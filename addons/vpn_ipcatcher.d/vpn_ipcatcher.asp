@@ -614,6 +614,28 @@ function removeWords(current, remList){var rem={}; (remList||[]).forEach(functio
 function decodeText(txt){txt=String(txt||''); if(txt.indexOf('\\n')>=0) txt=txt.replace(/\\n/g,'\n'); return txt.trim()}
 function splitCompactLines(txt){txt=decodeText(txt); if(txt.indexOf('\n')!==-1) return txt; return txt.replace(/\s(?=Name:|Type:|Header:|Revision:|Size in memory:|References:|Number of entries:|Members:|IP\s+timeout|Bytes\s+Source)/g,'\n').replace(/\s(?=\d{12}\s+\d{1,3}\.)/g,'\n').replace(/\s(?=\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\s+timeout=)/g,'\n').replace(/\s(?=\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/g,'\n')}
 
+Object.assign(VPNIPC_I18N.nl,{autoUpdateConfirm:'amtm toestaan om nieuwere versies te installeren met verplichte lokale back-up? Dit registreert de addon niet automatisch in de centrale AU-lijst en maakt geen eigen tijdschema.',autoUpdateEnable:'amtm-updates toestaan',autoUpdateDisable:'amtm-updates uitschakelen',autoUpdateOn:'amtmupdate toegestaan; centrale AU-registratie vereist',autoUpdateOff:'amtmupdate uitgeschakeld'});
+Object.assign(VPNIPC_I18N.en,{autoUpdateConfirm:'Allow amtm to install newer versions with a mandatory local backup? This does not register the addon in the central AU catalog and does not create a separate schedule.',autoUpdateEnable:'Allow amtm updates',autoUpdateDisable:'Disable amtm updates',autoUpdateOn:'amtmupdate allowed; central AU registration required',autoUpdateOff:'amtmupdate disabled'});
+Object.assign(VPNIPC_I18N.nl,{
+  help:'Uitleg',routing:'Domeinroutes',dvrChoose:'Kies DVR-policy',dvrDomain:'Domeinnaam',dvrAdd:'Domein toevoegen',dvrInvalid:'Kies een policy en een geldige domeinnaam zonder URL of login.',dvrConfirm:'Domein permanent toevoegen aan deze DVR-policy? Eerst wordt een lokale uitgebreide back-up gemaakt. Bestaande verbindingen kunnen een andere route krijgen.',
+  checkUpdate:'Update controleren',installUpdate:'Update installeren',forceUpdate:'Opnieuw installeren',updateConfirm:'Update installeren? Voor wijzigingen wordt automatisch een verplichte lokale back-up gemaakt. Je instellingen blijven behouden.',forceUpdateConfirm:'De gepubliceerde versie opnieuw installeren, ook als het versienummer gelijk is? Voor wijzigingen wordt een verplichte lokale back-up gemaakt.',saveBeforeUpdate:'Sla eerst je gewijzigde instellingen op of verwerp ze.',
+  helpLists:'Kandidaat: tijdelijk ontdekt IP, nog niet voldoende beoordeeld. Wachtlijst: IP klaar voor routering, maar een bestaande verbinding moet eerst eindigen om geen actieve stream van uitgangs-IP te laten wisselen. Definitief: IP in de VPN-lijst, met een vervaltijd; niet permanent.',
+  helpRouting:'IP Catcher hergebruikt een passende bestaande DVR-IPSet of maakt eigen tijdelijke IPSet-lijsten en markregels. Die eigen lijsten zijn geen nieuwe permanente DVR-domeinpolicy. Domeinroutes voeg je apart toe aan een bestaande DVR-policy. Alleen IPv4 wordt geleerd.',
+  helpPresets:'Presets sluiten verkeer uit van het leren; aanvinken betekent NIET via deze catcher laten leren. Andere ASUS/DVR-regels blijven gelden. Onder Details kun je losse domeinen, IPs en netwerken selecteren. Een gedeeld item kan ook bij andere presets voorkomen. Sla wijzigingen daarna op.',
+  helpDns:'Domeinnamen komen uit DNS-verkeer van het gekozen apparaat tijdens de meting. Een IP heeft niet automatisch een unieke domeinnaam. Gecachte DNS, directe IP-URLs en versleutelde DNS kunnen ontbreken. DNS-aanwijzingen bewijzen niet welke app het verkeer gebruikt. Herstart de app of het apparaat tijdens een nieuwe meting. Diagnose blijft lokaal; exporteren downloadt alleen naar je eigen computer.',
+  helpUpdates:'Updates via de browser vragen bevestiging en maken voor wijzigingen een lokale back-up. Opnieuw installeren repareert dezelfde versie. Back-ups beheren en terugzetten kan in het terminalmenu. amtmupdate-ondersteuning is niet hetzelfde als opname in de centrale amtm AU-lijst.',
+  dnsState_idle:'DNS: geen meting',dnsState_starting:'DNS: capture wordt gestart',dnsState_capturing:'DNS: capture actief (TCP/UDP 53)',dnsState_finished:'DNS: capture afgerond',dnsState_tools_missing:'DNS: tcpdump of timeout ontbreekt',dnsState_capture_error:'DNS: capture mislukt; controleer tcpdump/timeout',dnsState_capture_busy:'DNS: vorige capture nog bezig',dnsState_unavailable:'DNS: capturestatus niet beschikbaar'
+});
+Object.assign(VPNIPC_I18N.en,{
+  help:'Help',routing:'Domain routes',dvrChoose:'Choose DVR policy',dvrDomain:'Domain name',dvrAdd:'Add domain',dvrInvalid:'Choose a policy and a valid domain without URL or credentials.',dvrConfirm:'Permanently add this domain to the DVR policy? A local full backup is created first. Existing connections may change route.',
+  checkUpdate:'Check update',installUpdate:'Install update',forceUpdate:'Reinstall',updateConfirm:'Install update? A mandatory local backup is made before changes. Your settings are preserved.',forceUpdateConfirm:'Reinstall the published version even if its version number is unchanged? A mandatory local backup is made before changes.',saveBeforeUpdate:'Save or discard your modified settings first.',
+  helpLists:'Candidate: temporarily discovered IP, still being assessed. Waiting: ready for routing but an existing connection must end first, to avoid changing the exit IP of an active stream. Final: IP in the VPN list with an expiry time; not permanent.',
+  helpRouting:'IP Catcher reuses a suitable existing DVR IPSet or creates its own temporary IPSets and marking rules. These managed sets are not new permanent DVR domain policies. Add domain routes separately to an existing DVR policy. Learning supports IPv4 only.',
+  helpPresets:'Presets exclude traffic from learning; checking one does NOT request VPN routing. Other ASUS/DVR rules still apply. Expand Details to select individual domains, IPs and networks. Shared entries can affect other presets. Save your changes afterwards.',
+  helpDns:'Domain names come from DNS traffic of the selected device during measurement. An IP does not automatically have a unique domain. Cached DNS, direct IP URLs and encrypted DNS may be absent. DNS hints do not prove which app uses a connection. Restart the app or device during a new measurement. Diagnostics stay local; exporting only downloads to your own computer.',
+  helpUpdates:'Browser updates ask for confirmation and make a local backup before changes. Reinstall repairs the same version. Manage backups and restore through the terminal menu. amtmupdate support does not mean inclusion in the central amtm AU catalog.',
+  dnsState_idle:'DNS: no measurement',dnsState_starting:'DNS: starting capture',dnsState_capturing:'DNS: capture active (TCP/UDP 53)',dnsState_finished:'DNS: capture finished',dnsState_tools_missing:'DNS: tcpdump or timeout missing',dnsState_capture_error:'DNS: capture failed; check tcpdump/timeout',dnsState_capture_busy:'DNS: previous capture still busy',dnsState_unavailable:'DNS: capture status unavailable'
+});
 function applyStatusData(d){
   dataCache=d;
   if(Array.isArray(d.protected_ips)) protectedPresetIps=d.protected_ips;
@@ -629,7 +651,7 @@ function waitForActionResult(nonce, attempts){
       applyStatusData(d);
       if(String(d.last_action_nonce||'')===String(nonce)){
         if(d.last_action_status==='ok') return d;
-        throw new Error(d.last_action_message||t('routerActionFailed'));
+        if(d.last_action_status!=='running') throw new Error(d.last_action_message||t('routerActionFailed'));
       }
       if(attempts<=0) throw new Error(t('noConfirmation'));
       return new Promise(function(resolve){setTimeout(resolve,750);})
@@ -682,8 +704,8 @@ function buildConfigPayload(){
   });
   return lines.join('\n')+'\n';
 }
-function sendStreamedConfig(action,nonce){
-  var encoded=base64UrlEncode(buildConfigPayload());
+function sendStreamedConfig(action,nonce,payload){
+  var encoded=base64UrlEncode(payload===undefined?buildConfigPayload():payload);
   /* Houd de rc-service naam ruim onder de firmwarelimiet, maar voorkom tientallen extra requests. */
   var chunkSize=88;
   var chunks=[];
@@ -699,7 +721,7 @@ function sendStreamedConfig(action,nonce){
       return postRcEvent('vipcA'+nonce+'_'+n+'_'+chunk).then(function(){progress(t('configSending'));});
     });
   });
-  var finalAction=(action==='save_config_restart')?'saverestart':'save';
+  var finalAction=action==='dvr'?'dvr':((action==='save_config_restart')?'saverestart':'save');
   return chain.then(function(){
     return postRcEvent('vipcZ'+nonce+'_'+finalAction).then(function(){progress(action==='save_config_restart'?t('restartStarted'):t('saveFinishing'));});
   });
@@ -708,6 +730,10 @@ function sendSimpleAction(action,nonce){
   return postRcEvent('vipcX'+nonce+'_'+action);
 }
 function applyAction(action){
+  if(actionBusy) return;
+  if((action==='install_update'||action==='force_update')&&!window.confirm(t(action==='force_update'?'forceUpdateConfirm':'updateConfirm')))return;
+  if(action==='auto_update_enable'&&!window.confirm(t('autoUpdateConfirm')))return;
+  if((action==='install_update'||action==='force_update')&&dirty){showToast(t('saveBeforeUpdate'));return;}
   var isSave=(action==='save_config' || action==='save_config_restart');
   if(isSave && !configLoaded){showToast(t('configNotLoaded')); return;}
   var buttons=document.querySelectorAll('.vpn_ipcatcher_dashboard button[onclick*="applyAction"]');
@@ -717,16 +743,33 @@ function applyAction(action){
   showToast(isSave?t('sendingConfig'):t('actionSent',{action:action}));
   var sendPromise=isSave?sendStreamedConfig(action,nonce):sendSimpleAction(action,nonce);
   sendPromise
-    .then(function(){setText('toast',t('waitingConfirmation')); return waitForActionResult(nonce,120);})
-    .then(function(){
+    .then(function(){setText('toast',t('waitingConfirmation')); return waitForActionResult(nonce,action.indexOf('update')>=0?800:120);})
+    .then(function(result){
       if(isSave){dirty=false; pendingPresetKeys={}; externalConfigWarningShown=false;}
+      if(action.indexOf('update')>=0)setText('maintenanceResult',result.last_action_message||t('actionSuccess'));
       showToast(isSave?(action==='save_config_restart'?t('saveRestartSuccess'):t('saveSuccess')):t('actionSuccess'));
     })
-    .catch(function(err){showToast('FOUT: '+(err&&err.message?err.message:String(err)));})
+    .catch(function(err){var message=err&&err.message?err.message:String(err);if(action.indexOf('update')>=0)setText('maintenanceResult',message);showToast('FOUT: '+message);})
     .then(function(){
       buttons.forEach(function(b){b.disabled=false;});
       actionBusy=false;
+      var progress=byId('maintenanceProgress');if(progress)progress.hidden=true;
     });
+  var progress=byId('maintenanceProgress');if(progress)progress.hidden=action.indexOf('update')<0;
+}
+function addDvrDomain(){
+  if(actionBusy)return;
+  var domain=byId('dvrDomain').value.trim().toLowerCase(),policy=byId('dvrPolicy').value;
+  if(domain.length>253||domain.split('.').length<2||!domain.split('.').every(function(s){return s.length<=63&&/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(s);})||!/^[A-Za-z0-9_-]{1,24}$/.test(policy)){showToast(t('dvrInvalid'));return;}
+  if(!window.confirm(t('dvrConfirm')+'\n'+domain+' → '+policy))return;
+  actionBusy=true;
+  var nonce='v'+Date.now().toString(36);
+  setText('dvrResult',t('waitingConfirmation'));
+  sendStreamedConfig('dvr',nonce,'DOMAIN='+domain+'\nPOLICY='+policy+'\n')
+    .then(function(){return waitForActionResult(nonce,800);})
+    .then(function(result){setText('dvrResult',result.last_action_message||t('actionSuccess'));})
+    .catch(function(error){setText('dvrResult',error.message||String(error));})
+    .finally(function(){actionBusy=false;});
 }
 
 function fillConfig(cfg, revision){
@@ -1056,8 +1099,9 @@ function renderLiveTab(){
   if(box.innerHTML!==nextHtml)box.innerHTML=nextHtml;
   var newScroll=box.querySelector?box.querySelector('.scroll'):null;
   var keep=byId('liveKeepPosition'),position=liveScrollPositions[currentTab];
+  var frozenDiagnostic=currentTab==='diagnostic'&&diagnosticState!=='active';
   if(newScroll){
-    if(!keep||keep.checked){
+    if(frozenDiagnostic||!keep||keep.checked){
       newScroll.scrollTop=position?position.top:0;newScroll.scrollLeft=position?position.left:0;box.scrollLeft=position?position.outerLeft:0;
     }else{
       newScroll.scrollTop=currentTab==='log'?newScroll.scrollHeight:0;
@@ -1074,6 +1118,14 @@ function updateOverview(d){
   setText('overviewEngineState', d.engine==='running' ? t('serviceRunning') : t('serviceStopped'));
     setText('overviewCapture', 'tcpdump: '+(d.tcpdump_count||'-')+' - '+t('updated')+': '+(d.last_update||'-'));
   setText('overviewSourceIps', (d.config && d.config.SOURCE_IPS) ? d.config.SOURCE_IPS : t('allDevices'));
+  var select=byId('dvrPolicy');
+  if(select){
+    var value=select.value,options='<option value="">'+escapeHtml(t('dvrChoose'))+'</option>';
+    String(d.dvr_policies||'').split('\n').forEach(function(line){var p=line.split('|');if(/^[A-Za-z0-9_-]{1,24}$/.test(p[0])&&/^(ovpnc|wgc)[1-5]$/.test(p[1]))options+='<option value="'+escapeHtml(p[0])+'">'+escapeHtml(p[0]+' · '+p[1])+'</option>';});
+    if(select.innerHTML!==options){select.innerHTML=options;select.value=value;}
+  }
+  setText('diagnosticDnsState',t('dnsState_'+(d.diagnostic_dns_state||'unavailable').replace(/-/g,'_')));
+  setText('autoUpdateStatus',t(d.amtmupdate_enabled==='yes'?'autoUpdateOn':'autoUpdateOff'));
 }
 function presetState(item){
   var doms=getWords(byId('cfg_EXCLUDE_DOMAINS').value);
@@ -1122,6 +1174,13 @@ function togglePresetDirect(el){
   var item=findPreset(el.getAttribute('data-key'));
   if(item) applyPresetToConfig(item, el.checked ? 'add' : 'remove');
 }
+function togglePresetPart(el){
+  var item=findPreset(el.getAttribute('data-key')),kind=el.getAttribute('data-kind'),value=el.getAttribute('data-value');
+  if(!item||['domains','ips','nets'].indexOf(kind)<0||(item[kind]||[]).indexOf(value)<0)return;
+  if(kind==='ips'&&(protectedPresetIps||[]).indexOf(value)>=0)return;
+  var part={key:item.key,label:item.label,domains:[],ips:[],nets:[]};part[kind]=[value];
+  applyPresetToConfig(part,el.checked?'add':'remove');
+}
 
 function vpnipcCategoryName(cat){var key=VPNIPC_CATEGORY_KEYS[cat.name||'']; return key?t(key):(cat.name||'Presets');}
 function vpnipcCategoryNote(cat){var key=VPNIPC_CATEGORY_NOTE_KEYS[cat.name||'']; return key?t(key):(cat.note||'');}
@@ -1134,6 +1193,7 @@ function renderPresets(){
   if(!wrap) return;
   if(!PRESET_CATEGORIES.length){wrap.innerHTML='<div class="muted">'+escapeHtml(t('presetsLoading'))+'</div>'; return;}
   var html='';
+  var openDetails={};wrap.querySelectorAll('details[open][data-preset]').forEach(function(el){openDetails[el.getAttribute('data-preset')]=true;});
   PRESET_CATEGORIES.forEach(function(cat){
     html+='<div class="presetCard"><h4>'+escapeHtml(vpnipcCategoryName(cat))+'</h4>';
     var catNote=vpnipcCategoryNote(cat); if(catNote) html+='<div class="presetMeta" style="margin-bottom:6px">'+escapeHtml(catNote)+'</div>';
@@ -1151,7 +1211,16 @@ function renderPresets(){
       html+='<div style="flex:1">';
       html+='<div><strong>'+escapeHtml(vpnipcPresetLabel(item))+'</strong> - <span class="'+cls+'">'+shownState+'</span></div>';
       html+='<div class="presetMeta">'+meta.join(' ')+'</div>';
-      html+='<details><summary>'+escapeHtml(t('details'))+'</summary><div class="presetMeta">'+escapeHtml(detail.join(' | '))+'</div></details>';
+      html+='<details data-preset="'+escapeHtml(item.key)+'" '+(openDetails[item.key]?'open':'')+'><summary>'+escapeHtml(t('details'))+'</summary><div class="presetMeta">';
+      ['domains','ips','nets'].forEach(function(kind){
+        var field=byId('cfg_EXCLUDE_'+(kind==='domains'?'DOMAINS':kind==='ips'?'IPS':'NETS'));
+        var selected=getWords(field.value);
+        (item[kind]||[]).forEach(function(value){
+          var protectedValue=kind==='ips'&&(protectedPresetIps||[]).indexOf(value)>=0;
+          html+='<label style="display:flex;gap:8px;margin:6px 0"><input type="checkbox" data-key="'+escapeHtml(item.key)+'" data-kind="'+kind+'" data-value="'+escapeHtml(value)+'" '+(protectedValue||selected.indexOf(value)>=0?'checked ':'')+(protectedValue?'disabled ':'')+'onchange="togglePresetPart(this)"><span>'+escapeHtml(value)+'</span></label>';
+        });
+      });
+      html+='</div></details>';
       html+='</div></div>';
     });
     html+='</div>';
@@ -1304,7 +1373,14 @@ window.addEventListener('load', function(){
                     <button type="button" class="btn orange" onclick="applyAction('repair_excludes')" data-i18n="repairSafeExcludes">Veilige uitsluitingen herstellen</button>
                     <button type="button" class="btn" onclick="applyAction('clean_excluded')" data-i18n="cleanExcludedIps">Uitgesloten IP’s opruimen</button>
                     <button type="button" class="btn" onclick="applyAction('clear_log')" data-i18n="clearLog">Log wissen</button>
-                  </div></details>
+                    <button type="button" class="btn" onclick="applyAction('check_update')" data-i18n="checkUpdate">Update controleren</button>
+                    <button type="button" class="btn blue" onclick="applyAction('install_update')" data-i18n="installUpdate">Update installeren</button>
+                    <button type="button" class="btn" onclick="applyAction('force_update')" data-i18n="forceUpdate">Opnieuw installeren</button>
+                    <progress id="maintenanceProgress" hidden></progress>
+                    <button type="button" class="btn" onclick="applyAction('auto_update_enable')" data-i18n="autoUpdateEnable">amtm-updates toestaan</button>
+                    <button type="button" class="btn" onclick="applyAction('auto_update_disable')" data-i18n="autoUpdateDisable">amtm-updates uitschakelen</button>
+                    <span id="autoUpdateStatus" role="status"></span>
+                  </div><p id="maintenanceResult" role="status"></p></details>
                 </div>
 
                 <div class="layoutTabs">
@@ -1313,6 +1389,8 @@ window.addEventListener('load', function(){
                   <button type="button" class="layoutTab" id="pageTab_config" onclick="setPage('config')" data-i18n="config">Config</button>
                   <button type="button" class="layoutTab" id="pageTab_exclusions" onclick="setPage('exclusions')" data-i18n="exclusions">Exclusions</button>
                   <button type="button" class="layoutTab" id="pageTab_presets" onclick="setPage('presets')" data-i18n="presetLists">Preset lists</button>
+                  <button type="button" class="layoutTab" id="pageTab_routing" onclick="setPage('routing')" data-i18n="routing">Domeinroutes</button>
+                  <button type="button" class="layoutTab" id="pageTab_help" onclick="setPage('help')" data-i18n="help">Uitleg</button>
                 </div>
 
                 <div id="pendingBar" class="actions saveBar" hidden><span id="pendingChanges"></span><button type="button" class="btn blue" onclick="applyAction('save_config_restart')" data-i18n="saveRestart">Opslaan + herstarten</button></div>
@@ -1373,6 +1451,7 @@ window.addEventListener('load', function(){
                         <label><span data-i18n="diagnosticMarker">Zender / gebeurtenis</span><input id="diagnosticMarker" maxlength="80"></label>
                         <button type="button" class="btn" onclick="addDiagnosticMarker()" data-i18n="diagnosticMark">Markeren</button>
                         <span class="muted" data-i18n="diagnosticDnsNote">DNS-aanwijzingen zijn geen bewijs van de gebruikte dienst. Versleutelde of eerder gecachte DNS kan ontbreken.</span>
+                        <span id="diagnosticDnsState" class="muted" role="status"></span>
                         <span class="muted" data-i18n="diagnosticLimited">Laatste 2000 waarnemingen; export bevat privé-verbindingsgegevens.</span>
                       </div>
                       <div id="liveFilters" class="liveFilters">
@@ -1484,6 +1563,28 @@ window.addEventListener('load', function(){
                   </div>
                 </div>
 
+                <div class="page" id="page_routing">
+                  <div class="panel-title" data-i18n="routing">Domeinroutes</div>
+                  <div class="panel-body">
+                    <div class="liveFilters">
+                      <label><span data-i18n="dvrDomain">Domeinnaam</span><input id="dvrDomain" maxlength="253" placeholder="example.org" autocapitalize="none" spellcheck="false"></label>
+                      <label><span data-i18n="dvrChoose">Kies bestaande DVR-policy</span><select id="dvrPolicy"></select></label>
+                      <button type="button" class="btn blue" onclick="addDvrDomain()" data-i18n="dvrAdd">Domein toevoegen</button>
+                    </div>
+                    <p id="dvrResult" role="status"></p>
+                    <p class="muted" data-i18n="helpRouting"></p>
+                  </div>
+                </div>
+                <div class="page" id="page_help">
+                  <div class="panel-title" data-i18n="help">Uitleg</div>
+                  <div class="panel-body">
+                    <h3 data-i18n="candidate">Kandidaat</h3><p data-i18n="helpLists"></p>
+                    <h3 data-i18n="routing">Domeinroutes</h3><p data-i18n="helpRouting"></p>
+                    <h3 data-i18n="presetLists">Presetlijsten</h3><p data-i18n="helpPresets"></p>
+                    <h3 data-i18n="diagnostic">Diagnose</h3><p data-i18n="helpDns"></p>
+                    <h3 data-i18n="maintenance">Onderhoud</h3><p data-i18n="helpUpdates"></p>
+                  </div>
+                </div>
                 <div class="footer" data-i18n="footer">vpn_ipcatcher UI v11 - ASUS Merlin-integratie</div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.0
+# Version: 2.9.1
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -18,7 +18,7 @@ WAS_DISABLED=0
 OWN_UPDATE=0
 SELECTION_CHANGED=0
 HOOKS_CHANGED=0
-HOOKS='scripts/services-start scripts/service-event'
+HOOKS='scripts/services-start scripts/service-event scripts/firewall-start'
 CRON_CHANGED=0
 WATCHDOG_JOB=''
 STATUS_JOB=''
@@ -114,7 +114,7 @@ if [ "$action" = update-source ]; then
   exit 0
 fi
 
-case "$action" in check-update|update|force-update|rollback|migrate) ;; *) fail "Onbekende actie: $action" ;; esac
+case "$action" in check-update|update|automatic-update|force-update|rollback|migrate) ;; *) fail "Onbekende actie: $action" ;; esac
 if [ "$action" = migrate ]; then
   [ "$#" = 3 ] && valid_repo "$2" && valid_ref "$3" || fail 'Gebruik: migrate eigenaar/repository commit'
   [ -s "$ENGINE" ] && [ -s /jffs/scripts/vpn_ipcatcher.real.sh ] && [ -f /jffs/scripts/vpn_ipcatcher.conf ] || fail 'Oude engine/configuratie ontbreekt.'
@@ -160,6 +160,13 @@ else
   local_version="$(sed -n 's/^# Version: //p' "$ENGINE" | head -n 1)"
   printf 'Geinstalleerd: %s\nGitHub: %s\nCommit: %s\n' "$local_version" "$remote" "$commit"
   [ "$action" = check-update ] && exit 0
+  if [ "$action" = automatic-update ]; then
+    printf '%s\n' "$local_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || fail 'Lokale versie onbekend; geen automatische update.'
+    if ! awk -v local="$local_version" -v remote="$remote" 'BEGIN {split(local,l,".");split(remote,r,".");for(i=1;i<=3;i++){if(r[i]+0>l[i]+0)exit 0;if(r[i]+0<l[i]+0)exit 1}exit 1}'; then
+      echo 'Geen nieuwere versie; automatische update overgeslagen.'
+      exit 0
+    fi
+  fi
   if [ "$action" = update ] && [ "$local_version" = "$remote" ]; then
     echo 'Deze versie is al geinstalleerd. Gebruik force-update om de bestanden en koppelingen te repareren.'
     exit 0

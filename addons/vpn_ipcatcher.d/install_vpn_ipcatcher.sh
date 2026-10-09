@@ -1,7 +1,9 @@
 #!/bin/sh
 # install_vpn_ipcatcher.sh - safe installer/repair script for vpn_ipcatcher WebGUI setup
-# Version: 2.9.0
+# Version: 2.9.1
 set -e
+PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
 
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
 ENGINE="/jffs/scripts/vpn_ipcatcher.sh"
@@ -11,6 +13,7 @@ WEBUI="$ADDON_DIR/vpn_ipcatcher_webui.sh"
 ASP="$ADDON_DIR/vpn_ipcatcher.asp"
 SERVICE_EVENT="/jffs/scripts/service-event"
 SERVICES_START="/jffs/scripts/services-start"
+FIREWALL_START="/jffs/scripts/firewall-start"
 LOG="/tmp/vpn_ipcatcher_install.log"
 
 log(){ echo "$(date '+%F %T') $*" | tee -a "$LOG"; logger -t vpn_ipcatcher_install "$*" 2>/dev/null; }
@@ -110,10 +113,32 @@ EOS
   log "services-start bijgewerkt."
 }
 
+install_firewall_start_block(){
+  [ -f "$FIREWALL_START" ] || printf '#!/bin/sh\n' > "$FIREWALL_START"
+  backup_file "$FIREWALL_START"
+  tmp="${FIREWALL_START}.$$"
+  awk '
+    /# BEGIN vpn_ipcatcher firewall/{skip=1;next}
+    /# END vpn_ipcatcher firewall/{skip=0;next}
+    skip!=1{print}' "$FIREWALL_START" > "$tmp"
+  cat >> "$tmp" <<'EOS'
+
+# BEGIN vpn_ipcatcher firewall
+# Restore our managed marks; existing DVR policies remain owned by DVR.
+/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh prepare >/dev/null 2>&1 &
+# END vpn_ipcatcher firewall
+EOS
+  sh -n "$tmp"
+  mv "$tmp" "$FIREWALL_START"
+  chmod 755 "$FIREWALL_START"
+  log 'firewall-start bijgewerkt.'
+}
+
 main(){
   if [ "${1:-}" = hooks ]; then
     install_service_event_block
     install_services_start_block
+    install_firewall_start_block
     return
   fi
   mkdir -p "$ADDON_DIR" /jffs/scripts /www/user 2>/dev/null
@@ -153,6 +178,7 @@ main(){
 
   install_service_event_block
   install_services_start_block
+  install_firewall_start_block
 
   log "Cron jobs instellen."
   /jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh cron >/dev/null 2>&1

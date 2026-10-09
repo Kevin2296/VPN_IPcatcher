@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.0
+# Version: 2.9.1
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
@@ -28,6 +28,26 @@ lock(){
 }
 
 case "$1" in
+  auto-update)
+    case "${2:-status}" in
+      enable) mkdir -p "$ADDON" && (umask 077; : > "$ADDON/amtmupdate.enabled") ;;
+      disable) rm -f "$ADDON/amtmupdate.enabled" ;;
+      status) if [ -f "$ADDON/amtmupdate.enabled" ]; then echo enabled; else echo disabled; fi ;;
+      *) exit 1 ;;
+    esac
+    ;;
+  amtmupdate)
+    [ -f "$ADDON/amtmupdate.enabled" ] && [ -s "$ADDON/update-source" ] && [ -x "$ADDON/vpn_ipcatcher_update.sh" ] || exit 1
+    [ "${2:-}" != check ] || exit 0
+    [ "$#" = 1 ] || exit 1
+    update_log=/tmp/vpn_ipcatcher_amtmupdate.log
+    if (umask 077; "$ADDON/vpn_ipcatcher_update.sh" automatic-update > "$update_log" 2>&1); then
+      echo 'VPN IP Catcher: amtmupdate voltooid.'
+      exit 0
+    fi
+    echo 'VPN IP Catcher: amtmupdate mislukt; lokaal log /tmp/vpn_ipcatcher_amtmupdate.log.' >&2
+    exit 1
+    ;;
   start|stop|restart|watchdog)
     lock || exit 1
     mkdir -p "$ADDON" || exit 1

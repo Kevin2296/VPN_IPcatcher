@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.0
+# Version: 2.9.1
 # Archives stay private on the router, never under /www.
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -113,7 +113,7 @@ if [ "$mode" = full ]; then
     [ ! -e "/jffs/$relative" ] || set -- "$@" "$relative"
   done
 else
-  for file in "$ADDON"/*.sh "$ADDON"/*.asp "$ADDON"/*.conf "$ADDON"/routing-selection "$ADDON"/update-source; do
+  for file in "$ADDON"/*.sh "$ADDON"/*.asp "$ADDON"/*.conf "$ADDON"/routing-selection "$ADDON"/update-source "$ADDON"/amtmupdate.enabled; do
     [ ! -f "$file" ] || set -- "$@" "${file#/jffs/}"
   done
 fi

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.0
+# Version: 2.9.1
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -63,6 +63,32 @@ valid_connection(){
 }
 policy_rows(){
   awk -F '|' 'NF>=4 && $1 !~ /^#/ && $4 ~ /^(ovpnc|wgc)[1-5]$/ {print $1 "|" $4}' "$POLICIES"
+}
+domain_add(){
+  requested_policy="${1:-}"; requested_domain="${2:-}"
+  case "$requested_policy" in ''|*[!A-Za-z0-9_-]*) error 'Ongeldige DVR-policy.'; return 1 ;; esac
+  [ "${#requested_policy}" -le 24 ] || return 1
+  case "$requested_domain" in *[!0-9.]*) ;; *) error 'Gebruik een domein, geen IP-adres.'; return 1 ;; esac
+  printf '%s\n' "$requested_domain" | awk -F. '
+    length($0)>253 || NF<2 {exit 1}
+    {for(i=1;i<=NF;i++)if(length($i)>63 || $i!~/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/)exit 1}
+    END{}' || { error 'Gebruik alleen een domeinnaam, zonder URL of login.'; return 1; }
+  # This adapter is verified against the supplied DVR version, not unknown APIs.
+  grep -q '^# Version: v3.2.5' "$DVR" || { error 'Browserkoppeling vereist DVR v3.2.5; gebruik anders het DVR-menu.'; return 1; }
+  row="$(policy_rows | awk -F '|' -v p="$requested_policy" '$1==p{print $2}')"
+  valid_connection "$row" || { error 'DVR-policy ontbreekt of is dubbel.'; return 1; }
+  list_dir="$(dirname "$POLICIES")"
+  domain_list="$list_dir/policy_${requested_policy}_domainlist"
+  [ -f "$domain_list" ] && [ ! -L "$domain_list" ] || { error 'DVR-domeinlijst ontbreekt of is een symlink.'; return 1; }
+  [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || { error 'DVR staat uit.'; return 1; }
+  timeout_bin="$(find_bin /usr/bin/timeout /bin/timeout /opt/bin/timeout)"
+  flock_bin="$(find_bin /opt/bin/flock /usr/bin/flock /bin/flock)"
+  [ -n "$timeout_bin" ] && [ -n "$flock_bin" ] || { error 'timeout of flock ontbreekt voor veilige DVR-koppeling.'; return 1; }
+  "$ADDON/vpn_ipcatcher_backup.sh" full || return 1
+  case "$("$timeout_bin" --help 2>&1)" in *'[-t '*|*'-t SECS'*) timeout_flag=-t ;; *) timeout_flag='' ;; esac
+  POLICY="$requested_policy" "$timeout_bin" -s TERM $timeout_flag 60 "$flock_bin" -n /var/lock/domain_vpn_routing.lock "$DVR" adddomain "$requested_domain" </dev/null || return 1
+  grep -Fx "$requested_domain" "$domain_list" >/dev/null || { error 'DVR heeft het domein niet opgeslagen.'; return 1; }
+  "$timeout_bin" -s TERM $timeout_flag 90 "$DVR" querypolicy "$requested_policy" </dev/null || { error 'Domein opgeslagen, maar verversen van DVR is mislukt.'; return 1; }
 }
 selection_read(){
   [ -f "$SELECTION" ] || { error 'Nog geen VPN/lijst gekozen. Gebruik routing-setup of de installer.'; return 1; }
@@ -264,7 +290,18 @@ configure(){
 case "${1:-check}" in
   configure) configure ;;
   check) selection_read && binding_check ;;
-  prepare) selection_read && managed_prepare && binding_check ;;
+  prepare)
+    (
+      # Firewall hooks and periodic checks must not add the same mark concurrently.
+      mkdir "$CONFIG_LOCK" 2>/dev/null || exit 1
+      echo $$ > "$CONFIG_LOCK/pid"
+      trap 'rm -f "$CONFIG_LOCK/pid"; rmdir "$CONFIG_LOCK" 2>/dev/null' EXIT
+      trap 'exit 1' HUP INT TERM
+      selection_read && managed_prepare && binding_check
+    )
+    ;;
+  domain-add) shift; domain_add "$@" ;;
+  policies) policy_rows ;;
   list) list_choices ;;
   dependencies) dependencies ;;
   install-dependencies) install_dependencies && dependencies ;;

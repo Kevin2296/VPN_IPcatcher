@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.0
+# Version: 2.9.1
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -995,6 +995,11 @@ learning_route_ready(){
 }
 destination_is_idle(){
   [ -n "$CT" ] || return 1
+  if [ -n "${PROMOTION_SNAPSHOT:-}" ]; then
+    [ -r "$PROMOTION_SNAPSHOT" ] || return 1
+    destination_snapshot_is_idle "$1" "$PROMOTION_SNAPSHOT"
+    return $?
+  fi
   probe="$CACHE_DIR/promotion-probe"
   mkdir "$probe" 2>/dev/null || return 1
   (
@@ -1002,24 +1007,38 @@ destination_is_idle(){
     trap 'exit 1' HUP INT TERM
     # Check all clients and ports: the DVR destination rule affects them all.
     $CT -L -f ipv4 > "$probe/connections" 2>/dev/null || exit 1
+    destination_snapshot_is_idle "$1" "$probe/connections"
+  )
+}
+destination_snapshot_is_idle(){
     $AWK -v target="$1" '
       {for(i=1;i<=NF;i++) if($i ~ /^dst=/) {
         destination=$i; sub(/^dst=/,"",destination);
         if(destination==target) active=1;
         break
       }}
-      END{exit active?1:0}' "$probe/connections"
-  )
+      END{exit active?1:0}' "$2"
 }
 promote_deferred(){
-  $IPSET save "$WAIT_SET" 2>/dev/null | $AWK '$1=="add" {print $3}' |
+  (
+  [ -n "$CT" ] || exit 1
+  probe="$CACHE_DIR/promotion-batch"
+  mkdir "$probe" 2>/dev/null || exit 1
+  trap 'rm -f "$probe/connections" "$probe/set" "$probe/waiting"; rmdir "$probe" 2>/dev/null' EXIT
+  trap 'exit 1' HUP INT TERM
+  $IPSET save "$WAIT_SET" > "$probe/set" 2>/dev/null || exit 1
+  $AWK '$1=="add" {print $3}' "$probe/set" > "$probe/waiting"
+  [ -s "$probe/waiting" ] || exit 0
+  $CT -L -f ipv4 > "$probe/connections" 2>/dev/null || exit 1
+  PROMOTION_SNAPSHOT="$probe/connections"
   while IFS= read -r deferred_ip; do
     valid_ipv4 "$deferred_ip" || continue
     if add_final_immediate "$deferred_ip" 'promoted-after-idle'; then
       $IPSET del "$WAIT_SET" "$deferred_ip" >/dev/null 2>&1
       $IPSET del "$CAND_SET" "$deferred_ip" >/dev/null 2>&1
     fi
-  done
+  done < "$probe/waiting"
+  )
 }
 add_final_immediate(){
   (

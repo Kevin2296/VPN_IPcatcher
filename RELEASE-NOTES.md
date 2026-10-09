@@ -1,4 +1,15 @@
-# 🛡️ VPN IP Catcher 2.9.0 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.9.1 · Testrelease / Prerelease
+
+**2.9.1:** browserupdates met bevestiging en verplichte lokale back-up; domeinen
+toevoegen aan bestaande DVR v3.2.5-policies; losse presetitems; NL/EN uitleg;
+zichtbare DNS-capturestatus en behoud van scrollpositie bij pauze.
+amtmupdate-protocol opt-in toegevoegd, maar geen centrale AU-registratie of eigen
+automatisch tijdschema. Merlin 3006.102.9-archief gecontroleerd, geen hardwaregarantie.
+
+**2.9.1:** confirmed browser updates with mandatory local backup; existing DVR
+v3.2.5 domain-policy adapter; individual preset entries; NL/EN help; DNS capture
+states and retained paused scroll. Opt-in amtmupdate protocol, not central AU
+enrollment or a separate scheduler. Firmware archive checked, hardware test required.
 
 **2.9.0:** Bewaar de diagnose na Stop, pauzeer/hervat, markeer een zender en
 exporteer de tijdlijn als JSON. DNS-aanwijzingen verschijnen waar zichtbaar

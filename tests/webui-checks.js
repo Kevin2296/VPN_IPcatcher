@@ -7,7 +7,7 @@ const scripts = [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
   .map(match => match[1].replace(/<%[\s\S]*?%>/g, '{}')).filter(Boolean);
 const elements = new Map();
 const element = id => {
-  if (!elements.has(id)) elements.set(id, { innerHTML: '', textContent: '', value: '', classList: { add() {}, remove() {} } });
+  if (!elements.has(id)) elements.set(id, { innerHTML: '', textContent: '', value: '', querySelectorAll:()=>[], classList: { add() {}, remove() {} } });
   return elements.get(id);
 };
 const context = vm.createContext({
@@ -26,8 +26,8 @@ for (const language of ['nl', 'en']) {
   context.setTab('waiting');
   assert.match(element('liveOutput').innerHTML, /203\.0\.113\.10/);
   assert.equal(context.t('waiting'), language === 'nl' ? 'Wachtlijst' : 'Waiting');
-  context.updateOverview({engine:'running',version:'2.9.0',vpn_connection:'ovpnc1',ipset_name:'Example',config:{}});
-  assert.equal(element('addonVersion').textContent,'2.9.0');
+  context.updateOverview({engine:'running',version:'2.9.1',vpn_connection:'ovpnc1',ipset_name:'Example',config:{}});
+  assert.equal(element('addonVersion').textContent,'2.9.1');
   assert.equal(element('selectedVpn').textContent,'OpenVPN 1');
   context.updateOverview({engine:'running',vpn_connection:'wgc3',config:{}});
   assert.equal(element('selectedVpn').textContent,'WireGuard 3');
@@ -53,6 +53,17 @@ assert.equal(context.filterLiveRows([{msg:'ERROR example'},{msg:'OK'}]).length,1
 assert.equal(context.formatFlowBytes('0004000000'),'4 MB');
 assert.equal(context.formatFlowBytes('0'),'0 B');
 console.log('PASS: combined source/port/state/search filters, text views and readable byte counts');
+context.PRESET_CATEGORIES=[{name:'Example',items:[{key:'test',label:'Test',domains:['one.example.invalid','two.example.invalid'],ips:[],nets:[]}]}];
+element('cfg_EXCLUDE_DOMAINS').value='';element('cfg_EXCLUDE_IPS').value='';element('cfg_EXCLUDE_NETS').value='';
+context.togglePresetPart({checked:true,getAttribute:k=>({'data-key':'test','data-kind':'domains','data-value':'one.example.invalid'})[k]});
+assert.equal(element('cfg_EXCLUDE_DOMAINS').value,'one.example.invalid');
+assert.equal(context.presetState(context.PRESET_CATEGORIES[0].items[0]),'PART');
+context.togglePresetPart({checked:true,getAttribute:k=>({'data-key':'test','data-kind':'domains','data-value':'evil.invalid'})[k]});
+assert.equal(element('cfg_EXCLUDE_DOMAINS').value,'one.example.invalid');
+context.actionBusy=false;context.window.confirm=()=>false;
+context.applyAction('install_update');
+assert.equal(context.actionBusy,false);
+console.log('PASS: individual preset selection, partial state, unknown-item rejection and cancelled update');
 const devices=context.diagnosticDevices({maclist:['a','b','c'],a:{isOnline:'1',ip:'192.0.2.10',nickName:'Example TV'},b:{isOnline:'0',ip:'192.0.2.11',name:'Offline'},c:{isOnline:'1',ip:'192.0.2.10',name:'Duplicate'}});
 assert.equal(devices.length,1);
 assert.equal(devices[0].name,'Example TV');
@@ -92,3 +103,14 @@ context.addDiagnosticMarker();
 assert.doesNotMatch(element('liveOutput').innerHTML,/<script>/);
 assert.match(element('liveOutput').innerHTML,/&lt;script&gt;/);
 console.log('PASS: device-specific DNS hints, deduplication and escaped channel markers');
+const frozenScroll={scrollTop:250,scrollLeft:40};
+element('liveOutput').querySelector=()=>frozenScroll;
+element('liveKeepPosition').checked=false;
+context.renderedLiveTab='diagnostic';
+for(const state of ['paused','stopped','expired']){
+  context.diagnosticState=state;
+  context.renderLiveTab();
+  assert.equal(frozenScroll.scrollTop,250);
+  assert.equal(frozenScroll.scrollLeft,40);
+}
+console.log('PASS: paused/stopped/expired diagnostics retain scroll even with automatic following enabled');

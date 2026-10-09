@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.0](https://img.shields.io/badge/version-2.9.0-087F8C?style=for-the-badge)
+![Version 2.9.1](https://img.shields.io/badge/version-2.9.1-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -27,7 +27,7 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.0.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.1.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -214,11 +214,46 @@ Dit maakt het geen officieel amtm-addon; updates lopen via IP Catcher zelf.
 Optie **1** stelt het schema in, **2** schakelt deelname per script aan/uit,
 **3** toont het updatelog en **4** reset de lijst met ondersteunde scripts.
 Een vermelding onder `p1` t/m `p4` geeft niet automatisch AU-ondersteuning.
-VPN IP Catcher gebruikt voorlopig **18 · Update controleren** en
-**19 · Update installeren**, met een automatische prive-back-up.
+VPN IP Catcher ondersteunt vanaf 2.9.1 het `amtmupdate`-protocol, standaard
+uitgeschakeld. Toestaan kan via WebUI > Onderhoud, of `vpn_ipcatcher.sh auto-update enable`.
+Dit is **geen automatische opname in amtm's centrale AU-catalogus**: die vereist
+registratie door de amtm-beheerder. Er wordt geen eigen tijdschema aangelegd.
+Automatische updates installeren alleen een hogere versie en maken een verplichte
+lokale back-up. Handmatige updates blijven mogelijk via het menu of de browser.
 Zie de [uitleg van de amtm-beheerder](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
 ### 🖥️ Dashboard 2.9.0
+
+### 🧭 Browserbediening vanaf 2.9.1
+
+- **Onderhoud:** update controleren, installeren of dezelfde versie opnieuw installeren.
+  Installeren vraagt bevestiging, bewaart instellingen en maakt voor wijzigingen een back-up.
+  De voortgangsindicator toont dat de actie bezig is, geen geschat downloadpercentage.
+- **Domeinroutes:** domein zonder URL/login invullen en een bestaande DVR-policy kiezen.
+  Na bevestiging: uitgebreide lokale back-up, DVR `adddomain`, daarna `querypolicy`.
+  De adapter is gecontroleerd voor DVR **v3.2.5**; onbekende versies worden geweigerd.
+  Dit kan actieve verbindingen veranderen. Een eigen tijdelijke `VIPC-*`-lijst is geen
+  permanente DVR-policy en verschijnt daarom niet in deze keuzelijst.
+- **Presetlijsten > Details:** losse domeinen/IPs/netwerken aanvinken. Gedeelde items
+  kunnen meerdere presets beinvloeden; beschermde resolver-IP's blijven vast.
+- **Uitleg:** verschil tussen leerlijsten, uitsluitingen, domeinroutes en diagnose.
+
+**Kandidaat:** ontdekt, nog in beoordeling. **Wachtlijst:** klaar om te leren,
+maar bestaande verbindingen naar de bestemming moeten eerst eindigen. Zo wisselt
+een actieve stream niet zomaar van uitgangs-IP. **Definitief:** actief in de
+VPN-IPSet, maar nog steeds tijdelijk (TTL), niet permanent.
+
+**DNS-namen:** alleen herkenbaar DNS-verkeer van het gekozen apparaat tijdens de
+meting wordt gekoppeld aan IPs. Cache, versleutelde DNS en directe IP-URLs kunnen
+geen naam opleveren. DNS-capture heeft nu een eigen zichtbare status; tcpdump of
+timeout kan ontbreken of mislukken. TCP en UDP poort 53 worden gevolgd. Er is geen
+upload of externe reverse-lookup. Diagnose pauzeren bewaart de scrollpositie.
+
+**Merlin 3006.102.9 / RT-AX86U Pro:** het aangeleverde archief en zijn interne
+firmwarechecksum zijn gecontroleerd. De changelog vermeldt amtm 7.0, OpenVPN 2.7.7
+en OpenSSL 3.5.8. Broncode- en mocktests vervangen geen echte routertest: na een
+firmwareupgrade systeemcontrole, VPN-controle, WebUI opslaan en diagnose testen.
+De firmware is niet geflasht en volledige compatibiliteit is niet gegarandeerd.
 
 **Diagnose in 2.9.0:** kies je apparaat, start twee minuten, open een zender
 en gebruik **Markeren** om de zenderwissel of fout op de tijdlijn te zetten.
@@ -460,7 +495,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.0.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.1.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -639,11 +674,42 @@ This is not an official amtm addon. Its own updater manages updates.
 Option **1** configures the schedule, **2** enables/disables participation,
 **3** shows the update log and **4** resets the supported-script list.
 Registration under `p1`–`p4` does not automatically provide AU support.
-For VPN IP Catcher, use **18 · Update controleren** and
-**19 · Update installeren**, with an automatic private backup.
+Version 2.9.1 supports the `amtmupdate` protocol, disabled by default. Opt in through
+WebUI > Maintenance or `vpn_ipcatcher.sh auto-update enable`. This does **not** enroll
+the addon in the central amtm AU catalog; enrollment requires the amtm maintainer.
+No independent schedule is created. Automatic updates only install a higher version,
+with a mandatory local backup. Manual browser and terminal updates remain available.
 See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
 ### 🖥️ Dashboard 2.9.0
+
+### 🧭 Browser controls from 2.9.1
+
+- **Maintenance:** check, install or reinstall an update with confirmation and a
+  mandatory backup before changes. The progress indicator shows activity, not an ETA.
+- **Domain routes:** enter a domain without URL/credentials and choose an existing
+  DVR policy. After confirmation: local full backup, DVR `adddomain`, then `querypolicy`.
+  The adapter is verified against DVR **v3.2.5**; unknown versions are refused.
+  Existing connections may change route. Managed temporary `VIPC-*` sets are not
+  permanent DVR policies and do not appear in this picker.
+- **Presets > Details:** select individual domains/IPs/networks. Shared entries affect
+  multiple presets; protected resolver IPs cannot be removed here.
+- **Help:** explains learning lists, exclusions, routing and diagnostics.
+
+**Candidate:** discovered, under assessment. **Waiting:** eligible but existing
+connections to that destination must end before changing the route. **Final:**
+currently in the VPN IPSet, still subject to TTL expiry, not permanent.
+
+**DNS names:** visible DNS from the selected device during measurement provides
+hints. Cached/encrypted DNS or direct-IP URLs may have no name. Capture status now
+reports missing tools and failures; TCP and UDP port 53 are observed. No upload or
+external reverse lookup is performed. Paused diagnostics retain their scroll position.
+
+**Merlin 3006.102.9 / RT-AX86U Pro:** the supplied archive and its internal firmware
+checksum were checked. Its changelog includes amtm 7.0, OpenVPN 2.7.7 and OpenSSL
+3.5.8. Source/mock checks do not replace hardware tests. After upgrading, test system
+and VPN checks, WebUI saving and diagnostics. No firmware was flashed; full hardware
+compatibility is not guaranteed.
 
 **Diagnostics:** open Live view > Diagnostics, select an online IPv4 device
 from the ASUS list or enter its IP manually, then choose Start 2 minutes.

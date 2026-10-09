@@ -143,3 +143,11 @@ sh "$TMP/updater" force-update
 [ "$(cat "$TMP/jffs/addons/vpn_ipcatcher.d/last-backup")" != "$before" ]
 grep -q new-hook "$TMP/jffs/scripts/services-start"
 echo 'PASS: same-version update is skipped; forced repair creates backup and refreshes hooks'
+before="$(cat "$TMP/jffs/addons/vpn_ipcatcher.d/last-backup")"
+printf '2.6.0\n' > "$TMP/remote/VERSION"
+sh "$TMP/updater" automatic-update
+[ "$(cat "$TMP/jffs/addons/vpn_ipcatcher.d/last-backup")" = "$before" ]
+printf '2.6.1\n' > "$TMP/remote/VERSION"
+sh "$TMP/updater" automatic-update
+[ "$(cat "$TMP/jffs/addons/vpn_ipcatcher.d/last-backup")" = "$before" ]
+echo 'PASS: automatic update refuses downgrades and does not reinstall equal versions'

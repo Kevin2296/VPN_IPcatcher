@@ -126,3 +126,13 @@
 - Veiliger configuratieparser, kandidaatleeftijd en bytegebaseerde promotie.
 - Veilige updates met checksums, back-up en rollback.
 - Zorgvuldiger procesbeheer, startup-hooks en WebUI-installatie.
+# 2.9.1
+
+- Browser: updatecontrole/installatie/reparatie met bevestiging, lokale verplichte back-up en activiteitindicator.
+- Browser: domein toevoegen aan bestaande DVR-policy via DVR v3.2.5, met uitgebreide back-up en validatie.
+- NL/EN Uitleg-tab en losse presetitems onder Details.
+- DNS-diagnose: expliciete capturestatus, PATH, TCP/UDP 53 en grotere begrensde packetlezing. Pauze behoudt scrollpositie.
+- amtmupdate-protocol: opt-in, juiste check-exitcodes, alleen nieuwere versies; geen automatische centrale AU-registratie.
+- Systeemcontrole gebruikt gekozen IPSet; wachtlijst verwerkt een conntrack-snapshot per batch.
+- Firewall-herstart herstelt eigen gemarkeerde routingregels; overige addon-hooks blijven behouden.
+- Merlin 3006.102.9-archief/checksum en changelog onderzocht; hardwarecompatibiliteit vereist routertest.

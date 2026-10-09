@@ -16,6 +16,13 @@ sed -e '/^main "\$@"/,$d' -e "s|/jffs/|$TMP/jffs/|g" \
 log(){ :; }
 install_service_event_block
 install_services_start_block
+printf '#!/bin/sh\necho other-firewall-addon\n' > "$FIREWALL_START"
+install_firewall_start_block
+install_firewall_start_block
+sh -n "$FIREWALL_START"
+grep -q other-firewall-addon "$FIREWALL_START"
+[ "$(grep -c '# BEGIN vpn_ipcatcher firewall' "$FIREWALL_START")" = 1 ]
+grep -q 'vpn_ipcatcher_routing.sh prepare' "$FIREWALL_START"
 install_service_event_block
 install_services_start_block
 sh -n "$SERVICE_EVENT"

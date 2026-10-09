@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.0
+# Version: 2.9.1
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 find_on_path(){
@@ -28,11 +28,11 @@ for tool in ipset tcpdump sed grep awk nslookup ip cru tr; do
     printf 'OK: %s (%s)\n' "$tool" "$location"
   else printf 'ONTBREEKT: %s\n' "$tool"; rc=1; fi
 done
-for tool in conntrack curl jq sha256sum; do
+for tool in conntrack curl jq sha256sum timeout mkfifo; do
   if location="$(find_on_path "$tool")"; then
     printf 'OK: %s (%s)\n' "$tool" "$location"
   else
-    case "$tool" in conntrack) purpose=flow-scan ;; *) purpose=updates ;; esac
+    case "$tool" in conntrack) purpose=flow-scan ;; timeout|mkfifo) purpose=DNS-diagnose ;; *) purpose=updates ;; esac
     printf 'OPTIONEEL: %s ontbreekt (%s)\n' "$tool" "$purpose"
   fi
 done
@@ -46,7 +46,8 @@ ipset list -n 2>/dev/null | grep '^DVR-' || true
 echo '=== Routing rules (controleer VPN-policy) ==='
 ip rule show 2>/dev/null
 echo '=== IP Catcher mark rules ==='
-iptables -t mangle -S 2>/dev/null | grep 'DVR-StreamsVPNSW-v4' || true
+set_name="$(awk 'index($0,"IPSET_NAME=")==1 {v=substr($0,12);gsub(/^["\047]|["\047]$/,"",v);print v}' /jffs/scripts/vpn_ipcatcher.conf 2>/dev/null)"
+case "$set_name" in ''|*[!A-Za-z0-9_-]*) echo 'IPSet-naam ontbreekt of ongeldig.' ;; *) iptables -t mangle -S 2>/dev/null | grep -F -- "--match-set $set_name " || true ;; esac
 echo '=== VPN IP Catcher cron ==='
 cru l 2>/dev/null | grep vpn_ipcatcher || true
 echo '=== Routing addon / geselecteerde VPN ==='

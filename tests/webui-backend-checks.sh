@@ -5,7 +5,9 @@ mkdir -p "$work"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 sed '/^case "\$1" in/,$d' addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh > "$work/library"
 set +e
+TEST_PATH="$PATH"
 . "$work/library"
+PATH="$TEST_PATH"
 set -e
 CONF="$work/config"
 STATUS_JSON="$work/status.json"
@@ -17,6 +19,9 @@ mkdir "$ADDON_DIR"
 printf 'Example\novpnc1\n' > "$ADDON_DIR/routing-selection"
 AWK=awk
 DIAGNOSTIC_TARGET="$work/diagnostic"
+DIAGNOSTIC_DNS_STATE="$work/dns-state"
+DIAGNOSTIC_DNS_LOCK="$work/dns-lock"
+DIAGNOSTIC_DNS="$work/dns-records"
 printf 'IPSET_NAME="Example"\nINTERFACES="br0"\n' > "$CONF"
 printf 'Quoted "test" and backslash \\ and tab\tend\n' > "$LOGFILE"
 ensure_engine(){ return 0; }
@@ -57,6 +62,12 @@ node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
 service_event restart vipcDstop
 node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.diagnostic_status!=="idle" || d.diagnostic_text!=="")process.exit(1);' "$STATUS_JSON"
 echo 'PASS: diagnostic start confirms nonce and target; stop clears the published snapshot'
+TCPDUMP=''; TIMEOUT=''
+diagnostic_dns_start 192.0.2.10 1760000000
+[ "$(cat "$DIAGNOSTIC_DNS_STATE")" = tools-missing ]
+printf '192.0.2.10 %s\n' "$(date +%s)" > "$DIAGNOSTIC_TARGET"
+[ "$(diagnostic_dns_state)" = tools-missing ]
+echo 'PASS: missing DNS capture tools produce an explicit state, not silent unknown domains'
 printf '%s\n' \
   '1760000000.123456 IP (ttl 64)' \
   '    192.0.2.10.12345 > 192.0.2.1.53: 123+ A? stream.example.invalid. (40)' \

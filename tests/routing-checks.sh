@@ -59,3 +59,42 @@ nvram(){ printf 'Example VPN - Europe\n'; }
 [ "$(connection_label ovpnc1)" = 'OpenVPN 1 - Example VPN - Europe' ]
 [ "$(connection_label wgc2)" = 'WireGuard 2 - Example VPN - Europe' ]
 echo 'PASS: VPN labels retain complete names even with incompatible tr'
+ADDON="$work/addon";mkdir "$ADDON"
+DVR="$work/dvr";export DVR_TEST_ROOT="$work"
+cat > "$DVR" <<'EOF'
+#!/bin/sh
+# Version: v3.2.5
+case "$1" in
+  adddomain) [ "$POLICY" = Streams ] || exit 1; printf '%s\n' "$2" >> "$DVR_TEST_ROOT/policy_Streams_domainlist" ;;
+  querypolicy) [ "$2" = Streams ] || exit 1; echo queried > "$DVR_TEST_ROOT/query" ;;
+  *) exit 1 ;;
+esac
+EOF
+cat > "$ADDON/vpn_ipcatcher_backup.sh" <<'EOF'
+#!/bin/sh
+[ "$1" = full ] || exit 1
+echo backup > "$DVR_TEST_ROOT/backup"
+EOF
+cat > "$work/timeout" <<'EOF'
+#!/bin/sh
+[ "$1" != --help ] || { echo 'timeout SECS'; exit 0; }
+shift 3
+exec "$@"
+EOF
+cat > "$work/flock" <<'EOF'
+#!/bin/sh
+shift 2
+exec "$@"
+EOF
+chmod +x "$DVR" "$ADDON/vpn_ipcatcher_backup.sh" "$work/timeout" "$work/flock"
+find_bin(){ case "$1" in *timeout) echo "$work/timeout" ;; *flock) echo "$work/flock" ;; *) return 1 ;; esac; }
+printf 'ENABLE=1\n' > "$GLOBAL"
+: > "$work/policy_Streams_domainlist"
+domain_add Streams stream.example.invalid
+grep -Fxq stream.example.invalid "$work/policy_Streams_domainlist"
+[ -f "$work/backup" ] && [ -f "$work/query" ]
+for bad in 'https://secret.invalid/login' '203.0.113.1' 'bad;id.invalid'; do
+  if domain_add Streams "$bad"; then echo 'Unsafe domain accepted'; exit 1; fi
+done
+if domain_add Unknown stream.example.invalid; then exit 1; fi
+echo 'PASS: browser DVR adapter uses full backup, existing policy, adddomain/querypolicy and rejects unsafe input'

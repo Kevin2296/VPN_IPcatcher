@@ -1,6 +1,8 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.9.0
+# Version: 2.9.1
+PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
 
 ADDON_NAME="vpn_ipcatcher"
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -20,6 +22,7 @@ CONFIG_WRITE_LOCK="/tmp/vpn_ipcatcher_config.lock"
 PUBLISH_LOCK="/tmp/vpn_ipcatcher_webui_status.lock"
 ACTION_STATUS="/tmp/vpn_ipcatcher_webui_action.status"
 ACTION_RUN_LOCK="/tmp/vpn_ipcatcher_webui_action.lock"
+MAINTENANCE_LOG="/tmp/vpn_ipcatcher_maintenance.log"
 STREAM_ROOT="/tmp/vpn_ipcatcher_webui_stream"
 
 find_bin(){ for p in "$@"; do [ -x "$p" ] && { echo "$p"; return 0; }; done; return 1; }
@@ -140,6 +143,7 @@ ipset_text(){
 
 DIAGNOSTIC_TARGET="/tmp/vpn_ipcatcher_diagnostic_target"
 DIAGNOSTIC_DNS="/tmp/vpn_ipcatcher_diagnostic_dns"
+DIAGNOSTIC_DNS_STATE="/tmp/vpn_ipcatcher_diagnostic_dns.state"
 DIAGNOSTIC_DNS_LOCK="/tmp/vpn_ipcatcher_diagnostic_dns.lock"
 TCPDUMP="$(find_bin /opt/bin/tcpdump /usr/sbin/tcpdump /usr/bin/tcpdump)"
 TIMEOUT="$(find_bin /usr/bin/timeout /bin/timeout /opt/bin/timeout)"
@@ -147,7 +151,7 @@ diagnostic_dns_stop(){
   capture_pid="$(cat "$DIAGNOSTIC_DNS_LOCK/capture-pid" 2>/dev/null || true)"
   case "$capture_pid" in ''|*[!0-9]*) ;; *)
     if [ -r "/proc/$capture_pid/cmdline" ]; then
-      if [ -n "$TCPDUMP" ] && grep -F "$TCPDUMP" "/proc/$capture_pid/cmdline" >/dev/null 2>&1 && grep -F 'udp port 53' "/proc/$capture_pid/cmdline" >/dev/null 2>&1; then
+      if [ -n "$TCPDUMP" ] && grep -F "$TCPDUMP" "/proc/$capture_pid/cmdline" >/dev/null 2>&1 && grep -F 'port 53' "/proc/$capture_pid/cmdline" >/dev/null 2>&1; then
         kill -TERM "$capture_pid" 2>/dev/null || true
       fi
     fi
@@ -184,27 +188,40 @@ diagnostic_dns_worker(){
   case "$dns_started" in ''|*[!0-9]*) return 1 ;; esac
   read -r current_device current_started < "$DIAGNOSTIC_TARGET" || return 1
   [ "$current_device" = "$dns_device" ] && [ "$current_started" = "$dns_started" ] || return 1
-  mkfifo "$DIAGNOSTIC_DNS_LOCK/pipe" || return 1
+  mkfifo "$DIAGNOSTIC_DNS_LOCK/pipe" || { printf 'capture-error\n' > "$DIAGNOSTIC_DNS_STATE"; return 1; }
+  printf 'capturing\n' > "$DIAGNOSTIC_DNS_STATE"
   # Bound the packet producer itself, not a shell waiting on a pipeline.
   case "$("$TIMEOUT" --help 2>&1)" in
-    *'[-t '*|*'-t SECS'*) "$TIMEOUT" -s TERM -t 120 "$TCPDUMP" -i any -nn -tt -l -vv -s 512 -c 400 "host $dns_device and udp port 53" > "$DIAGNOSTIC_DNS_LOCK/pipe" 2>/dev/null & ;;
-    *) "$TIMEOUT" -s TERM 120 "$TCPDUMP" -i any -nn -tt -l -vv -s 512 -c 400 "host $dns_device and udp port 53" > "$DIAGNOSTIC_DNS_LOCK/pipe" 2>/dev/null & ;;
+    *'[-t '*|*'-t SECS'*) "$TIMEOUT" -s TERM -t 120 "$TCPDUMP" -i any -nn -tt -l -vv -s 2048 -c 400 "host $dns_device and port 53" > "$DIAGNOSTIC_DNS_LOCK/pipe" 2>/dev/null & ;;
+    *) "$TIMEOUT" -s TERM 120 "$TCPDUMP" -i any -nn -tt -l -vv -s 2048 -c 400 "host $dns_device and port 53" > "$DIAGNOSTIC_DNS_LOCK/pipe" 2>/dev/null & ;;
   esac
   dns_child=$!
   echo "$dns_child" > "$DIAGNOSTIC_DNS_LOCK/capture-pid"
   diagnostic_dns_parse "$dns_device" < "$DIAGNOSTIC_DNS_LOCK/pipe" | while IFS= read -r dns_line; do
     printf '%s\n' "$dns_line" >> "$DIAGNOSTIC_DNS"
   done
-  wait "$dns_child" 2>/dev/null
+  dns_rc=0
+  wait "$dns_child" 2>/dev/null || dns_rc=$?
+  case "$dns_rc" in
+    0|124|137|143) printf 'finished\n' > "$DIAGNOSTIC_DNS_STATE" ;;
+    *) printf 'capture-error\n' > "$DIAGNOSTIC_DNS_STATE" ;;
+  esac
 }
 diagnostic_dns_start(){
+  [ ! -L "$DIAGNOSTIC_DNS_STATE" ] && [ ! -L "$DIAGNOSTIC_DNS_LOCK" ] || return 1
   diagnostic_dns_stop
-  [ -n "$TCPDUMP" ] && [ -n "$TIMEOUT" ] || return 0
+  (umask 077; printf 'starting\n' > "$DIAGNOSTIC_DNS_STATE")
+  [ -n "$TCPDUMP" ] && [ -n "$TIMEOUT" ] || { printf 'tools-missing\n' > "$DIAGNOSTIC_DNS_STATE"; return 0; }
   [ ! -L "$DIAGNOSTIC_DNS" ] || return 0
-  (umask 077; mkdir "$DIAGNOSTIC_DNS_LOCK") 2>/dev/null || return 0
+  (umask 077; mkdir "$DIAGNOSTIC_DNS_LOCK") 2>/dev/null || { printf 'capture-busy\n' > "$DIAGNOSTIC_DNS_STATE"; return 0; }
   (umask 077; : > "$DIAGNOSTIC_DNS")
   chmod 600 "$DIAGNOSTIC_DNS"
   sh "$WEBUI" diagnostic-dns "$1" "$2" >/dev/null 2>&1 &
+}
+diagnostic_dns_state(){
+  [ -r "$DIAGNOSTIC_TARGET" ] || { echo idle; return; }
+  state="$(cat "$DIAGNOSTIC_DNS_STATE" 2>/dev/null)"
+  case "$state" in starting|capturing|finished|capture-error|tools-missing|capture-busy) echo "$state" ;; *) echo unavailable ;; esac
 }
 diagnostic_dns_text(){
   [ -r "$DIAGNOSTIC_TARGET" ] && [ -r "$DIAGNOSTIC_DNS" ] || return 0
@@ -372,8 +389,10 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   cat > "$tmp_json" <<JSON
 {
-  "version":"2.9.0",
+  "version":"2.9.1",
   "vpn_connection":"$vpn_connection",
+  "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
+  "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
   "last_update":"$last_update",
   "engine":"$engine",
   "engine_pid":"$engine_pid",
@@ -429,6 +448,7 @@ publish_status(){
   "flows_text":"$flows_text",
   "diagnostic_text":"$diagnostic_output",
   "diagnostic_dns_text":"$(diagnostic_dns_text | json_escape)",
+  "diagnostic_dns_state":"$(diagnostic_dns_state)",
   "diagnostic_target":"$diagnostic_device",
   "diagnostic_status":"$diagnostic_phase",
   "resolved_text":"$resolved_text",
@@ -665,6 +685,12 @@ run_action(){
     repair_excludes) "$ENGINE" repair-excludes || rc=$? ;;
     resolve_excludes) "$ENGINE" resolve-excludes || rc=$? ;;
     clear_log) : > "$LOGFILE" || rc=$? ;;
+    auto_update_enable) "$ENGINE" auto-update enable || rc=$? ;;
+    auto_update_disable) "$ENGINE" auto-update disable || rc=$? ;;
+    check_update|install_update|force_update)
+      case "$action" in check_update) update_mode=check-update ;; install_update) update_mode=update ;; force_update) update_mode=force-update ;; esac
+      (umask 077; "$ADDON_DIR/vpn_ipcatcher_update.sh" "$update_mode" > "$MAINTENANCE_LOG" 2>&1) || rc=$?
+      ;;
     save_config)
       if save_config_from_settings; then
         # Een gewijzigde domeinlijst moet meteen opnieuw worden opgelost.
@@ -842,6 +868,25 @@ stream_finalize(){
     publish_status
     return 1
   fi
+  if [ "$action" = dvr ]; then
+    domain="$(awk 'index($0,"DOMAIN=")==1 {print substr($0,8)}' "$decoded")"
+    policy="$(awk 'index($0,"POLICY=")==1 {print substr($0,8)}' "$decoded")"
+    rm -rf "$dir" 2>/dev/null
+    record_action_status "$nonce" dvr running 'DVR-domein wordt toegevoegd; vooraf wordt een lokale back-up gemaakt.'
+    publish_status
+    (
+      rc=0
+      if ! action_run_lock; then rc=75
+      else
+        "$ADDON_DIR/vpn_ipcatcher_routing.sh" domain-add "$policy" "$domain" >/dev/null 2>&1 || rc=$?
+        action_run_unlock
+      fi
+      if [ "$rc" = 0 ]; then record_action_status "$nonce" dvr ok 'Domein opgeslagen en DVR-policy vernieuwd.'
+      else record_action_status "$nonce" dvr error 'DVR-toevoeging niet voltooid. Controleer DVR-versie (v3.2.5), policy en DNS. De policy kan al opgeslagen zijn.'; fi
+      publish_status
+    ) >/dev/null 2>&1 &
+    return 0
+  fi
   if ! apply_stream_config "$decoded"; then
     record_action_status "$nonce" "$action" "error" "Configuratie kon niet atomair worden opgeslagen."
     rm -rf "$dir" 2>/dev/null
@@ -914,7 +959,13 @@ simple_event_action(){
   elif run_action "$action"; then
     rc=0
     action_run_unlock
-    record_action_status "$nonce" "$action" "ok" "Actie succesvol uitgevoerd."
+    message='Actie succesvol uitgevoerd.'
+    if [ "$action" = check_update ]; then
+      message="$(awk '/^(Geinstalleerd:|GitHub:)/ {print}' "$MAINTENANCE_LOG")"
+    elif [ "$action" = install_update ] || [ "$action" = force_update ]; then
+      message='Update voltooid. Lokale back-up gemaakt indien bestanden zijn bijgewerkt. Vernieuw de browserpagina.'
+    fi
+    record_action_status "$nonce" "$action" "ok" "$message"
   else
     rc=$?
     action_run_unlock
@@ -976,6 +1027,12 @@ service_event(){
       rest="${event#vipcX}"
       nonce="${rest%%_*}"
       action="${rest#*_}"
+      case "$action" in check_update|install_update|force_update)
+        valid_nonce "$nonce" || return 1
+        record_action_status "$nonce" "$action" running 'Updateactie wordt uitgevoerd.'
+        publish_status
+        ;;
+      esac
       # Start/stop/restart/refresh kunnen enkele seconden duren. De browser
       # pollt op action.status, dus service-event hoeft hier niet op te wachten.
       simple_event_action "$nonce" "$action" >/dev/null 2>&1 &

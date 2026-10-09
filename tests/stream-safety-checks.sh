@@ -41,3 +41,17 @@ rm "$work/additions"
 add_final_immediate 203.0.113.20 test
 [ "$(cat "$work/additions")" = 'Final 203.0.113.20' ]
 echo 'PASS: TCP/UDP active destinations defer, idle destinations drain, failures block, existing routes refresh'
+rm "$work/fail" "$work/existing" "$work/additions"
+mock_conntrack(){ echo call >> "$work/dumps"; cat "$work/connections"; }
+mock_ipset(){
+  case "$1" in
+    test) return 1 ;;
+    save) printf 'add Waiting 203.0.113.20\nadd Waiting 203.0.113.21\n' ;;
+    add) printf '%s %s\n' "$2" "$3" >> "$work/additions" ;;
+    del) : ;;
+  esac
+}
+promote_deferred
+[ "$(wc -l < "$work/dumps" | awk '{print $1}')" = 1 ]
+[ "$(wc -l < "$work/additions" | awk '{print $1}')" = 2 ]
+echo 'PASS: multiple waiting destinations share one conntrack snapshot'
