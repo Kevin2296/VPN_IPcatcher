@@ -385,6 +385,37 @@ table.data tr:last-child td{border-bottom:none}
 }
 /* VPNIPC_I18N_V11_END */
 
+/* Scoped operational layout; leave Merlin's surrounding navigation untouched. */
+.vpn_ipcatcher_dashboard{background:#263235;color:#edf3f3}
+.vpn_ipcatcher_dashboard .topbar{text-align:left;padding:12px 0}
+.vpn_ipcatcher_dashboard .title{font-size:22px;text-shadow:none}
+.vpn_ipcatcher_dashboard .subtitle{display:none}
+.vpn_ipcatcher_dashboard .panel{background:transparent;border:0;border-radius:0;margin:16px 0}
+.vpn_ipcatcher_dashboard .panel-title{background:transparent;border-bottom:1px solid #536365;padding:10px 0;text-shadow:none}
+.vpn_ipcatcher_dashboard .panel-body{padding:12px 0}
+.vpn_ipcatcher_dashboard .card{background:#344245;border-color:#59686a;border-radius:4px;min-height:108px}
+.vpn_ipcatcher_dashboard .card h3,.vpn_ipcatcher_dashboard table.data th{letter-spacing:0}
+.vpn_ipcatcher_dashboard .card .muted{overflow-wrap:anywhere}
+.vpn_ipcatcher_dashboard .layoutTabs{gap:0;border-bottom:1px solid #637375}
+.vpn_ipcatcher_dashboard .layoutTab{background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;padding:12px;font-size:14px}
+.vpn_ipcatcher_dashboard .layoutTab.active{background:transparent;border-color:#67c6b8;color:#b5eee2}
+.vpn_ipcatcher_dashboard .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.vpn_ipcatcher_dashboard .tab{min-width:0;white-space:normal;overflow-wrap:anywhere;padding:10px 6px;font-size:13px;line-height:1.4}
+.vpn_ipcatcher_dashboard .presetGrid{align-items:start}
+.vpn_ipcatcher_dashboard .presetCard{background:transparent;border:0;border-top:2px solid #687e80;border-radius:0;padding:14px 0}
+.vpn_ipcatcher_dashboard .presetItem{min-width:0;align-items:start}
+.vpn_ipcatcher_dashboard .presetMeta{overflow-wrap:anywhere}
+.vpn_ipcatcher_dashboard details summary{cursor:pointer;color:#bce1df;padding:8px 0}
+.vpn_ipcatcher_dashboard .previewList{max-height:250px;overflow:auto;line-height:1.6;overflow-wrap:anywhere}
+.vpn_ipcatcher_dashboard .settingsGroup{margin:16px 0;border:0;border-top:1px solid #536365;padding:12px 0}
+.vpn_ipcatcher_dashboard .settingsGroup legend{font-weight:700;padding-right:12px;color:#b5eee2}
+.vpn_ipcatcher_dashboard .formgrid input[readonly]{opacity:.8;border-style:dashed;cursor:default}
+.vpn_ipcatcher_dashboard .saveBar{position:sticky;bottom:0;background:#263235;padding:12px 0;border-top:1px solid #536365;z-index:2}
+.vpn_ipcatcher_dashboard [hidden]{display:none!important}
+.vpn_ipcatcher_dashboard .sessionMeta{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;color:#bce1df;font-size:13px}
+.vpn_ipcatcher_dashboard .maintenance{margin-top:10px}
+.vpn_ipcatcher_dashboard .note{background:transparent;border-radius:0;color:#c7d8d8}
+@media(max-width:600px){.vpn_ipcatcher_dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .languageRow{justify-content:flex-start}.vpn_ipcatcher_dashboard .layoutTab{padding:10px 8px;font-size:13px}.vpn_ipcatcher_dashboard .split{grid-template-columns:1fr}}
 </style>
 
 <script>
@@ -409,8 +440,8 @@ var VPNIPC_I18N={
     waiting:'Wachtlijst',
     browserTitle:'VPN IP Catcher - ASUS Merlin', language:'Taal', autoRouter:'Automatisch (router)', updated:'bijgewerkt', openResolvedIps:'Opgeloste IP’s openen', openExcludeRanges:'Uitsluitbereiken openen',
     title:'VPN IP Catcher-dashboard', subtitle:'ASUS Merlin WebUI - stabiele runtime en betere uitsluitingen/presets',
-    engine:'Engine', finalIps:'Definitieve IP’s', candidateIps:'Kandidaat-IP’s', candidateHint:'tijdelijke leerset',
-    excludeCache:'Uitsluitcache', excludeCacheHint:'tijdelijk opgeloste domein-IP’s', excludeRanges:'Uitsluitbereiken', fixedRanges:'vaste CIDR-bereiken',
+    engine:'Service', finalIps:'VPN-bestemmingen', candidateIps:'In beoordeling', candidateHint:'tijdelijke leerset',
+    excludeCache:'DNS-uitsluitingen', excludeCacheHint:'tijdelijk opgeloste domein-IP’s', excludeRanges:'Uitgesloten netwerken', fixedRanges:'vaste CIDR-bereiken',
     actions:'Acties', start:'Start', stop:'Stop', restart:'Herstarten', refreshStatus:'Status vernieuwen', resolveExcludes:'Uitsluitingen oplossen',
     safeBaseExcludes:'Veilige basisuitsluitingen', repairSafeExcludes:'Veilige uitsluitingen herstellen', cleanExcludedIps:'Uitgesloten IP’s opruimen', clearLog:'Log wissen',
     overview:'Overzicht', liveView:'Liveweergave', config:'Configuratie', exclusions:'Uitsluitingen', presetLists:'Presetlijsten',
@@ -445,8 +476,8 @@ var VPNIPC_I18N={
     waiting:'Waiting',
     browserTitle:'VPN IP Catcher - ASUS Merlin', language:'Language', autoRouter:'Auto (router)', updated:'updated', openResolvedIps:'Open resolved IPs', openExcludeRanges:'Open exclude ranges',
     title:'VPN IP Catcher Dashboard', subtitle:'ASUS Merlin WebUI - stable runtime and improved exclusions/presets',
-    engine:'Engine', finalIps:'Final IPs', candidateIps:'Candidate IPs', candidateHint:'temporary learning set',
-    excludeCache:'Exclude cache', excludeCacheHint:'temporarily resolved domain IPs', excludeRanges:'Exclude ranges', fixedRanges:'fixed CIDR ranges',
+    engine:'Service', finalIps:'VPN destinations', candidateIps:'Under review', candidateHint:'temporary learning set',
+    excludeCache:'DNS exclusions', excludeCacheHint:'temporarily resolved domain IPs', excludeRanges:'Excluded networks', fixedRanges:'fixed CIDR ranges',
     actions:'Actions', start:'Start', stop:'Stop', restart:'Restart', refreshStatus:'Refresh status', resolveExcludes:'Resolve exclusions',
     safeBaseExcludes:'Safe base exclusions', repairSafeExcludes:'Repair safe exclusions', cleanExcludedIps:'Clean excluded IPs', clearLog:'Clear log',
     overview:'Overview', liveView:'Live view', config:'Configuration', exclusions:'Exclusions', presetLists:'Preset lists',
@@ -494,6 +525,8 @@ function vpnipcRouterLanguage(){
   return raw.indexOf('nl')===0?'nl':'en';
 }
 function vpnipcResolveLanguage(mode){return mode==='nl'||mode==='en'?mode:vpnipcRouterLanguage();}
+Object.assign(VPNIPC_I18N.nl,{title:'VPN IP Catcher',version:'Versie',devices:'Apparaten en verbinding',learning:'Verkeer leren',advanced:'Geavanceerde instellingen',maintenance:'Onderhoud',details:'Details',presetOn:'Uitgesloten',presetOff:'Niet uitgesloten',presetPart:'Gedeeltelijk',unsaved:'Niet-opgeslagen wijzigingen',footer:'VPN IP Catcher | ASUS Merlin'});
+Object.assign(VPNIPC_I18N.en,{title:'VPN IP Catcher',version:'Version',devices:'Devices and connection',learning:'Traffic learning',advanced:'Advanced settings',maintenance:'Maintenance',details:'Details',presetOn:'Excluded',presetOff:'Not excluded',presetPart:'Partial',unsaved:'Unsaved changes',footer:'VPN IP Catcher | ASUS Merlin'});
 function t(key,vars){
   var table=VPNIPC_I18N[vpnipcCurrentLanguage]||VPNIPC_I18N.en;
   var value=(table[key]!==undefined?table[key]:(VPNIPC_I18N.en[key]!==undefined?VPNIPC_I18N.en[key]:key));
@@ -512,7 +545,7 @@ function vpnipcApplyStaticLanguage(){
     if(key==='resolvedNote') e.innerHTML=vpnipcCurrentLanguage==='nl'?'<b>Opgeloste IP’s</b> zijn tijdelijke losse adressen uit DNS en verschijnen bij Uitsluitcache. Alleen expliciete CIDR-netwerken uit <b>EXCLUDE_NETS</b> verschijnen bij Uitsluitbereiken.':'<b>Resolved IPs</b> are temporary individual addresses obtained from DNS and appear under Exclude cache. Only explicit CIDR networks from <b>EXCLUDE_NETS</b> appear under Exclude ranges.';
     if(key==='configFieldsNote') e.innerHTML=vpnipcCurrentLanguage==='nl'?'Deze tab toont de <b>configuratievelden</b> zoals de WebGUI ze opslaat. Omdat amtm en de WebGUI dezelfde configuratie gebruiken, horen beide dezelfde status te tonen.':'This tab shows the <b>configuration fields</b> as stored by the WebGUI. Because amtm and the WebGUI use the same configuration, both should show the same status.';
     if(key==='presetNote') e.innerHTML=vpnipcCurrentLanguage==='nl'?'Vink een preset aan om de bijbehorende domeinen/IP’s/bereiken direct in de configuratievelden te zetten. Haal het vinkje weg om ze te verwijderen. Gebruik daarna <b>Configuratie opslaan</b> of <b>Opslaan + herstarten</b>.':'Select a preset to add its domains/IPs/ranges directly to the configuration fields. Clear it to remove them. Then use <b>Save configuration</b> or <b>Save + restart</b>.';
-    if(key==='presetStatus') e.innerHTML=vpnipcCurrentLanguage==='nl'?'Status = <span class="statusOn">ON</span> opgeslagen (vaste beschermde IP’s tellen mee) - <span class="statusPart">PART</span> deels aanwezig - <span class="statusOff">OFF</span> niet aanwezig - <span class="statusPart">*</span> lokaal gewijzigd, nog niet opgeslagen':'Status = <span class="statusOn">ON</span> saved (fixed protected IPs count) - <span class="statusPart">PART</span> partially present - <span class="statusOff">OFF</span> not present - <span class="statusPart">*</span> changed locally, not saved yet';
+    if(key==='presetStatus') e.innerHTML='<span class="statusOn">'+escapeHtml(t('presetOn'))+'</span> · <span class="statusPart">'+escapeHtml(t('presetPart'))+'</span> · <span class="statusOff">'+escapeHtml(t('presetOff'))+'</span> · * '+escapeHtml(t('unsaved'));
   });
   var selector=byId('vpnipcLanguage'); if(selector)selector.value=vpnipcLanguageMode;
 }
@@ -821,6 +854,10 @@ function renderLiveTab(){
   box.innerHTML=html||'<div class="muted">'+escapeHtml(t('noData'))+'</div>';
 }
 function updateOverview(d){
+  setText('addonVersion',d.version||'-');
+  var connection=d.vpn_connection||'', match=connection.match(/^(ovpnc|wgc)([1-5])$/);
+  setText('selectedVpn',match?(match[1]==='ovpnc'?'OpenVPN ':'WireGuard ')+match[2]:'-');
+  setText('selectedList',d.ipset_name||'');
   badge(d.engine); setText('lastUpdate',d.last_update); setText('enginePid',d.engine_pid); setText('tcpdumpCount',d.tcpdump_count); setText('candidateCount',d.candidate_count); setText('finalCount',d.final_count); setText('resolvedCount',d.resolved_count); setText('excludeNetCount',d.exclude_net_count); setText('excludeNetSet',d.exclude_net_set); setText('ipsetName',d.ipset_name);
   setText('overviewEngineState', d.engine==='running' ? t('serviceRunning') : t('serviceStopped'));
     setText('overviewCapture', 'tcpdump: '+(d.tcpdump_count||'-')+' - '+t('updated')+': '+(d.last_update||'-'));
@@ -879,6 +916,8 @@ function vpnipcCategoryNote(cat){var key=VPNIPC_CATEGORY_NOTE_KEYS[cat.name||'']
 function vpnipcPresetLabel(item){return vpnipcCurrentLanguage==='nl'?(VPNIPC_PRESET_LABEL_NL[item.key]||item.label):(item.label||item.key);}
 
 function renderPresets(){
+  setText('pendingChanges',dirty?t('unsaved'):'');
+  var pendingBar=byId('pendingBar');if(pendingBar)pendingBar.hidden=!dirty;
   var wrap=byId('presetWrap');
   if(!wrap) return;
   if(!PRESET_CATEGORIES.length){wrap.innerHTML='<div class="muted">'+escapeHtml(t('presetsLoading'))+'</div>'; return;}
@@ -887,7 +926,7 @@ function renderPresets(){
     html+='<div class="presetCard"><h4>'+escapeHtml(vpnipcCategoryName(cat))+'</h4>';
     var catNote=vpnipcCategoryNote(cat); if(catNote) html+='<div class="presetMeta" style="margin-bottom:6px">'+escapeHtml(catNote)+'</div>';
     (cat.items||[]).forEach(function(item){
-      var state=presetState(item), checked=state==='ON', pending=!!pendingPresetKeys[item.key], shownState=pending?(state+'*'):state, cls=pending?'statusPart':(state==='ON'?'statusOn':(state==='PART'?'statusPart':'statusOff'));
+      var state=presetState(item), checked=state==='ON', pending=!!pendingPresetKeys[item.key], shownState=t(state==='ON'?'presetOn':state==='PART'?'presetPart':'presetOff')+(pending?' *':''), cls=pending?'statusPart':(state==='ON'?'statusOn':(state==='PART'?'statusPart':'statusOff'));
       var meta=[], detail=[];
       if((item.domains||[]).length) meta.push('<span class="pill">'+item.domains.length+' '+t('domainsCount')+'</span>');
       if((item.ips||[]).length) meta.push('<span class="pill">'+item.ips.length+' IPs</span>');
@@ -896,16 +935,17 @@ function renderPresets(){
       if((item.ips||[]).length) detail.push('IPs: '+item.ips.join(', '));
       if((item.nets||[]).length) detail.push(t('detailsRanges')+': '+item.nets.join(', '));
       html+='<div class="presetItem" data-search="'+escapeHtml(((vpnipcPresetLabel(item)||'')+' '+detail.join(' ')).toLowerCase())+'">';
-      html+='<input type="checkbox" class="presetCheck" data-key="'+escapeHtml(item.key)+'" '+(checked?'checked':'')+' onchange="togglePresetDirect(this)">';
+      html+='<input type="checkbox" class="presetCheck" aria-label="'+escapeHtml(vpnipcPresetLabel(item))+'" data-key="'+escapeHtml(item.key)+'" data-partial="'+(state==='PART'?'yes':'no')+'" '+(checked?'checked':'')+' onchange="togglePresetDirect(this)">';
       html+='<div style="flex:1">';
       html+='<div><strong>'+escapeHtml(vpnipcPresetLabel(item))+'</strong> - <span class="'+cls+'">'+shownState+'</span></div>';
       html+='<div class="presetMeta">'+meta.join(' ')+'</div>';
-      html+='<div class="presetMeta">'+escapeHtml(detail.join(' | '))+'</div>';
+      html+='<details><summary>'+escapeHtml(t('details'))+'</summary><div class="presetMeta">'+escapeHtml(detail.join(' | '))+'</div></details>';
       html+='</div></div>';
     });
     html+='</div>';
   });
   wrap.innerHTML=html;
+  wrap.querySelectorAll('.presetCheck[data-partial="yes"]').forEach(function(el){el.indeterminate=true;});
   filterPresets();
 }
 function filterPresets(){
@@ -943,6 +983,27 @@ function updateExclusionPreview(){
   setText('previewIps', byId('cfg_EXCLUDE_IPS').value || '-');
   setText('previewNets', byId('cfg_EXCLUDE_NETS').value || '-');
 }
+function organizeSettings(){
+  var grid=document.querySelector('#page_config .formgrid');
+  if(!grid) return;
+  var groups=[['devices',['INTERFACES','IPSET_NAME','SOURCE_IPS','PORTS']],['learning',['PROMOTE_MODE','STREAM_FLOW_SCAN','STREAM_FLOW_TARGET']],['advanced',[]],['exclusions',['EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_DOMAINS']]];
+  var fields={};
+  Array.prototype.slice.call(grid.children).forEach(function(el){if(el.id&&el.id.indexOf('cfg_')===0)fields[el.id.slice(4)]=[el.previousElementSibling,el];});
+  groups[2][1]=Object.keys(fields).filter(function(k){return !groups.some(function(g){return g[1].indexOf(k)>=0;});});
+  groups.forEach(function(group){
+    var holder=document.createElement(group[0]==='advanced'?'details':'fieldset');
+    holder.className='settingsGroup';
+    var heading=document.createElement(group[0]==='advanced'?'summary':'legend');
+    heading.setAttribute('data-i18n',group[0]); heading.textContent=t(group[0]); holder.appendChild(heading);
+    var inner=document.createElement('div');inner.className='formgrid';holder.appendChild(inner);
+    group[1].forEach(function(k){if(fields[k])fields[k].forEach(function(el){inner.appendChild(el);});});
+    grid.parentNode.insertBefore(holder,grid);
+  });
+  grid.remove();
+  document.querySelectorAll('#page_config input').forEach(function(el){
+    if(/PROMOTE_EVERY|MIN_AGE|MIN_BYTES|TIMEOUT|SCAN_EVERY|MIN_DELTA|RESOLVE_EVERY|RETRY_DELAY/.test(el.id)){el.type='number';el.min='0';el.step='1';}
+  });
+}
 function loadStatus(){
   fetch('/user/vpn_ipcatcher_status.json?ts='+Date.now(), {cache:'no-store'})
     .then(function(r){return r.json()})
@@ -951,6 +1012,7 @@ function loadStatus(){
 }
 
 window.addEventListener('load', function(){
+  organizeSettings();
   vpnipcInitLanguage();
   document.querySelectorAll('.vpn_ipcatcher_dashboard [id^="cfg_"]').forEach(function(e){ e.addEventListener('input', function(){ dirty=true; updateExclusionPreview(); renderPresets(); }); });
   setPage('overview'); setTab('flows'); loadPresets(); loadStatus(); setInterval(function(){ if(!actionBusy) loadStatus(); }, 5000);
@@ -993,6 +1055,7 @@ window.addEventListener('load', function(){
                   </div>
                   <div class="title" data-i18n="title">VPN IP Catcher-dashboard</div>
                   <div class="subtitle" data-i18n="subtitle">ASUS Merlin WebUI - stabiele runtime en betere uitsluitingen/presets</div>
+                  <div class="sessionMeta"><span><span data-i18n="version">Versie</span> <strong id="addonVersion">-</strong></span><span>VPN: <strong id="selectedVpn">-</strong></span><span class="mono" id="selectedList"></span></div>
                 </div>
 
                 <form method="post" id="vpnipc_form" name="vpnipc_form" action="/start_apply.htm" target="vpnipc_hidden_frame" onsubmit="return false;">
@@ -1021,12 +1084,14 @@ window.addEventListener('load', function(){
                     <button type="button" class="btn red" onclick="applyAction('stop')" data-i18n="stop">Stop</button>
                     <button type="button" class="btn orange" onclick="applyAction('restart')" data-i18n="restart">Herstarten</button>
                     <button type="button" class="btn blue" onclick="applyAction('publish')" data-i18n="refreshStatus">Status vernieuwen</button>
+                  </div>
+                  <details class="maintenance"><summary data-i18n="maintenance">Onderhoud</summary><div class="actions">
                     <button type="button" class="btn" onclick="applyAction('resolve_excludes')" data-i18n="resolveExcludes">Uitsluitingen oplossen</button>
                     <button type="button" class="btn" onclick="applyAction('safe_excludes')" data-i18n="safeBaseExcludes">Veilige basisuitsluitingen</button>
                     <button type="button" class="btn orange" onclick="applyAction('repair_excludes')" data-i18n="repairSafeExcludes">Veilige uitsluitingen herstellen</button>
                     <button type="button" class="btn" onclick="applyAction('clean_excluded')" data-i18n="cleanExcludedIps">Uitgesloten IP’s opruimen</button>
                     <button type="button" class="btn" onclick="applyAction('clear_log')" data-i18n="clearLog">Log wissen</button>
-                  </div>
+                  </div></details>
                 </div>
 
                 <div class="layoutTabs">
@@ -1037,6 +1102,7 @@ window.addEventListener('load', function(){
                   <button type="button" class="layoutTab" id="pageTab_presets" onclick="setPage('presets')" data-i18n="presetLists">Preset lists</button>
                 </div>
 
+                <div id="pendingBar" class="actions saveBar" hidden><span id="pendingChanges"></span><button type="button" class="btn blue" onclick="applyAction('save_config_restart')" data-i18n="saveRestart">Opslaan + herstarten</button></div>
                 <div class="page active" id="page_overview">
                   <div class="split">
                     <div class="panel">
@@ -1089,7 +1155,7 @@ window.addEventListener('load', function(){
                       <div class="note" data-i18n="configNote">Wijzigingen worden opgeslagen in /jffs/scripts/vpn_ipcatcher.conf.</div>
                       <div class="formgrid">
                         <label data-i18n="interfaces">Interfaces</label><input id="cfg_INTERFACES" placeholder="br0">
-                        <label data-i18n="ipsetName">IPSet name</label><input id="cfg_IPSET_NAME" placeholder="DVR-StreamsVPNSW-v4">
+                        <label data-i18n="ipsetName">IPSet name</label><input id="cfg_IPSET_NAME" readonly placeholder="DVR-StreamsVPNSW-v4">
                         <label data-i18n="ports">Ports</label><input id="cfg_PORTS" placeholder="80,443">
                         <label data-i18n="promoteMode">Promote mode</label><select id="cfg_PROMOTE_MODE"><option value="auto" data-i18n="auto">automatisch</option><option value="age" data-i18n="age">leeftijd</option><option value="bytes">bytes</option><option value="immediate" data-i18n="immediate">direct</option></select>
                         <label data-i18n="promoteInterval">Promote interval</label><input id="cfg_PROMOTE_EVERY" placeholder="15">
@@ -1116,7 +1182,7 @@ window.addEventListener('load', function(){
                         <label data-i18n="excludeNets">Exclude nets/ranges</label><textarea id="cfg_EXCLUDE_NETS"></textarea>
                         <label data-i18n="excludeDomains">Exclude domains</label><textarea id="cfg_EXCLUDE_DOMAINS"></textarea>
                       </div>
-                      <div class="actions" style="margin-top:12px">
+                      <div class="actions saveBar" style="margin-top:12px">
                         <button type="button" class="btn blue" onclick="applyAction('save_config')" data-i18n="saveConfig">Save config</button>
                         <button type="button" class="btn orange" onclick="applyAction('save_config_restart')" data-i18n="saveRestart">Save + Restart</button>
                         <button type="button" class="btn" onclick="discardLocalChanges()" data-i18n="reloadConfig">Reload from config</button>
@@ -1131,9 +1197,9 @@ window.addEventListener('load', function(){
                       <div class="panel-title" data-i18n="currentConfigExclusions">Huidige configuratie-uitsluitingen</div>
                       <div class="panel-body">
                         <table class="data"><tbody>
-                          <tr><th data-i18n="domains">Domeinen</th><td class="mono" id="previewDomains">-</td></tr>
-                          <tr><th data-i18n="ips">IP’s</th><td class="mono" id="previewIps">-</td></tr>
-                          <tr><th data-i18n="ranges">Bereiken</th><td class="mono" id="previewNets">-</td></tr>
+                          <tr><th data-i18n="domains">Domeinen</th><td><div class="mono previewList" id="previewDomains">-</div></td></tr>
+                          <tr><th data-i18n="ips">IP’s</th><td><div class="mono previewList" id="previewIps">-</div></td></tr>
+                          <tr><th data-i18n="ranges">Bereiken</th><td><div class="mono previewList" id="previewNets">-</div></td></tr>
                         </tbody></table>
                       </div>
                     </div>

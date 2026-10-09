@@ -1,4 +1,14 @@
-# 🛡️ VPN IP Catcher 2.8.4 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.5 · Testrelease / Prerelease
+
+**2.8.5:** Rustiger WebUI-dashboard en compact amtm-menu met versie en VPN-keuze.
+Instellingen zijn gegroepeerd, technische details inklapbaar en uitsluitingen
+hebben duidelijke NL/EN-statuslabels. VPN-namen blijven intact zonder `tr`.
+Persoonlijke instellingen en de gekozen VPN blijven behouden.
+
+**2.8.5:** Quieter WebUI dashboard and compact amtm menu with version and VPN
+selection. Grouped settings, collapsible technical details and clear NL/EN
+exclusion labels. VPN names no longer depend on `tr`. Existing configuration
+and VPN selection are preserved. Personal-script registration is not AU enrollment.
 
 **2.8.4 fix:** VPN-herkenning werkt zonder POSIX-tekenklassen in `tr`. De juiste
 OpenVPN/WireGuard-instellingssleutel wordt rechtstreeks opgebouwd. Alle tien

@@ -55,3 +55,7 @@ CONNECTION=ovpnc1
 : > "$GLOBAL"
 if mark_read; then echo 'Missing VPN mark accepted' >&2; exit 1; fi
 echo 'PASS: all OpenVPN/WireGuard keys work with broken tr; invalid/missing settings remain rejected'
+nvram(){ printf 'Example VPN - Europe\n'; }
+[ "$(connection_label ovpnc1)" = 'OpenVPN 1 - Example VPN - Europe' ]
+[ "$(connection_label wgc2)" = 'WireGuard 2 - Example VPN - Europe' ]
+echo 'PASS: VPN labels retain complete names even with incompatible tr'

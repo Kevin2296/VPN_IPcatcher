@@ -26,6 +26,11 @@ for (const language of ['nl', 'en']) {
   context.setTab('waiting');
   assert.match(element('liveOutput').innerHTML, /203\.0\.113\.10/);
   assert.equal(context.t('waiting'), language === 'nl' ? 'Wachtlijst' : 'Waiting');
+  context.updateOverview({engine:'running',version:'2.8.5',vpn_connection:'ovpnc1',ipset_name:'Example',config:{}});
+  assert.equal(element('addonVersion').textContent,'2.8.5');
+  assert.equal(element('selectedVpn').textContent,'OpenVPN 1');
+  context.updateOverview({engine:'running',vpn_connection:'wgc3',config:{}});
+  assert.equal(element('selectedVpn').textContent,'WireGuard 3');
   for (const key of Object.keys(context.VPNIPC_I18N.nl)) assert.ok(context.VPNIPC_I18N.en[key], `Missing English key: ${key}`);
 }
 assert.equal(context.escapeHtml('<script>'), '&lt;script&gt;');

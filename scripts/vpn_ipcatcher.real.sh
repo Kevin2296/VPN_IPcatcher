@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.8.4
+# Version: 2.8.5
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -1447,6 +1447,13 @@ status_report(){
     ipset_state="EMPTY no final IPs"
   fi
 
+  if [ "${1:-}" = compact ]; then
+    printf '  Engine: %-24s Capture: %s\n' "$engine_state" "$capture_state"
+    printf '  Promotie: %-22s Lijst: %s\n' "$promote_state" "$IPSET_NAME"
+    printf '  IPs: %s definitief | %s kandidaat | %s wachtend\n' "$final_count" "$(ipset_member_count "$CAND_SET")" "$(ipset_member_count "$WAIT_SET")"
+    printf '  LAN: %s | Controle: %ss | Bijgewerkt: %s\n' "$INTERFACES" "$STREAM_SCAN_EVERY" "$now"
+    return
+  fi
   say "Service"
   printf '  %-20s %s\n' 'Deferred IPs' "$(ipset_member_count "$WAIT_SET")"
   printf "  %-20s %s
@@ -2680,9 +2687,15 @@ live_stream_flows(){
 print_header(){
   load_config
   say "============================================================"
-  say " vpn_ipcatcher - ASUS Merlin / amtm edition"
+  version="$($SED -n 's/^# Version: //p' "$SELF" | head -n 1)"
+  say " VPN IP Catcher ${version:-onbekend} | ASUS Merlin / amtm"
+  connection="$($SED -n '2p' /jffs/addons/vpn_ipcatcher.d/routing-selection 2>/dev/null)"
+  case "$connection" in
+    ovpnc[1-5]) say " VPN: OpenVPN ${connection#ovpnc}" ;;
+    wgc[1-5]) say " VPN: WireGuard ${connection#wgc}" ;;
+  esac
   say "============================================================"
-  status_report
+  status_report compact
   say "------------------------------------------------------------"
 }
 
@@ -2713,39 +2726,39 @@ menu_loop(){
   while true; do
     soft_clear
     print_header
-    say "Actions"
-    say "  1) Start service        Start de catcher op de achtergrond"
-    say "  2) Stop service         Stop engine + bekende child-processen"
-    say "  3) Restart service      Herlaad config en start schoon opnieuw"
-    say "  4) Refresh status       Toon actuele status opnieuw"
-    say "  5) Live activity        Live IPSet/capture-overzicht, q + Enter = terug"
-    say "  6) Live log             Live logbestand, q + Enter = terug"
-    say "  7) Live stream flows    Actuele conntrack top bytes + ipset status"
+    say "Bediening"
+    say "  1) Starten              Start de catcher op de achtergrond"
+    say "  2) Stoppen              Blijft gestopt tot Start of een router-reboot"
+    say "  3) Herstarten           Herlaad de instellingen en start opnieuw"
+    say "  4) Volledige status     Toon alle actuele details"
+    say "  5) Live activiteit      IP-lijsten en capture, q + Enter = terug"
+    say "  6) Live log             Logbestand volgen, q + Enter = terug"
+    say "  7) Live verbindingen    Verkeer per bestemming en lijststatus"
     say
-    say "Views"
-    say "  8) Candidate IPs        Tijdelijke IPs voor promotie"
-    say "  9) Final IPs            IPs gekoppeld aan de gekozen VPN-route"
-    say " 10) Show config          Lees huidige configuratie"
+    say "Bekijken"
+    say "  8) Kandidaten           Tijdelijke IPs voor beoordeling"
+    say "  9) VPN-bestemmingen     IPs in de definitieve VPN-lijst"
+    say " 10) Configuratie tonen   Lees huidige configuratie"
     say
-    say "Settings / cleanup"
-    say " 11) Guided settings      Instellingen met uitleg en voorbeelden"
+    say "Instellingen"
+    say " 11) Instellingen kiezen  Begeleide instellingen"
     say " 12) Profielen            Stabiel TV / voorzichtig / snel zappen / analyse"
-    say " 13) Exclusion manager    Presets per dienst toevoegen/verwijderen"
-    say " 14) Edit full config     Handmatig configbestand bewerken"
-    say " 15) Reset config         Terug naar veilige standaardconfig"
-    say " 16) Clean excluded IPs   Verwijder uitgesloten IPs uit ipsets"
+    say " 13) Uitsluitingen        Presets per dienst toevoegen/verwijderen"
+    say " 14) Configuratie bewerken Handmatig het configbestand bewerken"
+    say " 15) Configuratie resetten Terug naar standaardinstellingen"
+    say " 16) Lijsten opschonen    Uitgesloten IPs uit de leerlijsten verwijderen"
     say
-    say "Other"
-    say " 18) Check update"
-    say " 19) Install update"
-    say " 20) Compatibility check"
-    say " 21) Restore previous version"
-    say " 22) VPN / routing setup"
-    say " 23) Check VPN / list routing"
+    say "Onderhoud en updates"
+    say " 18) Update controleren   Geen wijzigingen aan je installatie"
+    say " 19) Update installeren   Met automatische prive-back-up"
+    say " 20) Systeemcontrole      Tools, firmware, cron en VPN controleren"
+    say " 21) Vorige versie        Programma terugzetten na gewone update"
+    say " 22) VPN kiezen           Andere actieve VPN/lijst instellen"
+    say " 23) VPN controleren      Bestaande lijst en route controleren"
     say " 24) Maak back-up         Klein (code/settings/hooks) of uitgebreid"
     say " 25) Toevoegen aan amtm   Registreren als persoonlijk script"
-    say " 17) Exit"
-    printf "Choose: "
+    say " 17) Terug naar amtm"
+    printf "Keuze: "
     read -r choice
     echo
     case "$choice" in

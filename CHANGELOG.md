@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 2.8.5
+
+- Compact amtm-hoofdmenu met versienummer, VPN-keuze en korte servicestatus.
+- WebUI toont de addon-versie, geselecteerde VPN en IP-lijst bovenaan.
+- Instellingen gegroepeerd; geavanceerde velden en presetdetails inklapbaar.
+- Duidelijke NL/EN-status voor uitsluitingen en zichtbare niet-opgeslagen wijzigingen.
+- Lange uitsluitlijsten blijven binnen hun eigen scrollbare overzicht.
+- VPN-namen worden gelezen zonder de ongeschikte `tr`-tekenklassen.
+- Geen verandering aan bestaande VPN-selectie of persoonlijke configuratie.
+
 ## 2.8.4
 
 - VPN-herkenning gebruikt vaste OpenVPN/WireGuard-sleutels in plaats van hoofdletteromzetting met `tr`.

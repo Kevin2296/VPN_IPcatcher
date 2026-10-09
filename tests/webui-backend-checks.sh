@@ -12,6 +12,9 @@ STATUS_JSON="$work/status.json"
 LOGFILE="$work/log"
 PRESET_LIB="$work/no-presets"
 ACTION_STATUS="$work/no-action"
+ADDON_DIR="$work/addon"
+mkdir "$ADDON_DIR"
+printf 'Example\novpnc1\n' > "$ADDON_DIR/routing-selection"
 AWK=awk
 printf 'IPSET_NAME="Example"\nINTERFACES="br0"\n' > "$CONF"
 printf 'Quoted "test" and backslash \\ and tab\tend\n' > "$LOGFILE"
@@ -26,3 +29,5 @@ live_flows_text(){ printf 'No test flows\n'; }
 publish_status
 node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.waiting_count!=="1" || !d.waiting_text.includes("203.0.113.10") || !d.waiting_text.includes("\"src=test\"") || !d.status_text.includes("Deferred IPs") || !d.status_text.includes("Engine") || !d.log_text.includes("\"test\"") || !d.log_text.includes("\\") || !d.log_text.includes("\t")) process.exit(1);' "$STATUS_JSON"
 echo 'PASS: WebUI backend emits valid JSON, waiting list and meaningful status snapshot'
+node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.vpn_connection!=="ovpnc1") process.exit(1);' "$STATUS_JSON"
+echo 'PASS: selected VPN metadata is published without private credentials'

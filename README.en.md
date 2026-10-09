@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.8.4](https://img.shields.io/badge/version-2.8.4-087F8C?style=for-the-badge)
+![Version 2.8.5](https://img.shields.io/badge/version-2.8.5-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.4.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.5.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -198,33 +198,51 @@ Existing entries are preserved; duplicates and the four-slot limit are checked.
 Reopen amtm to see it under `p1`–`p4`. Update amtm first if unsupported.
 This is not an official amtm addon. Its own updater manages updates.
 
+### 🔄 amtm AU
+
+`au` manages automatic updates for the supported scripts shown by amtm.
+Option **1** configures the schedule, **2** enables/disables participation,
+**3** shows the update log and **4** resets the supported-script list.
+Registration under `p1`–`p4` does not automatically provide AU support.
+For VPN IP Catcher, use **18 · Update controleren** and
+**19 · Update installeren**, with an automatic private backup.
+See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
+
+### 🖥️ Dashboard 2.8.5
+
+Version, selected VPN and list appear at the top. The main menu has a compact
+service summary; **4** shows full details. The WebUI groups settings and collapses
+advanced fields and preset details. **Excluded** means a service is not learned
+by IP Catcher, not that it is sent through the VPN. Unsaved changes are visible.
+Use **22 · VPN kiezen** to select another VPN already configured in the ASUS client.
+
 ### 📋 Complete main menu
 
 | No. | Option | Purpose |
 | --- | --- | --- |
-| 1 | Start service | Start and enable crash recovery |
-| 2 | Stop service | Stop until Start/Restart or reboot |
-| 3 | Restart service | Reload configuration |
-| 4 | Refresh status | View current status |
-| 5 | Live activity | Live list/capture overview |
+| 1 | Starten | Start and enable crash recovery |
+| 2 | Stoppen | Stop until Start/Restart or reboot |
+| 3 | Herstarten | Reload configuration |
+| 4 | Volledige status | View current status |
+| 5 | Live activiteit | Live list/capture overview |
 | 6 | Live log | Follow logs |
-| 7 | Live stream flows | Inspect traffic and byte growth |
-| 8 | Candidate IPs | Inspect temporary candidates |
-| 9 | Final IPs | Learned destinations for the VPN route |
-| 10 | Show config | Read settings |
-| 11 | Guided settings | Advanced settings with explanations |
+| 7 | Live verbindingen | Inspect traffic and byte growth |
+| 8 | Kandidaten | Inspect temporary candidates |
+| 9 | VPN-bestemmingen | Learned destinations for the VPN route |
+| 10 | Configuratie tonen | Read settings |
+| 11 | Instellingen kiezen | Advanced settings with explanations |
 | 12 | Profielen | Choose a learning profile |
-| 13 | Exclusion manager | Manage exclusions and presets |
-| 14 | Edit full config | Manual editing, advanced users only |
-| 15 | Reset config | Reset learning settings; preserve VPN choice; back up first |
-| 16 | Clean excluded IPs | Remove excluded addresses from sets |
-| 17 | Exit | Leave menu without stopping service |
-| 18 | Check update | Check GitHub version |
-| 19 | Install update | Update with backups |
-| 20 | Compatibility check | Check router/tools |
-| 21 | Restore previous version | Restore previous program files |
-| 22 | VPN / routing setup | Choose VPN; manage lists/rules automatically |
-| 23 | Check VPN / list routing | Check VPN/list binding |
+| 13 | Uitsluitingen | Manage exclusions and presets |
+| 14 | Configuratie bewerken | Manual editing, advanced users only |
+| 15 | Configuratie resetten | Reset learning settings; preserve VPN choice; back up first |
+| 16 | Lijsten opschonen | Remove excluded addresses from sets |
+| 17 | Terug naar amtm | Leave menu without stopping service |
+| 18 | Update controleren | Check GitHub version |
+| 19 | Update installeren | Update with backups |
+| 20 | Systeemcontrole | Check router/tools |
+| 21 | Vorige versie | Restore previous program files |
+| 22 | VPN kiezen | Choose VPN; manage lists/rules automatically |
+| 23 | VPN controleren | Check VPN/list binding |
 | **24** | **Maak back-up** | **1 small · 2 full · Enter back** |
 | **25** | **Toevoegen aan amtm** | **Register a personal script** |
 

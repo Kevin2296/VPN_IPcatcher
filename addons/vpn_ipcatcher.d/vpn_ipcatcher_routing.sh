@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.8.4
+# Version: 2.8.5
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -151,7 +151,7 @@ connection_label(){
     ovpnc*) number="${1#ovpnc}"; kind=OpenVPN; name="$(nvram get "vpn_client${number}_desc" 2>/dev/null)" ;;
     wgc*) number="${1#wgc}"; kind=WireGuard; name="$(nvram get "wgc${number}_desc" 2>/dev/null)" ;;
   esac
-  name="$(printf '%s' "$name" | tr -cd '[:print:]' | cut -c 1-60)"
+  name="$(printf '%s\n' "$name" | awk 'NR==1 {gsub(/[[:cntrl:]]/, ""); printf "%s", substr($0,1,60)}')"
   printf '%s %s%s\n' "$kind" "$number" "${name:+ - $name}"
 }
 automatic_lan(){
