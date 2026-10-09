@@ -19,6 +19,18 @@ IPv4 learning for your Asuswrt-Merlin VPN routing.
 
 ---
 
+## 🧭 Where would you like to start?
+
+| 🚀 Get started | 🎛️ Everyday use | 🛟 Maintenance |
+| :--- | :--- | :--- |
+| [First installation](#-first-installation) | [Menu, WebGUI and VPN selection](#en-controls) | [Install updates](#-updates) |
+| [Requirements](#-requirements) | [Investigate a stream problem](#-video-stops-during-playback) | [Backup and recovery](#-backup-and-rollback) |
+| [Download a release](https://github.com/Kevin2296/VPN_IPcatcher/releases) | [Nederlands, on the project page](https://github.com/Kevin2296/VPN_IPcatcher#nederlands) | [Privacy and security](#-privacy-and-releases) |
+
+> 🏠 **Your router, your data.** Diagnostics and backups stay local.
+> 🔀 **You choose the VPN.** The catcher learns destinations, not your username or password.
+> 🧩 **Browser or amtm.** One configuration, without manually creating temporary lists.
+
 ## ✨ At a glance
 
 VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automatically
@@ -190,6 +202,8 @@ deliberately stopped app stays stopped. Power loss cannot be recovered by a
 running shell: inspect backups, locks and `updating` before resuming. Do not
 blindly delete markers. Backups are not automatically pruned; monitor JFFS free
 space and maintain your own router backup as well.
+
+<a name="en-controls"></a>
 
 ## 🎛️ Controls and amtm
 

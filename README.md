@@ -21,6 +21,18 @@ IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
 <a name="nederlands"></a>
 
+## 🧭 Waar wil je beginnen?
+
+| 🚀 Aan de slag | 🎛️ Dagelijks gebruik | 🛟 Onderhoud |
+| :--- | :--- | :--- |
+| [Eerste installatie](#-eerste-installatie) | [Menu, WebGUI en VPN-keuze](#nl-controls) | [Updates installeren](#-bijwerken) |
+| [Wat heb je nodig?](#-vereisten) | [Een streamprobleem onderzoeken](#-video-stopt-tijdens-afspelen) | [Back-up en herstel](#-back-up-en-terugzetten) |
+| [Release downloaden](https://github.com/Kevin2296/VPN_IPcatcher/releases) | [English, op dezelfde pagina](#english) | [Privacy en veiligheid](#-privacy-en-releases) |
+
+> 🏠 **Jouw router, jouw gegevens.** Diagnose en back-ups blijven lokaal.
+> 🔀 **Jij kiest de VPN.** De catcher leert bestemmingen, niet je gebruikersnaam of wachtwoord.
+> 🧩 **Via browser of amtm.** Dezelfde configuratie, zonder zelf tijdelijke lijsten te maken.
+
 ## ✨ In het kort
 
 IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
@@ -199,6 +211,8 @@ bewust gestopte app blijft gestopt. Stroomuitval kan niet door een lopende shell
 worden hersteld: inspecteer dan back-ups, locks en `updating` voordat je hervat.
 Verwijder markers niet blind. Back-ups worden niet automatisch opgeruimd;
 controleer vrije JFFS-ruimte en maak daarnaast je eigen routerback-up.
+
+<a name="nl-controls"></a>
 
 ## 🎛️ Bediening en amtm
 
@@ -489,6 +503,18 @@ instellingen en rollback. Kernel, WebUI en echt VPN-verkeer vereisen routertests
 
 [Nederlands](#nederlands) | **English**
 
+## 🧭 Where would you like to start?
+
+| 🚀 Get started | 🎛️ Everyday use | 🛟 Maintenance |
+| :--- | :--- | :--- |
+| [First installation](#-first-installation) | [Menu, WebGUI and VPN selection](#en-controls) | [Install updates](#-updates) |
+| [Requirements](#-requirements) | [Investigate a stream problem](#-video-stops-during-playback) | [Backup and recovery](#-backup-and-rollback) |
+| [Download a release](https://github.com/Kevin2296/VPN_IPcatcher/releases) | [Nederlands, on the project page](https://github.com/Kevin2296/VPN_IPcatcher#nederlands) | [Privacy and security](#-privacy-and-releases) |
+
+> 🏠 **Your router, your data.** Diagnostics and backups stay local.
+> 🔀 **You choose the VPN.** The catcher learns destinations, not your username or password.
+> 🧩 **Browser or amtm.** One configuration, without manually creating temporary lists.
+
 ## ✨ At a glance
 
 VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automatically
@@ -660,6 +686,8 @@ deliberately stopped app stays stopped. Power loss cannot be recovered by a
 running shell: inspect backups, locks and `updating` before resuming. Do not
 blindly delete markers. Backups are not automatically pruned; monitor JFFS free
 space and maintain your own router backup as well.
+
+<a name="en-controls"></a>
 
 ## 🎛️ Controls and amtm
 
