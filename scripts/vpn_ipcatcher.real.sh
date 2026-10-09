@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.2
+# Version: 2.9.3
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -2740,51 +2740,76 @@ reset_config(){
   maybe_restart_after_config_change
 }
 
+menu_action_key(){
+  case "$1:$2" in
+    main:1|main:2|main:3) printf '%s\n' "$2" ;;
+    main:4) echo view ;; main:5) echo settings ;; main:6) echo vpn ;; main:7) echo maintenance ;;
+    view:1) echo 4 ;; view:2) echo 5 ;; view:3) echo 6 ;; view:4) echo 7 ;; view:5) echo 8 ;; view:6) echo 9 ;; view:7) echo 10 ;;
+    settings:1) echo 11 ;; settings:2) echo 12 ;; settings:3) echo 13 ;; settings:4) echo 14 ;; settings:5) echo 15 ;; settings:6) echo 16 ;;
+    vpn:1) echo 22 ;; vpn:2) echo 23 ;;
+    maintenance:UC|maintenance:uc) echo UC ;; maintenance:U|maintenance:u) echo U ;; maintenance:FU|maintenance:fu) echo FU ;;
+    maintenance:1) echo 20 ;; maintenance:2) echo 24 ;; maintenance:3) echo 26 ;; maintenance:4) echo 21 ;; maintenance:5) echo 25 ;;
+    *:E|*:e|*:q|*:Q|*:exit) echo back ;;
+    *) echo invalid ;;
+  esac
+}
 menu_loop(){
   # Belangrijk: Ctrl+C in live schermen mag het hoofdmenu niet doden.
   trap ':' INT
+  main_menu_section=main
 
   while true; do
     soft_clear
     print_header
-    say "Bediening"
-    say "  1) Starten              Start de catcher op de achtergrond"
-    say "  2) Stoppen              Blijft gestopt tot Start of een router-reboot"
-    say "  3) Herstarten           Herlaad de instellingen en start opnieuw"
-    say "  4) Volledige status     Toon alle actuele details"
-    say "  5) Live activiteit      IP-lijsten en capture, q + Enter = terug"
-    say "  6) Live log             Logbestand volgen, q + Enter = terug"
-    say "  7) Live verbindingen    Verkeer per bestemming en lijststatus"
-    say
-    say "Bekijken"
-    say "  8) Kandidaten           Tijdelijke IPs voor beoordeling"
-    say "  9) VPN-bestemmingen     IPs in de definitieve VPN-lijst"
-    say " 10) Configuratie tonen   Lees huidige configuratie"
-    say
-    say "Instellingen"
-    say " 11) Instellingen kiezen  Begeleide instellingen"
-    say " 12) Profielen            Stabiel TV / voorzichtig / snel zappen / analyse"
-    say " 13) Uitsluitingen        Presets per dienst toevoegen/verwijderen"
-    say " 14) Configuratie bewerken Handmatig het configbestand bewerken"
-    say " 15) Configuratie resetten Terug naar standaardinstellingen"
-    say " 16) Lijsten opschonen    Uitgesloten IPs uit de leerlijsten verwijderen"
-    say
-    say "Onderhoud en updates"
-    say " 18) Update controleren   Geen wijzigingen aan je installatie"
-    say " 19) Update installeren   Met automatische prive-back-up"
-    say " 20) Systeemcontrole      Tools, firmware, cron en VPN controleren"
-    say " 21) Vorige versie        Programma terugzetten na gewone update"
-    say " 22) VPN kiezen           Andere actieve VPN/lijst instellen"
-    say " 23) VPN controleren      Bestaande lijst en route controleren"
-    say " 24) Maak back-up         Klein (code/settings/hooks) of uitgebreid"
-    say " 25) Toevoegen aan amtm   Registreren als persoonlijk script"
-    say " 26) Back-ups beheren     Bekijken, verwijderen of laatste vijf kleine behouden"
-    say " UC) Update controleren   U) Bijwerken   FU) Dezelfde versie repareren"
-    say " 17) Terug naar amtm"
+    case "$main_menu_section" in
+      main)
+        say " 1) Starten       2) Stoppen       3) Herstarten"
+        say " 4) Status en liveweergave"
+        say " 5) Instellingen en presets"
+        say " 6) VPN en routing"
+        say " 7) Onderhoud en updates"
+        say " E) Terug naar amtm"
+        ;;
+      view)
+        say "Status en liveweergave"
+        say " 1) Volledige status      2) Live activiteit"
+        say " 3) Live log              4) Live verbindingen"
+        say " 5) Kandidaten            6) VPN-bestemmingen"
+        say " 7) Configuratie tonen"
+        say " E) Terug"
+        ;;
+      settings)
+        say "Instellingen en presets"
+        say " 1) Begeleide instellingen"
+        say " 2) Profielen             3) Uitsluitingen / presets"
+        say " 4) Configuratie bewerken 5) Standaardwaarden herstellen"
+        say " 6) Uitgesloten IPs uit leerlijsten verwijderen"
+        say " E) Terug"
+        ;;
+      vpn)
+        say "VPN en routing"
+        say " 1) VPN kiezen            2) VPN / lijst controleren"
+        say " E) Terug"
+        ;;
+      maintenance)
+        say "Onderhoud en updates"
+        say " UC) Update controleren (alleen kijken)"
+        say "  U) Update installeren (met lokale back-up)"
+        say " FU) Dezelfde versie opnieuw installeren / repareren"
+        say
+        say " 1) Systeemcontrole       2) Back-up maken"
+        say " 3) Back-ups beheren      4) Vorige versie herstellen"
+        say " 5) Toevoegen aan amtm"
+        say " E) Terug"
+        ;;
+    esac
     printf "Keuze: "
-    read -r choice
+    read -r choice || { trap - INT; return 0; }
+    choice="$(menu_action_key "$main_menu_section" "$choice")"
     echo
     case "$choice" in
+      view|settings|vpn|maintenance) main_menu_section="$choice"; continue ;;
+      back) [ "$main_menu_section" = main ] && { trap - INT; return 0; }; main_menu_section=main; continue ;;
       1) start_service; press_enter ;;
       2) stop_service; press_enter ;;
       3) restart_service; press_enter ;;
@@ -2799,17 +2824,18 @@ menu_loop(){
       12) profile_menu ;;
       13) preset_exclusion_menu ;;
       14) edit_config; say; say "Opslaan in nano: Ctrl+O, Enter, Ctrl+X. Opslaan in vi: Esc, :wq, Enter."; press_enter ;;
-      15) reset_config; press_enter ;;
+      15)
+        printf "Leerinstellingen terugzetten met lokale back-up? [j/N]: "; read -r reset_answer
+        case "$reset_answer" in j|J|y|Y) reset_config; press_enter ;; esac
+        ;;
       16) ipset_remove_excluded; press_enter ;;
-      17|q|Q|exit) trap - INT; exit 0 ;;
-      18|UC|uc) /jffs/scripts/vpn_ipcatcher.sh check-update; press_enter ;;
-      19|U|u|FU|fu)
+      UC) /jffs/scripts/vpn_ipcatcher.sh check-update; press_enter ;;
+      U|FU)
         update_action=update
         case "$choice" in FU|fu) update_action=force-update ;; esac
-        printf "Update installeren / repareren? [j/N]: "; read -r update_answer
+        printf "Bijwerken / repareren met verplichte lokale back-up? [j/N]: "; read -r update_answer
         case "$update_answer" in j|J|y|Y)
-          printf "Eerst een verplichte prive-back-up maken en daarna bijwerken? [j/N]: "; read -r backup_answer
-          case "$backup_answer" in j|J|y|Y) /jffs/scripts/vpn_ipcatcher.sh "$update_action"; press_enter; exec /jffs/scripts/vpn_ipcatcher.sh menu ;; esac
+          /jffs/scripts/vpn_ipcatcher.sh "$update_action"; press_enter; exec /jffs/scripts/vpn_ipcatcher.sh menu
         esac
         ;;
       20) /jffs/scripts/vpn_ipcatcher.sh doctor; press_enter ;;
@@ -2830,7 +2856,7 @@ menu_loop(){
         /jffs/scripts/vpn_ipcatcher.sh backup list
         say "1) Een archief verwijderen  2) Laatste vijf kleine archieven behouden"
         say "3) Oude programmakopieen opruimen (actief herstelpunt blijft)"
-        say "Programmaherstel (optie 21) wordt niet verwijderd."
+        say "Het actieve programmaherstelpunt wordt niet verwijderd."
         printf "Keuze [1/2/3, Enter=terug]: "; read -r backup_choice
         case "$backup_choice" in
           1)

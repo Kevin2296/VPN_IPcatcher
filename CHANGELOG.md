@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.9.3
+
+- Compact hoofdmenu met submenu's voor liveweergave, instellingen, VPN en onderhoud. E gaat terug; updateacties alleen UC/U/FU.
+- Een bevestiging voor handmatige update inclusief verplichte lokale back-up; reset vraagt bevestiging.
+- Rustige update-uitvoer: een voortgangsregel in een terminal, technische meldingen naar prive-log en back-uppad aan het einde.
+- Losse presetkeuze duidelijker benoemd. Standaardwaarden en promotiemodi uitgelegd in de NL/EN WebUI.
+- NL/EN stap-voor-stap installatie en volledige beschrijving van nieuwe menu's. Bestaande configuratie behouden.
+
 ## 2.9.2
 
 - Vaste kolomkoppen in alle live-tabellen, ook tijdens scrollen.

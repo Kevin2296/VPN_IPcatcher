@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.9.2](https://img.shields.io/badge/version-2.9.2-087F8C?style=for-the-badge)
+![Version 2.9.3](https://img.shields.io/badge/version-2.9.3-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -37,7 +37,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.2.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.3.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -87,6 +87,15 @@ is needed. Incompatible existing lists are left intact. Scripts use
 
 Open an interactive SSH session on the router, for example using MobaXterm.
 Use this only when VPN IP Catcher is not already installed:
+
+1. Enable SSH and **JFFS custom scripts/configs** under ASUS **Administration > System**. Keep SSH LAN-only.
+2. Ensure Entware and Domain VPN Routing are installed. Configure and connect your VPN in ASUS first.
+3. Connect MobaXterm to the router using SSH and run the installation command below.
+4. Choose an active VPN when the wizard offers multiple choices. Lists and LAN are configured automatically.
+5. Open `/jffs/scripts/vpn_ipcatcher.sh`. Choose **7 > 1** for system checks and **6 > 2** for VPN checks.
+6. Choose **7 > 5** to register IP Catcher as a personal script in amtm.
+7. Open ASUS **Addons > vpn_ipcatcher**. Check the version and use Ctrl+F5 after updating.
+8. Optionally restrict **Configuration > Source IPs** to media devices, save and test a stream. Updates preserve these settings.
 
 ```sh
 curl -fL --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 https://raw.githubusercontent.com/Kevin2296/VPN_IPcatcher/main/install.sh -o /tmp/vpn_ipcatcher_install.sh && sh /tmp/vpn_ipcatcher_install.sh install
@@ -152,14 +161,14 @@ Do not overwrite an existing installation with the first-install command.
 
 ## 💾 Backup and rollback
 
-**No command needed:** open the IP Catcher menu and select **24 · Maak back-up**:
+**No command needed:** open the IP Catcher menu and select **7 > 2 · Maak back-up**:
 
 - **1 · Small:** program code, settings, VPN selection, update source and existing hooks.
 - **2 · Full:** also both addon directories/history and DVR configuration/code.
 
 Installation backs up existing files/hooks before placing the addon. Every
 update automatically creates a small private archive and separately preserves
-the previous program version for menu **21**. A completely empty first install
+the previous program version for menu **7 > 4**. A completely empty first install
 has nothing to back up. Backup failures stop the update. Archives stay under
 `/jffs/vpn-ipcatcher-backups/`, never on the public WebUI path. They are not
 automatically pruned; monitor JFFS space and keep important copies on your PC.
@@ -207,7 +216,7 @@ space and maintain your own router backup as well.
 
 ## 🎛️ Controls and amtm
 
-Choose **25 · Toevoegen aan amtm** to register IP Catcher as a personal script.
+Choose **7 > 5 · Toevoegen aan amtm** to register IP Catcher as a personal script.
 Existing entries are preserved; duplicates and the four-slot limit are checked.
 Reopen amtm to see it under `p1`–`p4`. Update amtm first if unsupported.
 This is not an official amtm addon. Its own updater manages updates.
@@ -218,7 +227,7 @@ This is not an official amtm addon. Its own updater manages updates.
 Option **1** configures the schedule, **2** enables/disables participation,
 **3** shows the update log and **4** resets the supported-script list.
 Registration under `p1`–`p4` does not automatically provide AU support.
-Version 2.9.2 supports the `amtmupdate` protocol, disabled by default. Opt in through
+Version 2.9.1 supports the `amtmupdate` protocol, disabled by default. Opt in through
 WebUI > Maintenance or `vpn_ipcatcher.sh auto-update enable`. This does **not** enroll
 the addon in the central amtm AU catalog; enrollment requires the amtm maintainer.
 No independent schedule is created. Automatic updates only install a higher version,
@@ -227,7 +236,7 @@ See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-sc
 
 ### 🖥️ Dashboard 2.9.0
 
-### 🧭 Browser controls from 2.9.2
+### 🧭 Browser controls from 2.9.1
 
 - **Maintenance:** check, install or reinstall an update with confirmation and a
   mandatory backup before changes. The progress indicator shows activity, not an ETA.
@@ -280,12 +289,12 @@ TCP-DNS can leave names unknown. IP snapshots still work without DNS tools.
 Exports are private metadata: never upload them to public GitHub.
 
 **Keep scroll position** is enabled by default in all live tabs.
-**UC / 18** checks for updates, **U / 19** confirms installation and mandatory
+**7 > UC** checks for updates, **7 > U** confirms installation and mandatory
 private backup, **FU** reinstalls the same version for repair. Progress follows
 installation phases, not an estimated completion time. Ordinary updates now
 refresh ASUS event hooks too.
 
-**Backup management (26):** list archive names/dates and sizes, delete a selected
+**Backup management (7 > 3):** list archive names/dates and sizes, delete a selected
 archive, keep the five newest small archives, or clean old program snapshots.
 Deletion requires confirmation. Full archives are not automatically pruned.
 Program cleanup preserves the two newest snapshots, the active rollback point
@@ -296,53 +305,74 @@ Search also works in the other live views. Filters persist across refreshes
 and affect the display only, never VPN routing.
 
 Version, selected VPN and list appear at the top. The main menu has a compact
-service summary; **4** shows full details. The WebUI groups settings and collapses
+service summary; **4 > 1** shows full details. The WebUI groups settings and collapses
 advanced fields and preset details. **Excluded** means a service is not learned
 by IP Catcher, not that it is sent through the VPN. Unsaved changes are visible.
-Use **22 · VPN kiezen** to select another VPN already configured in the ASUS client.
+Use **6 > 1 · VPN kiezen** to select another VPN already configured in the ASUS client.
 
-### 📋 Complete main menu
+### ⚙️ Defaults and choosing a profile
 
-| No. | Option | Purpose |
+There is no universally best configuration. These are new-install defaults;
+updates preserve your settings. The wizard selects LAN and VPN/list. Source IPs
+are empty by default (all devices).
+
+| Setting | Built-in default |
+| --- | --- |
+| Promotion mode | `auto`: bytes with working conntrack accounting, otherwise age |
+| Promotion interval / minimum age | 15 s / 30 s |
+| Minimum candidate bytes | 1000000 B (1 MB) |
+| Stream scan / target / interval | Enabled / candidate / 5 s |
+| Stream threshold / minimum growth per scan | 15000000 B (15 MB) / 750000 B (750 KB) |
+| Growth required | Yes |
+| Candidate / final expiry | 10 minutes / 7 days |
+| Exclusion resolver / interval | Enabled / 1 hour |
+| Generic scan / external DNS / reverse DNS | Disabled / disabled / disabled |
+| Ports | 80,443 |
+
+**bytes** requires sufficient traffic and minimum age; **age** only minimum age;
+**immediate** makes an IP eligible immediately. Existing connections are still
+protected from switching routes mid-session. Stream scanning also has separate
+thresholds; promotion mode is not the only learning setting.
+
+Prefer restricting Source IPs to media devices for targeted IPTV learning.
+**Stable TV** learns faster (3 MB); **Cautious** is more conservative (25 MB).
+Profiles change several values: back up first and compare Configuration.
+Do not blindly expand exclusions; shared CDNs may serve wanted streams too.
+
+**Individual preset entries:** open **Preset lists > Choose individual entries**,
+select domains/IPs/ranges and use **Save + restart**. Protected resolver IPs
+cannot be unchecked; shared entries may affect multiple presets. If missing,
+check the version: at least 2.9.1 is required. Use Ctrl+F5 after updating.
+
+### 📋 Menu and submenus
+
+From 2.9.3: compact submenus and **E** to go back. Updates appear only under
+**7 > UC / U / FU**. Older versions still use the long numbered menu.
+
+| Choice | Option | Purpose |
 | --- | --- | --- |
-| 1 | Starten | Start and enable crash recovery |
-| 2 | Stoppen | Stop until Start/Restart or reboot |
-| 3 | Herstarten | Reload configuration |
-| 4 | Volledige status | View current status |
-| 5 | Live activiteit | Live list/capture overview |
-| 6 | Live log | Follow logs |
-| 7 | Live verbindingen | Inspect traffic and byte growth |
-| 8 | Kandidaten | Inspect temporary candidates |
-| 9 | VPN-bestemmingen | Learned destinations for the VPN route |
-| 10 | Configuratie tonen | Read settings |
-| 11 | Instellingen kiezen | Advanced settings with explanations |
-| 12 | Profielen | Choose a learning profile |
-| 13 | Uitsluitingen | Manage exclusions and presets |
-| 14 | Configuratie bewerken | Manual editing, advanced users only |
-| 15 | Configuratie resetten | Reset learning settings; preserve VPN choice; back up first |
-| 16 | Lijsten opschonen | Remove excluded addresses from sets |
-| 17 | Terug naar amtm | Leave menu without stopping service |
-| 18 | Update controleren | Check GitHub version |
-| 19 | Update installeren | Update with backups |
-| 20 | Systeemcontrole | Check router/tools |
-| 21 | Vorige versie | Restore previous program files |
-| 22 | VPN kiezen | Choose VPN; manage lists/rules automatically |
-| 23 | VPN controleren | Check VPN/list binding |
-| **24** | **Maak back-up** | **1 small · 2 full · Enter back** |
-| **25** | **Toevoegen aan amtm** | **Register a personal script** |
-| **26** | **Back-ups beheren** | **Inspect and confirm backup cleanup** |
-| UC / U / FU | Updates | Check / update / reinstall the same version |
+| 1 / 2 / 3 | Start / stop / restart | Intentional Stop is respected until Start or reboot |
+| 4 | Status and live views | 1 status, 2 activity, 3 log, 4 connections, 5 candidates, 6 VPN destinations, 7 configuration |
+| 5 | Settings and presets | 1 guided, 2 profiles, 3 exclusions, 4 manual editing, 5 confirmed reset with backup, 6 cleanup |
+| 6 | VPN and routing | 1 select VPN, 2 check VPN/list |
+| 7 | Maintenance and updates | UC check, U update, FU reinstall; no duplicate update numbers |
+| 7 > 1 | System check | Check router/tools |
+| 7 > 2 | Create backup | Small or full |
+| 7 > 3 | Manage backups | Inspect and confirm cleanup |
+| 7 > 4 | Previous version | Restore previous program files |
+| 7 > 5 | Add to amtm | Register a personal script |
+| E | Back | Submenu: main menu. Main menu: amtm. Service keeps running |
 
-**Profiles (12):** 1 Stable TV, 2 Cautious learning, 3 Fast zapping,
+**Profiles (5 > 2):** 1 Stable TV, 2 Cautious learning, 3 Fast zapping,
 4 Analysis/review, 5 Existing list only, 6 Back.
 
-**Guided settings (11):** 1 Interfaces, 2 IPSet name, 3 Ports, 4 Promotion mode,
+**Guided settings (5 > 1):** 1 Interfaces, 2 IPSet name, 3 Ports, 4 Promotion mode,
 5 Minimum age, 6 Minimum bytes, 7 Excluded domains, 8 Excluded IPs, 8b Network ranges,
 9 Profiles, 10 Exclusion manager, 11 Timers/cleanup, 12 Generic host scan,
 13 External DNS, 14 Streamflow scan, 15 Source IPs, 16 Stream threshold,
-17 Stream growth, 18 Stream target, 19 Back. Change VPN via **22**, not a made-up list name.
+17 Stream growth, 18 Stream target, 19 Back. Change VPN via **6 > 1**, not a made-up list name.
 
-**Exclusion manager (13):** 1 Show all, 2 Safe defaults, 3 DNS, 4 Social/messaging,
+**Exclusion manager (5 > 3):** 1 Show all, 2 Safe defaults, 3 DNS, 4 Social/messaging,
 5 Camera/IoT, 6 GitHub/dev-CDN, 7 Games, 8 OS/app updates, 9 TV telemetry,
 10 Streaming services, 11 Custom domains, 12 Custom IPs, 13 Resolver/cache,
 14 Remove excluded addresses, 15 Back. Within a group: numbers toggle services,

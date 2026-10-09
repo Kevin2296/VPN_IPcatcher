@@ -13,6 +13,22 @@ AWK=awk; SED=sed; GREP=grep; TR=tr; TAIL=tail
 CONF="$TMP/config"
 default_config > "$CONF"
 load_config
+[ "$PROMOTE_MODE" = auto ] && [ "$STREAM_MIN_BYTES" = 15000000 ] && [ "$STREAM_MIN_DELTA" = 750000 ]
+[ "$STREAM_FLOW_TARGET" = candidate ] && [ "$FINAL_TIMEOUT" = 604800 ]
+[ "$(menu_action_key main 7)" = maintenance ]
+[ "$(menu_action_key maintenance uc)" = UC ]
+[ "$(menu_action_key maintenance U)" = U ]
+[ "$(menu_action_key maintenance FU)" = FU ]
+[ "$(menu_action_key maintenance 19)" = invalid ]
+[ "$(menu_action_key main E)" = back ]
+[ "$(menu_action_key settings e)" = back ]
+[ "$(menu_action_key vpn 2)" = 23 ]
+[ "$(menu_action_key view 1)" = 4 ]
+echo 'PASS: documented defaults, compact submenus, E navigation and unique update keys'
+menu_output="$(printf '7\nE\nE\n' | (soft_clear(){ :; }; print_header(){ :; }; menu_loop))"
+printf '%s\n' "$menu_output" | grep -q 'UC) Update controleren'
+if printf '%s\n' "$menu_output" | grep -Eq '18\)|19\)|17\)'; then exit 1; fi
+echo 'PASS: maintenance navigation returns with E and displays no duplicate numbered update actions'
 ROUTING_STATUS="$TMP/routing-status"
 IPSET_NAME=Example
 current_epoch(){ echo 1000; }

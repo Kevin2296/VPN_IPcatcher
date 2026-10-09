@@ -1,4 +1,14 @@
-# 🛡️ VPN IP Catcher 2.9.2 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.9.3 · Testrelease / Prerelease
+
+**2.9.3:** compacte submenu's, E om terug te gaan en alleen UC/U/FU voor updates.
+Een bevestiging inclusief back-up, rustige voortgang en technische details in een
+prive-log. Duidelijkere losse presetkeuze, standaardwaarden en NL/EN installatiestappen.
+Updates bewaren je configuratie; er is geen universeel beste leerprofiel.
+
+**2.9.3:** compact submenus, E navigation and unique UC/U/FU update actions.
+One confirmation including backup, clean progress and private technical logs.
+Clear individual preset selection, defaults and bilingual installation steps.
+Updates preserve configuration; no universally best learning profile is claimed.
 
 **2.9.2:** vaste, aanklikbare kolomkoppen in alle live-tabellen. Oplopend/aflopend
 sorteren en sortering per tab behouden bij verversen. Scrollpositie blijft behouden.

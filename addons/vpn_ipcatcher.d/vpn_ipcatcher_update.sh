@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.2
+# Version: 2.9.3
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -22,10 +22,16 @@ HOOKS='scripts/services-start scripts/service-event scripts/firewall-start'
 CRON_CHANGED=0
 WATCHDOG_JOB=''
 STATUS_JOB=''
+DETAIL_LOG="$ADDON/update-last.log"
+PRIVATE_ARCHIVE=''
 
-fail(){ printf 'FOUT: %s\n' "$*" >&2; exit 1; }
+fail(){ printf '\nFOUT: %s\n' "$*" >&2; exit 1; }
 progress(){
-  printf '\r[%s] %3s%% %s\n' "$2" "$1" "$3"
+  if [ -t 1 ]; then printf '\r\033[K[%s] %3s%% %s' "$2" "$1" "$3"
+  else printf '[%s] %3s%% %s\n' "$2" "$1" "$3"; fi
+}
+run_logged(){
+  "$@" >> "$DETAIL_LOG" 2>&1 || fail "Stap mislukt. Technische details: $DETAIL_LOG"
 }
 find_on_path(){
   (
@@ -83,7 +89,7 @@ finish(){
     rm -f "$ADDON/updating"
     if [ "$WAS_DISABLED" = 1 ]; then : > "$DISABLED"; else rm -f "$DISABLED"; fi
     if [ "$WAS_RUNNING" = 1 ]; then
-      "$ENGINE" start || result=1
+      "$ENGINE" start >> "$DETAIL_LOG" 2>&1 || result=1
     fi
   fi
   if [ "$CRON_CHANGED" = 1 ] && [ "$result" != 0 ]; then
@@ -104,6 +110,9 @@ mkdir "$LOCK" 2>/dev/null || fail "Update-lock bestaat. Controleer of een andere
 echo "$$" > "$LOCK/pid"
 trap finish EXIT
 trap 'exit 1' INT TERM
+[ ! -L "$DETAIL_LOG" ] || fail 'Ongeldig update-logbestand.'
+: > "$DETAIL_LOG"
+chmod 600 "$DETAIL_LOG"
 
 if [ "$action" = update-source ]; then
   [ "$#" = 3 ] || fail "Gebruik: $ENGINE update-source eigenaar/repository branch-of-tag"
@@ -158,7 +167,9 @@ else
   remote="$(cat "$STAGE/VERSION")"
   printf '%s\n' "$remote" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || fail "Ongeldige releaseversie."
   local_version="$(sed -n 's/^# Version: //p' "$ENGINE" | head -n 1)"
-  printf 'Geinstalleerd: %s\nGitHub: %s\nCommit: %s\n' "$local_version" "$remote" "$commit"
+  printf 'Geinstalleerd: %s\nGitHub: %s\n' "$local_version" "$remote"
+  printf 'Commit: %s\n' "$commit" >> "$DETAIL_LOG"
+  [ "$action" != check-update ] || printf 'Commit: %s\n' "$commit"
   [ "$action" = check-update ] && exit 0
   if [ "$action" = automatic-update ]; then
     printf '%s\n' "$local_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || fail 'Lokale versie onbekend; geen automatische update.'
@@ -187,9 +198,10 @@ else
   if [ "$action" = migrate ]; then
     sh "$STAGE/scripts/vpn_ipcatcher.real.sh" validate-config || fail 'De oude configuratie is niet compatibel; niets vervangen. Pas geen instellingen blind aan.'
   fi
-  sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh" "$backup_mode" --update-owner "$$"
+  run_logged sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh" "$backup_mode" --update-owner "$$"
+  PRIVATE_ARCHIVE="$(sed -n 's/^Prive-back-up: //p' "$DETAIL_LOG" | tail -n 1)"
   progress 45 '#########-----------' 'Back-up gereed; installatie voorbereiden'
-  sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" install-dependencies
+  run_logged sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" install-dependencies
   BACKUP="$ADDON/backups/update-$(date +%Y%m%d-%H%M%S)-$$"
   mkdir -p "$BACKUP"
   cp -p /jffs/scripts/vpn_ipcatcher.conf "$BACKUP/private-config"
@@ -233,11 +245,12 @@ if [ "$action" = migrate ]; then
   cru d vpn_ipcatcher_watchdog
   cru d vpn_ipcatcher_status
 fi
-"$ENGINE" stop
+run_logged "$ENGINE" stop
 progress 60 '############--------' 'Programma en ASUS-koppelingen bijwerken'
 if [ "$action" != rollback ] && [ ! -f "$ADDON/routing-selection" ]; then
   cp -p /jffs/scripts/vpn_ipcatcher.conf "$BACKUP/private-config"
   SELECTION_CHANGED=1
+  printf '\n'
   sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" configure
   [ -s "$ADDON/routing-selection" ] || fail "VPN/lijstselectie niet opgeslagen."
 fi
@@ -254,13 +267,13 @@ else
 fi
 if [ "$action" != rollback ]; then
   HOOKS_CHANGED=1
-  sh "$ADDON/install_vpn_ipcatcher.sh" hooks
+  run_logged sh "$ADDON/install_vpn_ipcatcher.sh" hooks
   # An unrecognized legacy running state stays stopped until explicit Start.
   if [ "$action" = migrate ]; then [ "$WAS_RUNNING" = 1 ] || WAS_DISABLED=1; fi
 fi
 # Check startup before accepting the new files; finish restores them on failure.
 if [ "$WAS_RUNNING" = 1 ]; then
-  VPNIPC_INTERNAL=1 /jffs/scripts/vpn_ipcatcher.real.sh start
+  VPNIPC_INTERNAL=1 run_logged /jffs/scripts/vpn_ipcatcher.real.sh start
 fi
 if [ "$action" = migrate ]; then
   cru a vpn_ipcatcher_watchdog '* * * * * /jffs/scripts/vpn_ipcatcher_watchdog.sh'
@@ -268,6 +281,8 @@ if [ "$action" = migrate ]; then
 fi
 MODIFIED=0
 if [ "$action" != rollback ]; then printf '%s\n' "$BACKUP" > "$ADDON/last-backup"; fi
-"$ADDON/vpn_ipcatcher_webui.sh" mount || echo "WebUI mount niet gelukt; controleer doctor."
-echo "Bestanden bijgewerkt. Persoonlijke configuratie behouden."
+"$ADDON/vpn_ipcatcher_webui.sh" mount >> "$DETAIL_LOG" 2>&1 || printf '\nWebUI mount niet gelukt; controleer systeemcontrole. Details: %s\n' "$DETAIL_LOG"
 progress 100 '####################' 'Klaar'
+printf '\nBestanden bijgewerkt. Persoonlijke configuratie behouden.\n'
+[ -z "$PRIVATE_ARCHIVE" ] || printf 'Lokale back-up: %s\n' "$PRIVATE_ARCHIVE"
+printf 'Technische details (prive): %s\n' "$DETAIL_LOG"

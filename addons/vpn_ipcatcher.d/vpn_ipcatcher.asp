@@ -416,6 +416,8 @@ table.data tr:last-child td{border-bottom:none}
 .vpn_ipcatcher_dashboard #liveOutput table.data th{position:sticky;top:0;z-index:2}
 .vpn_ipcatcher_dashboard .columnSort{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;padding:0;margin:0;background:none;border:0;border-radius:0;color:inherit;font:inherit;text-align:left;text-transform:inherit;cursor:pointer}
 .vpn_ipcatcher_dashboard .columnSort:focus-visible{outline:2px solid #5cc8bb;outline-offset:3px}
+.vpn_ipcatcher_dashboard #page_help table{table-layout:fixed}
+.vpn_ipcatcher_dashboard #page_help td{overflow-wrap:anywhere}
 .vpn_ipcatcher_dashboard .card .muted{overflow-wrap:anywhere}
 .vpn_ipcatcher_dashboard .layoutTabs{gap:0;border-bottom:1px solid #637375}
 .vpn_ipcatcher_dashboard .layoutTab{background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;padding:12px;font-size:14px}
@@ -932,6 +934,18 @@ Object.assign(VPNIPC_I18N.nl,{diagnostic_paused:'Gepauzeerd — resultaat bewaar
 Object.assign(VPNIPC_I18N.en,{diagnostic_paused:'Paused — results retained',diagnostic_stopped:'Stopped — results retained',diagnosticPause:'Pause',diagnosticResume:'Resume',diagnosticExport:'Export',diagnosticTime:'Observed at',diagnosticClear:'Clear results',diagnosticClearConfirm:'Clear the retained diagnostics?',diagnosticLimited:'Last 2000 observations; export contains private connection metadata.'});
 Object.assign(VPNIPC_I18N.nl,{keepScrollPosition:'Scrollpositie behouden'});
 Object.assign(VPNIPC_I18N.en,{keepScrollPosition:'Keep scroll position'});
+Object.assign(VPNIPC_I18N.nl,{
+  choosePresetItems:'Losse onderdelen kiezen',defaultsTitle:'Standaardwaarden bij nieuwe installatie',
+  defaultsExplain:'Dit zijn de ingebouwde leerinstellingen, niet je huidige configuratie. Installatie kiest LAN en VPN/lijst automatisch. Updates bewaren je eigen waarden; een profiel kan andere waarden instellen.',
+  promotionExplain:'auto: bytes wanneer conntrack-tellers werken, anders leeftijd. bytes: voldoende verkeer en minimale leeftijd vereist. age: alleen minimale leeftijd. immediate: direct geschikt voor de VPN-lijst, maar actieve verbindingen blijven beschermd.',
+  defaultsAdvice:'Er is geen beste instelling voor iedereen. Beperk Bron-IP\'s bij voorkeur tot je mediaboxen om downloads van andere apparaten niet te leren. Laat generieke scan, externe DNS en omgekeerde DNS uit, tenzij je die bewust nodig hebt. Stabiel TV leert sneller dan deze basis; Voorzichtig is terughoudender. Een uitsluitpreset stuurt niets verplicht via VPN.'
+});
+Object.assign(VPNIPC_I18N.en,{
+  choosePresetItems:'Choose individual entries',defaultsTitle:'Defaults for a new installation',
+  defaultsExplain:'These are the built-in learning settings, not your current configuration. Installation selects LAN and VPN/list automatically. Updates preserve your values; profiles may use different settings.',
+  promotionExplain:'auto: bytes when conntrack accounting works, otherwise age. bytes: sufficient traffic and minimum age required. age: minimum age only. immediate: immediately eligible for the VPN list, but existing connections remain protected.',
+  defaultsAdvice:'There is no best configuration for everyone. Prefer limiting Source IPs to media devices to avoid learning downloads from other devices. Keep generic scanning, external DNS and reverse DNS disabled unless deliberately needed. Stable TV learns faster than this baseline; Cautious is more conservative. An exclusion preset does not force traffic through a VPN.'
+});
 Object.assign(VPNIPC_I18N.nl,{diagnosticDomain:'Domein (DNS-aanwijzing)',diagnosticUnknown:'Onbekend',diagnosticMarker:'Zender / gebeurtenis',diagnosticMark:'Markeren',diagnosticRemaining:'Resterend',diagnosticDnsNote:'DNS-aanwijzingen zijn geen bewijs van de gebruikte dienst. Versleutelde of eerder gecachte DNS kan ontbreken.'});
 Object.assign(VPNIPC_I18N.en,{diagnosticDomain:'Domain (DNS hint)',diagnosticUnknown:'Unknown',diagnosticMarker:'Channel / event',diagnosticMark:'Mark',diagnosticRemaining:'Remaining',diagnosticDnsNote:'DNS hints do not prove the service used. Encrypted or previously cached DNS may be absent.'});
 function addDiagnosticMarker(){
@@ -1240,7 +1254,7 @@ function renderPresets(){
       html+='<div style="flex:1">';
       html+='<div><strong>'+escapeHtml(vpnipcPresetLabel(item))+'</strong> - <span class="'+cls+'">'+shownState+'</span></div>';
       html+='<div class="presetMeta">'+meta.join(' ')+'</div>';
-      html+='<details data-preset="'+escapeHtml(item.key)+'" '+(openDetails[item.key]?'open':'')+'><summary>'+escapeHtml(t('details'))+'</summary><div class="presetMeta">';
+      html+='<details data-preset="'+escapeHtml(item.key)+'" '+(openDetails[item.key]?'open':'')+'><summary>'+escapeHtml(t('choosePresetItems'))+'</summary><div class="presetMeta">';
       ['domains','ips','nets'].forEach(function(kind){
         var field=byId('cfg_EXCLUDE_'+(kind==='domains'?'DOMAINS':kind==='ips'?'IPS':'NETS'));
         var selected=getWords(field.value);
@@ -1607,6 +1621,23 @@ window.addEventListener('load', function(){
                 <div class="page" id="page_help">
                   <div class="panel-title" data-i18n="help">Uitleg</div>
                   <div class="panel-body">
+                    <h3 data-i18n="defaultsTitle">Standaardwaarden</h3>
+                    <p data-i18n="defaultsExplain"></p>
+                    <p data-i18n="promotionExplain"></p>
+                    <table class="data"><thead><tr><th data-i18n="field">Veld</th><th data-i18n="value">Waarde</th></tr></thead><tbody>
+                      <tr><td data-i18n="promoteMode">Promotiemodus</td><td>auto</td></tr>
+                      <tr><td data-i18n="promoteInterval">Promotie-interval</td><td>15 s</td></tr>
+                      <tr><td data-i18n="minAge">Minimale leeftijd</td><td>30 s</td></tr>
+                      <tr><td data-i18n="candidateTimeout">Kandidaat-time-out</td><td>600 s (10 min)</td></tr>
+                      <tr><td data-i18n="finalTimeout">Definitieve time-out</td><td>604800 s (7 d)</td></tr>
+                      <tr><td>STREAM_FLOW_SCAN / STREAM_FLOW_TARGET</td><td>yes / candidate</td></tr>
+                      <tr><td>STREAM_SCAN_EVERY</td><td>5 s</td></tr>
+                      <tr><td>MIN_BYTES / STREAM_MIN_BYTES</td><td>1000000 / 15000000 B</td></tr>
+                      <tr><td>STREAM_MIN_DELTA / STREAM_REQUIRE_GROWTH</td><td>750000 B / yes</td></tr>
+                      <tr><td>EXCLUDE_RESOLVE_CACHE / EXCLUDE_RESOLVE_EVERY</td><td>yes / 3600 s</td></tr>
+                      <tr><td>REVERSE_DNS_CHECK / CAPTURE_GENERIC_HOSTNAMES / ALLOW_EXTERNAL_DNS</td><td>no / no / no</td></tr>
+                    </tbody></table>
+                    <p data-i18n="defaultsAdvice"></p>
                     <h3 data-i18n="candidate">Kandidaat</h3><p data-i18n="helpLists"></p>
                     <h3 data-i18n="routing">Domeinroutes</h3><p data-i18n="helpRouting"></p>
                     <h3 data-i18n="presetLists">Presetlijsten</h3><p data-i18n="helpPresets"></p>
