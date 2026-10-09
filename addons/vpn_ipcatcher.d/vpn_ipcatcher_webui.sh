@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.8.8
+# Version: 2.8.9
 
 ADDON_NAME="vpn_ipcatcher"
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -259,6 +259,17 @@ publish_status(){
   final_text="$(ipset_text "$IPSET_NAME" 120 | json_escape)"
   flows_text="$(live_flows_text | json_escape)"
   diagnostic_output="$(diagnostic_text | json_escape)"
+  diagnostic_device=''; diagnostic_phase=idle
+  if [ -r "$DIAGNOSTIC_TARGET" ]; then
+    read -r diagnostic_device diagnostic_started < "$DIAGNOSTIC_TARGET" || true
+    if valid_diagnostic_ip "$diagnostic_device"; then
+      case "$diagnostic_started" in ''|*[!0-9]*) diagnostic_phase=error ;; *)
+        diagnostic_age=$(( $(date +%s) - diagnostic_started ))
+        if [ "$diagnostic_age" -ge 0 ] && [ "$diagnostic_age" -le 120 ]; then diagnostic_phase=active; else diagnostic_phase=expired; fi ;;
+      esac
+    else diagnostic_device=''; diagnostic_phase=error; fi
+  fi
+  case "$diagnostic_output" in *ERROR:*) diagnostic_phase=error ;; esac
   exclude_net_count="$(ipset_count "$EXCLUDE_NET_SET")"
   exclude_net_text="$(ipset_text "$EXCLUDE_NET_SET" 160 | json_escape)"
 
@@ -286,7 +297,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   cat > "$tmp_json" <<JSON
 {
-  "version":"2.8.8",
+  "version":"2.8.9",
   "vpn_connection":"$vpn_connection",
   "last_update":"$last_update",
   "engine":"$engine",
@@ -342,6 +353,8 @@ publish_status(){
   "final_text":"$final_text",
   "flows_text":"$flows_text",
   "diagnostic_text":"$diagnostic_output",
+  "diagnostic_target":"$diagnostic_device",
+  "diagnostic_status":"$diagnostic_phase",
   "resolved_text":"$resolved_text",
   "exclude_net_text":"$exclude_net_text"
 }
@@ -842,6 +855,8 @@ service_event(){
       ;;
     vipcD*)
       target="${event#vipcD}"
+      diagnostic_nonce=''
+      case "$target" in *_*) diagnostic_nonce="${target%%_*}"; target="${target#*_}"; valid_nonce "$diagnostic_nonce" || return 1 ;; esac
       if [ "$target" = stop ]; then
         rm -f "$DIAGNOSTIC_TARGET"
       else
@@ -849,6 +864,7 @@ service_event(){
         (umask 077; printf '%s %s\n' "$target" "$(date +%s)" > "$DIAGNOSTIC_TARGET.new") || return 1
         mv "$DIAGNOSTIC_TARGET.new" "$DIAGNOSTIC_TARGET" || return 1
       fi
+      [ -z "$diagnostic_nonce" ] || record_action_status "$diagnostic_nonce" diagnostic ok 'Diagnose ingesteld.'
       publish_status
       return $?
       ;;

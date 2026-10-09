@@ -50,3 +50,10 @@ printf '192.0.2.10 %s\n' "$(( $(date +%s) - 121 ))" > "$DIAGNOSTIC_TARGET"
 if valid_diagnostic_ip '192.0.2.10;id'; then exit 1; fi
 if valid_diagnostic_ip '999.0.2.10'; then exit 1; fi
 echo 'PASS: device diagnostics include all ports and missing counters, redact extras and expire'
+
+ACTION_STATUS="$work/diagnostic-action"
+service_event restart vipcDfixture-nonce_192.0.2.10
+node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.last_action_nonce!=="fixture-nonce" || d.diagnostic_target!=="192.0.2.10" || d.diagnostic_status!=="active")process.exit(1);' "$STATUS_JSON"
+service_event restart vipcDstop
+node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.diagnostic_status!=="idle" || d.diagnostic_text!=="")process.exit(1);' "$STATUS_JSON"
+echo 'PASS: diagnostic start confirms nonce and target; stop clears the published snapshot'

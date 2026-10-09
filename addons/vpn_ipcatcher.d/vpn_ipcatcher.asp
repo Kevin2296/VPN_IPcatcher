@@ -436,6 +436,8 @@ table.data tr:last-child td{border-bottom:none}
 .vpn_ipcatcher_dashboard .panel-title{padding:7px 0}
 .vpn_ipcatcher_dashboard .panel-body{padding:8px 0}
 .vpn_ipcatcher_dashboard .layoutTab{padding:8px 10px}
+.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+.vpn_ipcatcher_dashboard #page_live .tab{height:auto;min-height:38px;overflow-wrap:normal;word-break:normal;line-height:1.4}
 @media(max-width:600px){.vpn_ipcatcher_dashboard .languageRow{float:none;margin:0 0 7px}}
 @media(max-width:600px){.vpn_ipcatcher_dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .languageRow{justify-content:flex-start}.vpn_ipcatcher_dashboard .layoutTab{padding:10px 8px;font-size:13px}.vpn_ipcatcher_dashboard .split{grid-template-columns:1fr}}
 </style>
@@ -451,6 +453,7 @@ if(!custom_settings || typeof custom_settings !== 'object') custom_settings = {}
 
 var dataCache = null, dirty = false, currentTab = 'flows', currentPage = 'overview', actionBusy = false;
 var diagnosticUntil=0,diagnosticBusy=false;
+var diagnosticState='idle',diagnosticError='',diagnosticClientsBusy=false;
 var PRESET_CATEGORIES = [], protectedPresetIps = [], configLoaded = false, pendingPresetKeys = {};
 var loadedConfigRevision = '', externalConfigWarningShown = false;
 
@@ -644,7 +647,7 @@ function postRcEvent(eventName){
   var params=[];
   for(var i=0;i<f.elements.length;i++){
     var el=f.elements[i];
-    if(!el.name || el.disabled || el.name==='amng_custom') continue;
+    if(!el.name || el.disabled || ['amng_custom','action_script','action_wait','http_id'].indexOf(el.name)>=0) continue;
     params.push(encodeURIComponent(el.name)+'='+encodeURIComponent(el.value==null?'':el.value));
   }
   var token=(document.cookie.match(/(?:^|; )asus_token=([^;]*)/)||[])[1]||'';
@@ -755,6 +758,7 @@ function setPage(page){
 }
 function setTab(t){
   currentTab=t;
+  if(t==='diagnostic') loadDiagnosticClients();
   document.querySelectorAll('.vpn_ipcatcher_dashboard .tab').forEach(function(x){x.classList.remove('active')});
   var b=byId('tab_'+t); if(b) b.classList.add('active');
   renderLiveTab();
@@ -845,21 +849,54 @@ function parseLog(txt){
 }
 Object.assign(VPNIPC_I18N.nl,{diagnostic:'Diagnose',diagnosticIp:'Apparaat-IP (IPv4)',diagnosticStart:'Start 2 minuten',diagnosticSnapshot:'IPv4-momentopnamen',diagnosticProtocol:'Protocol',diagnosticInvalid:'Vul een geldig IPv4-adres in.'});
 Object.assign(VPNIPC_I18N.en,{diagnostic:'Diagnostics',diagnosticIp:'Device IP (IPv4)',diagnosticStart:'Start 2 minutes',diagnosticSnapshot:'IPv4 snapshots',diagnosticProtocol:'Protocol',diagnosticInvalid:'Enter a valid IPv4 address.'});
+Object.assign(VPNIPC_I18N.nl,{diagnosticDevices:'ASUS-apparaten',diagnosticManual:'Handmatig IP',diagnosticReload:'Apparaten vernieuwen',diagnosticLoading:'Apparaten ophalen...',diagnosticClientsFailed:'ASUS-apparatenlijst niet beschikbaar; handmatig IP blijft mogelijk.',diagnostic_idle:'Nog niet gestart',diagnostic_starting:'Wachten op bevestiging van de router...',diagnostic_active:'Meting actief',diagnostic_expired:'Meting afgerond',diagnostic_error:'Diagnose mislukt.',diagnosticEmpty:'Meting actief; geen IPv4-verbindingen gevonden voor dit apparaat.'});
+Object.assign(VPNIPC_I18N.en,{diagnosticDevices:'ASUS devices',diagnosticManual:'Manual IP',diagnosticReload:'Refresh devices',diagnosticLoading:'Loading devices...',diagnosticClientsFailed:'ASUS client list unavailable; manual IP remains available.',diagnostic_idle:'Not started',diagnostic_starting:'Waiting for router confirmation...',diagnostic_active:'Measurement active',diagnostic_expired:'Measurement finished',diagnostic_error:'Diagnostics failed.',diagnosticEmpty:'Measurement active; no IPv4 connections found for this device.'});
 function startDiagnostic(){
   var ip=byId('diagnosticIp').value.trim();
   var parts=ip.split('.');
   if(parts.length!==4 || !parts.every(function(p){return /^\d{1,3}$/.test(p)&&Number(p)<=255;})){showToast(t('diagnosticInvalid'));return;}
-  diagnosticUntil=Date.now()+120000;
-  refreshDiagnostic(true);
+  ip=parts.map(function(p){return String(Number(p));}).join('.');byId('diagnosticIp').value=ip;
+  if(diagnosticBusy || actionBusy)return;
+  var nonce='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  diagnosticState='starting';diagnosticError='';diagnosticBusy=true;diagnosticUntil=0;renderLiveTab();
+  postRcEvent('vipcD'+nonce+'_'+ip).then(function(){return waitForActionResult(nonce,12);}).then(function(){
+    diagnosticUntil=Date.now()+120000;diagnosticState='active';renderLiveTab();
+  }).catch(function(err){diagnosticState='error';diagnosticError=String(err.message||err);renderLiveTab();}).finally(function(){diagnosticBusy=false;});
 }
 function refreshDiagnostic(start){
-  if(diagnosticBusy || Date.now()>=diagnosticUntil || actionBusy)return;
+  if(diagnosticBusy || diagnosticState!=='active' || Date.now()>=diagnosticUntil || actionBusy)return;
   diagnosticBusy=true;
   postRcEvent(start?'vipcD'+byId('diagnosticIp').value.trim():'vipcE').then(function(){loadStatus();}).catch(function(){showToast(t('noConfirmation'));}).finally(function(){diagnosticBusy=false;});
 }
 function stopDiagnostic(){
-  diagnosticUntil=0;
-  postRcEvent('vipcDstop').then(function(){loadStatus();}).catch(function(){showToast(t('routerActionFailed'));});
+  if(diagnosticBusy)return;
+  diagnosticUntil=0;diagnosticState='idle';renderLiveTab();
+  return postRcEvent('vipcDstop').then(function(){loadStatus();}).catch(function(){diagnosticState='error';diagnosticError=t('routerActionFailed');renderLiveTab();});
+}
+function diagnosticDevices(data){
+  var found={},result=[];
+  if(!data || typeof data!=='object')return result;
+  var keys=Array.isArray(data.maclist)?data.maclist:Object.keys(data);
+  keys.forEach(function(key){var c=data[key];if(!c||typeof c!=='object'||String(c.isOnline)!=='1')return;
+    var ip=String(c.ip||''),p=ip.split('.');
+    if(p.length!==4||!p.every(function(v){return /^\d{1,3}$/.test(v)&&Number(v)<=255;})||found[ip])return;
+    found[ip]=true;result.push({ip:ip,name:String(c.nickName||c.name||ip)});
+  });
+  return result.sort(function(a,b){return a.name.localeCompare(b.name);});
+}
+function loadDiagnosticClients(){
+  if(diagnosticClientsBusy)return;
+  diagnosticClientsBusy=true;setText('diagnosticClientsStatus',t('diagnosticLoading'));
+  fetch('/appGet.cgi?hook=get_clientlist()', {credentials:'same-origin',cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(data){
+    if(!data.get_clientlist||typeof data.get_clientlist!=='object')throw new Error('client list unavailable');
+    var devices=diagnosticDevices(data.get_clientlist),select=byId('diagnosticDevice'),selected=select.value;
+    select.innerHTML='<option value="">'+escapeHtml(t('diagnosticManual'))+'</option>'+devices.map(function(c){return '<option value="'+escapeHtml(c.ip)+'">'+escapeHtml(c.name+' - '+c.ip)+'</option>';}).join('');
+    select.value=selected;setText('diagnosticClientsStatus',devices.length+' '+t('diagnosticDevices'));
+  }).catch(function(){setText('diagnosticClientsStatus',t('diagnosticClientsFailed'));}).finally(function(){diagnosticClientsBusy=false;});
+}
+function chooseDiagnosticDevice(){
+  var ip=byId('diagnosticDevice').value;if(ip)byId('diagnosticIp').value=ip;
+  diagnosticUntil=0;diagnosticState='idle';renderLiveTab();
 }
 function filterLiveRows(rows){
   var query=(byId('liveSearch').value||'').trim().toLowerCase();
@@ -911,9 +948,14 @@ function renderLiveTab(){
   var liveFilters=byId('liveFilters');if(liveFilters)liveFilters.hidden=currentTab==='diagnostic';
   var flowControls=byId('flowControls');if(flowControls)flowControls.hidden=currentTab!=='flows';
   if(currentTab==='diagnostic'){
+    if(diagnosticState==='active'&&(Date.now()>=diagnosticUntil||dataCache.diagnostic_status==='expired'))diagnosticState='expired';
     var lines=Date.now()<diagnosticUntil?decodeText(dataCache.diagnostic_text).split('\n').filter(function(line){return /^(ERROR:|TRUNCATED)/.test(line)||line.split(/\s+/)[1]===byId('diagnosticIp').value.trim();}):[];
     var rows=lines.map(function(line){var p=line.split(/\s+/);return p.length===6?td(p[0])+td(p[1],'mono')+td(p[2],'mono')+td(p[3])+td(p[4])+td(formatFlowBytes(p[5])):'<td colspan="6">'+escapeHtml(line)+'</td>';});
     html=renderTable([t('diagnosticProtocol'),t('source'),t('destination'),t('port'),t('status'),t('trafficVolume')],rows);
+    var phase=dataCache.diagnostic_status==='error'&&diagnosticState==='active'?'error':diagnosticState;
+    var message=t('diagnostic_'+phase)+(phase==='error'&&diagnosticError?' '+diagnosticError:'');
+    setText('diagnosticState',message);
+    if(!rows.length)html='<div class="muted">'+escapeHtml(phase==='active'?t('diagnosticEmpty'):message)+'</div>';
   } else if(currentTab==='flows'){
     var flows=parseFlows(txt);
     updateFlowOptions('flowSource',flows.map(function(r){return r.src;}));
@@ -1232,10 +1274,14 @@ window.addEventListener('load', function(){
                         <button type="button" id="tab_excludenets" class="tab" onclick="setTab('excludenets')" data-i18n="excludeRanges">Exclude ranges</button>
                       </div>
                       <div id="diagnosticControls" class="liveFilters" hidden>
-                        <label><span data-i18n="diagnosticIp">Apparaat-IP (IPv4)</span><input id="diagnosticIp" inputmode="decimal" placeholder="192.0.2.10" oninput="diagnosticUntil=0"></label>
+                        <label><span data-i18n="diagnosticDevices">ASUS-apparaten</span><select id="diagnosticDevice" onchange="chooseDiagnosticDevice()"><option value="" data-i18n="diagnosticManual">Handmatig IP</option></select></label>
+                        <button type="button" class="btn" onclick="loadDiagnosticClients()" data-i18n="diagnosticReload">Apparaten vernieuwen</button>
+                        <span id="diagnosticClientsStatus" class="muted"></span>
+                        <label><span data-i18n="diagnosticIp">Apparaat-IP (IPv4)</span><input id="diagnosticIp" inputmode="decimal" placeholder="192.0.2.10" oninput="diagnosticUntil=0;diagnosticState='idle';renderLiveTab()"></label>
                         <button type="button" class="btn blue" onclick="startDiagnostic()" data-i18n="diagnosticStart">Start 2 minuten</button>
                         <button type="button" class="btn" onclick="stopDiagnostic()" data-i18n="stop">Stop</button>
                         <span class="muted" data-i18n="diagnosticSnapshot">IPv4-momentopnamen</span>
+                        <span id="diagnosticState" class="muted" role="status"></span>
                       </div>
                       <div id="liveFilters" class="liveFilters">
                         <label><span data-i18n="filterSearch">Zoeken</span><input type="search" id="liveSearch" oninput="renderLiveTab()"></label>

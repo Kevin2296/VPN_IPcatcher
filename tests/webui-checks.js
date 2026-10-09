@@ -26,8 +26,8 @@ for (const language of ['nl', 'en']) {
   context.setTab('waiting');
   assert.match(element('liveOutput').innerHTML, /203\.0\.113\.10/);
   assert.equal(context.t('waiting'), language === 'nl' ? 'Wachtlijst' : 'Waiting');
-  context.updateOverview({engine:'running',version:'2.8.8',vpn_connection:'ovpnc1',ipset_name:'Example',config:{}});
-  assert.equal(element('addonVersion').textContent,'2.8.8');
+  context.updateOverview({engine:'running',version:'2.8.9',vpn_connection:'ovpnc1',ipset_name:'Example',config:{}});
+  assert.equal(element('addonVersion').textContent,'2.8.9');
   assert.equal(element('selectedVpn').textContent,'OpenVPN 1');
   context.updateOverview({engine:'running',vpn_connection:'wgc3',config:{}});
   assert.equal(element('selectedVpn').textContent,'WireGuard 3');
@@ -53,3 +53,8 @@ assert.equal(context.filterLiveRows([{msg:'ERROR example'},{msg:'OK'}]).length,1
 assert.equal(context.formatFlowBytes('0004000000'),'4 MB');
 assert.equal(context.formatFlowBytes('0'),'0 B');
 console.log('PASS: combined source/port/state/search filters, text views and readable byte counts');
+const devices=context.diagnosticDevices({maclist:['a','b','c'],a:{isOnline:'1',ip:'192.0.2.10',nickName:'Example TV'},b:{isOnline:'0',ip:'192.0.2.11',name:'Offline'},c:{isOnline:'1',ip:'192.0.2.10',name:'Duplicate'}});
+assert.equal(devices.length,1);
+assert.equal(devices[0].name,'Example TV');
+assert.equal(context.diagnosticDevices({x:{isOnline:'1',ip:'999.0.2.10'}}).length,0);
+console.log('PASS: ASUS online IPv4 devices, deduplication and invalid-address rejection');

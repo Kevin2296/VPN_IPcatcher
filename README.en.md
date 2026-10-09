@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.8.8](https://img.shields.io/badge/version-2.8.8-087F8C?style=for-the-badge)
+![Version 2.8.9](https://img.shields.io/badge/version-2.8.9-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.8.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.9.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -208,10 +208,12 @@ For VPN IP Catcher, use **18 · Update controleren** and
 **19 · Update installeren**, with an automatic private backup.
 See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
-### 🖥️ Dashboard 2.8.8
+### 🖥️ Dashboard 2.8.9
 
-**Diagnostics:** open Live view > Diagnostics, enter the device IPv4 address
-and choose Start 2 minutes. Connection snapshots refresh every five seconds
+**Diagnostics:** open Live view > Diagnostics, select an online IPv4 device
+from the ASUS list or enter its IP manually, then choose Start 2 minutes.
+Router confirmation, errors and active empty snapshots have separate states.
+Connection snapshots refresh every five seconds
 while this tab is open, on all ports and without requiring byte counters.
 Stop ends the session. No VPN or configuration changes. This is not packet
 capture: short connections between snapshots and IPv6 are not included.

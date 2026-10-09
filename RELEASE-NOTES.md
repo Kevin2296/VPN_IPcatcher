@@ -1,4 +1,14 @@
-# 🛡️ VPN IP Catcher 2.8.8 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.9 · Testrelease / Prerelease
+
+**2.8.9:** Kies een online IPv4-apparaat uit de ASUS-clientlijst. De diagnose
+wacht nu op bevestiging van de router en onderscheidt lege metingen van fouten.
+Dubbele actievelden in WebUI-verzoeken opgelost. Live-tabbladen breken geen
+woorden meer af. Geen nieuwe VPN- of IPTV-routingwijziging.
+
+**2.8.9:** Select an online IPv4 device from the ASUS client list. Diagnostics
+wait for router confirmation and distinguish empty snapshots from failures.
+Duplicate WebUI action fields fixed. Live tabs no longer split words. No new
+VPN or IPTV routing changes. Router testing remains required.
 
 **2.8.8:** WebUI-tab Diagnose: vul een IPv4-apparaat in en start twee minuten
 verbindingsmomentopnamen, op alle poorten en zonder leerdrempel/top-30-filter.

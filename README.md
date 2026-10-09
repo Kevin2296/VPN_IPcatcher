@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.8.8](https://img.shields.io/badge/version-2.8.8-087F8C?style=for-the-badge)
+![Version 2.8.9](https://img.shields.io/badge/version-2.8.9-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -27,7 +27,7 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.8.8.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.8.9.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -218,10 +218,12 @@ VPN IP Catcher gebruikt voorlopig **18 · Update controleren** en
 **19 · Update installeren**, met een automatische prive-back-up.
 Zie de [uitleg van de amtm-beheerder](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
-### 🖥️ Dashboard 2.8.8
+### 🖥️ Dashboard 2.8.9
 
-**Diagnose:** open Liveweergave > Diagnose, vul het IPv4-adres van een apparaat
-in en kies Start 2 minuten. De verbindingstabel wordt elke vijf seconden
+**Diagnose:** open Liveweergave > Diagnose, kies een online IPv4-apparaat uit
+de ASUS-lijst of vul het IP handmatig in, en kies Start 2 minuten.
+Je ziet eerst een routerbevestiging of een foutmelding; een actieve lege meting
+wordt apart aangegeven. De verbindingstabel wordt elke vijf seconden
 opnieuw opgevraagd zolang deze tab open is. Alle poorten tellen mee, ook zonder
 bytecounters. Stop beeindigt de meting. Geen wijzigingen aan VPN of config.
 Dit is geen packetcapture: heel korte verbindingen tussen metingen en IPv6
@@ -434,7 +436,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.8.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.9.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -617,10 +619,12 @@ For VPN IP Catcher, use **18 · Update controleren** and
 **19 · Update installeren**, with an automatic private backup.
 See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
-### 🖥️ Dashboard 2.8.8
+### 🖥️ Dashboard 2.8.9
 
-**Diagnostics:** open Live view > Diagnostics, enter the device IPv4 address
-and choose Start 2 minutes. Connection snapshots refresh every five seconds
+**Diagnostics:** open Live view > Diagnostics, select an online IPv4 device
+from the ASUS list or enter its IP manually, then choose Start 2 minutes.
+Router confirmation, errors and active empty snapshots have separate states.
+Connection snapshots refresh every five seconds
 while this tab is open, on all ports and without requiring byte counters.
 Stop ends the session. No VPN or configuration changes. This is not packet
 capture: short connections between snapshots and IPv6 are not included.

@@ -1,5 +1,14 @@
 # Wijzigingen
 
+## 2.8.9
+
+- Diagnose-apparatenkeuze via de ASUS-clientlijst: online IPv4-apparaten op naam/IP, plus handmatige invoer.
+- WebUI verstuurt action_script, action_wait en http_id elk precies eenmaal.
+- Diagnose-start wacht op een unieke routerbevestiging; ontbrekende bevestiging is een zichtbare fout.
+- Aparte statussen voor niet gestart, starten, actief zonder verbindingen, afgerond en fout.
+- Live-tabbladen in drie kolommen met meegroeiende hoogte, zonder afgebroken woorden.
+- Geen verandering aan VPN-routering; apparaatnamen blijven uitsluitend in de lokale browser.
+
 ## 2.8.8
 
 - Aparte WebUI-diagnose voor een handmatig gekozen IPv4-apparaat, maximaal twee minuten.
