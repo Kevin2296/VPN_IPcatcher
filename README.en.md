@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.8.6](https://img.shields.io/badge/version-2.8.6-087F8C?style=for-the-badge)
+![Version 2.8.7](https://img.shields.io/badge/version-2.8.7-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.6.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.8.7.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -208,7 +208,11 @@ For VPN IP Catcher, use **18 · Update controleren** and
 **19 · Update installeren**, with an automatic private backup.
 See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
-### 🖥️ Dashboard 2.8.6
+### 🖥️ Dashboard 2.8.7
+
+Live view supports search and source-device, port and list-status filters.
+Search also works in the other live views. Filters persist across refreshes
+and affect the display only, never VPN routing.
 
 Version, selected VPN and list appear at the top. The main menu has a compact
 service summary; **4** shows full details. The WebUI groups settings and collapses

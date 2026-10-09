@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.8.7
+
+- Liveweergave filteren op zoektekst, bronapparaat, poort en lijststatus.
+- Zoektekst werkt ook in logs, status en IP-overzichten; filters blijven bij verversen behouden.
+- Compactere statuskaarten, kop en live-tabbladen; minder hoge tabelregels.
+- Verkeer leesbaar in B/KB/MB/GB, met exacte bytes bij aanwijzen.
+- Deze wijziging verandert geen VPN-routing of persoonlijke instellingen.
+
 ## 2.8.6
 
 - Het amtm-menu leest de versie uit het daadwerkelijk geopende script, ook vanuit een andere werkmap.

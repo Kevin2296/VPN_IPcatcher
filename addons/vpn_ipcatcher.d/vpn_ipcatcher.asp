@@ -386,6 +386,20 @@ table.data tr:last-child td{border-bottom:none}
 /* VPNIPC_I18N_V11_END */
 
 /* Scoped operational layout; leave Merlin's surrounding navigation untouched. */
+.vpn_ipcatcher_dashboard .wrap{padding:12px}
+.vpn_ipcatcher_dashboard .topbar{margin-bottom:6px}
+.vpn_ipcatcher_dashboard .grid{margin:8px 0;gap:8px}
+.vpn_ipcatcher_dashboard .grid .card{min-height:76px;padding:10px}
+.vpn_ipcatcher_dashboard .grid .card .big{font-size:22px}
+.vpn_ipcatcher_dashboard .liveFilters{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:10px 0}
+.vpn_ipcatcher_dashboard #flowControls{display:contents}
+.vpn_ipcatcher_dashboard .liveFilters label{display:flex;flex:1 1 130px;flex-direction:column;gap:4px;font-size:12px;min-width:0}
+.vpn_ipcatcher_dashboard .liveFilters input,.vpn_ipcatcher_dashboard .liveFilters select{box-sizing:border-box;width:100%;min-width:0;padding:7px;background:#263235;color:#edf3f3;border:1px solid #637375;border-radius:3px}
+.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;margin-bottom:10px}
+.vpn_ipcatcher_dashboard #page_live .tab{padding:7px 4px;font-size:12px;border-radius:3px}
+.vpn_ipcatcher_dashboard #liveOutput table.data td,.vpn_ipcatcher_dashboard #liveOutput table.data th{padding:7px 9px}
+@media(max-width:1100px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:600px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .vpn_ipcatcher_dashboard{background:#263235;color:#edf3f3}
 .vpn_ipcatcher_dashboard .topbar{text-align:left;padding:12px 0}
 .vpn_ipcatcher_dashboard .title{font-size:22px;text-shadow:none}
@@ -415,6 +429,14 @@ table.data tr:last-child td{border-bottom:none}
 .vpn_ipcatcher_dashboard .sessionMeta{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;color:#bce1df;font-size:13px}
 .vpn_ipcatcher_dashboard .maintenance{margin-top:10px}
 .vpn_ipcatcher_dashboard .note{background:transparent;border-radius:0;color:#c7d8d8}
+.vpn_ipcatcher_dashboard .languageRow{float:right;margin:0 0 4px 12px}
+.vpn_ipcatcher_dashboard .topbar{display:flow-root;padding:8px 0}
+.vpn_ipcatcher_dashboard .sessionMeta{margin-top:6px}
+.vpn_ipcatcher_dashboard .panel{margin:10px 0}
+.vpn_ipcatcher_dashboard .panel-title{padding:7px 0}
+.vpn_ipcatcher_dashboard .panel-body{padding:8px 0}
+.vpn_ipcatcher_dashboard .layoutTab{padding:8px 10px}
+@media(max-width:600px){.vpn_ipcatcher_dashboard .languageRow{float:none;margin:0 0 7px}}
 @media(max-width:600px){.vpn_ipcatcher_dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .languageRow{justify-content:flex-start}.vpn_ipcatcher_dashboard .layoutTab{padding:10px 8px;font-size:13px}.vpn_ipcatcher_dashboard .split{grid-template-columns:1fr}}
 </style>
 
@@ -527,6 +549,8 @@ function vpnipcRouterLanguage(){
 function vpnipcResolveLanguage(mode){return mode==='nl'||mode==='en'?mode:vpnipcRouterLanguage();}
 Object.assign(VPNIPC_I18N.nl,{title:'VPN IP Catcher',version:'Versie',devices:'Apparaten en verbinding',learning:'Verkeer leren',advanced:'Geavanceerde instellingen',maintenance:'Onderhoud',details:'Details',presetOn:'Uitgesloten',presetOff:'Niet uitgesloten',presetPart:'Gedeeltelijk',unsaved:'Niet-opgeslagen wijzigingen',footer:'VPN IP Catcher | ASUS Merlin'});
 Object.assign(VPNIPC_I18N.en,{title:'VPN IP Catcher',version:'Version',devices:'Devices and connection',learning:'Traffic learning',advanced:'Advanced settings',maintenance:'Maintenance',details:'Details',presetOn:'Excluded',presetOff:'Not excluded',presetPart:'Partial',unsaved:'Unsaved changes',footer:'VPN IP Catcher | ASUS Merlin'});
+Object.assign(VPNIPC_I18N.nl,{trafficVolume:'Verkeer',filterSearch:'Zoeken',filterAll:'Alles',filterSource:'Bronapparaat',filterPort:'Poort',filterState:'Lijststatus',filterFinal:'Definitieve lijst',filterCandidate:'Kandidaat',filterExcluded:'Uitgesloten',filterOther:'Overige',filterClear:'Filters wissen',filterRows:'regels'});
+Object.assign(VPNIPC_I18N.en,{trafficVolume:'Traffic',filterSearch:'Search',filterAll:'All',filterSource:'Source device',filterPort:'Port',filterState:'List status',filterFinal:'Final list',filterCandidate:'Candidate',filterExcluded:'Excluded',filterOther:'Other',filterClear:'Clear filters',filterRows:'rows'});
 function t(key,vars){
   var table=VPNIPC_I18N[vpnipcCurrentLanguage]||VPNIPC_I18N.en;
   var value=(table[key]!==undefined?table[key]:(VPNIPC_I18N.en[key]!==undefined?VPNIPC_I18N.en[key]:key));
@@ -818,6 +842,40 @@ function parseLog(txt){
   txt=splitCompactLines(txt);
   return txt.split('\n').map(function(x){return x.trim()}).filter(Boolean).map(function(line){var m=line.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(.*)$/); return m?{ts:m[1],msg:m[2]}:{ts:'',msg:line};});
 }
+function filterLiveRows(rows){
+  var query=(byId('liveSearch').value||'').trim().toLowerCase();
+  var source=byId('flowSource').value, port=byId('flowPort').value, state=byId('flowState').value;
+  var filtered=rows.filter(function(r){
+    if(query && Object.keys(r).map(function(k){return String(r[k]);}).join(' ').toLowerCase().indexOf(query)<0) return false;
+    if(currentTab!=='flows') return true;
+    if(source && r.src!==source) return false;
+    if(port && r.port!==port) return false;
+    if(state==='final') return r.final==='yes';
+    if(state==='candidate') return r.cand==='yes';
+    if(state==='excluded') return /^excluded/.test(r.hint||'');
+    if(state==='other') return r.final==='no' && r.cand==='no' && !/^excluded/.test(r.hint||'');
+    return true;
+  });
+  setText('liveRowCount',filtered.length+' / '+rows.length+' '+t('filterRows'));
+  return filtered;
+}
+function updateFlowOptions(id,values){
+  var el=byId(id), selected=el.value;
+  values=Array.from(new Set(values.filter(Boolean))).sort();
+  if(selected && values.indexOf(selected)<0) values.push(selected);
+  el.innerHTML='<option value="">'+escapeHtml(t('filterAll'))+'</option>'+values.map(function(v){return '<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>';}).join('');
+  el.value=selected;
+}
+function clearLiveFilters(){
+  ['liveSearch','flowSource','flowPort','flowState'].forEach(function(id){byId(id).value='';});
+  renderLiveTab();
+}
+function formatFlowBytes(bytes){
+  var n=Number(bytes), units=['B','KB','MB','GB','TB'],i=0;
+  if(!Number.isFinite(n)||n<0) return bytes;
+  while(n>=1000 && i<units.length-1){n/=1000;i++;}
+  return n.toLocaleString(vpnipcCurrentLanguage,{maximumFractionDigits:i?1:0})+' '+units[i];
+}
 function renderLiveTab(){
   if(!dataCache) return;
   var box=byId('liveOutput'), txt='';
@@ -830,25 +888,29 @@ function renderLiveTab(){
   if(currentTab==='resolved') txt=dataCache.resolved_text;
   if(currentTab==='excludenets') txt=dataCache.exclude_net_text;
   var html='';
+  var flowControls=byId('flowControls');if(flowControls)flowControls.hidden=currentTab!=='flows';
   if(currentTab==='flows'){
-    var rows=parseFlows(txt).map(function(r){return r.raw?'<td colspan="7" class="mono">'+escapeHtml(r.raw)+'</td>':td(r.bytes,'mono')+td(r.src,'mono')+td(r.dst,'mono')+td(r.port,'mono')+td(r.cand)+td(r.final)+td(r.hint);});
-    html=renderTable([t('bytes'),t('source'),t('destination'),t('port'),t('cand'),t('final'),t('hint')], rows);
+    var flows=parseFlows(txt);
+    updateFlowOptions('flowSource',flows.map(function(r){return r.src;}));
+    updateFlowOptions('flowPort',flows.map(function(r){return r.port;}));
+    var rows=filterLiveRows(flows).map(function(r){return r.raw?'<td colspan="7" class="mono">'+escapeHtml(r.raw)+'</td>':'<td class="mono" title="'+escapeHtml(r.bytes)+' B">'+escapeHtml(formatFlowBytes(r.bytes))+'</td>'+td(r.src,'mono')+td(r.dst,'mono')+td(r.port,'mono')+td(r.cand)+td(r.final)+td(r.hint);});
+    html=renderTable([t('trafficVolume'),t('source'),t('destination'),t('port'),t('cand'),t('final'),t('hint')], rows);
   } else if(currentTab==='log'){
-    var rows=parseLog(txt).map(function(r){return td(r.ts,'mono')+td(r.msg);});
+    var rows=filterLiveRows(parseLog(txt)).map(function(r){return td(r.ts,'mono')+td(r.msg);});
     html=renderTable([t('timestamp'),t('message')], rows);
   } else if(currentTab==='status'){
-    var rows=parseKeyValueStatus(txt).map(function(r){return r.section?'<td colspan="2"><strong>'+escapeHtml(r.label)+'</strong></td>':td(r.key)+td(r.value);});
+    var rows=filterLiveRows(parseKeyValueStatus(txt)).map(function(r){return r.section?'<td colspan="2"><strong>'+escapeHtml(r.label)+'</strong></td>':td(r.key)+td(r.value);});
     html=renderTable([t('field'),t('value')], rows);
   } else if(currentTab==='candidate' || currentTab==='waiting' || currentTab==='final'){
     var dump=parseIpsetDump(txt), meta=dump.meta.length?'<pre>'+escapeHtml(dump.meta.join('\n'))+'</pre>':'';
-    var rows=dump.rows.map(function(r){return r.raw?'<td colspan="6" class="mono">'+escapeHtml(r.raw)+'</td>':td(r.ip,'mono')+td(r.timeout,'mono')+td(r.packets,'mono')+td(r.bytes,'mono')+td(r.seen,'mono')+td(r.source);});
+    var rows=filterLiveRows(dump.rows).map(function(r){return r.raw?'<td colspan="6" class="mono">'+escapeHtml(r.raw)+'</td>':td(r.ip,'mono')+td(r.timeout,'mono')+td(r.packets,'mono')+td(r.bytes,'mono')+td(r.seen,'mono')+td(r.source);});
     html='<div class="ipsetDump">'+meta+renderTable(['IP',t('timeout'),t('packets'),t('bytes'),t('seen'),t('source')], rows)+'</div>';
   } else if(currentTab==='resolved'){
-    var rows=parseResolved(txt).map(function(r){return td(r.ip,'mono')+td(r.host);});
+    var rows=filterLiveRows(parseResolved(txt)).map(function(r){return td(r.ip,'mono')+td(r.host);});
     html=renderTable(['IP',t('hostnameDomain')], rows);
   } else if(currentTab==='excludenets'){
     var dump=parseExcludeRanges(txt), meta=dump.meta.length?'<pre>'+escapeHtml(dump.meta.join('\n'))+'</pre>':'';
-    var rows=dump.rows.map(function(r){return td(r.range,'mono')+td(r.comment);});
+    var rows=filterLiveRows(dump.rows).map(function(r){return td(r.range,'mono')+td(r.comment);});
     html=meta+renderTable([t('range'),t('comment')], rows);
   }
   box.innerHTML=html||'<div class="muted">'+escapeHtml(t('noData'))+'</div>';
@@ -1142,6 +1204,16 @@ window.addEventListener('load', function(){
                         <button type="button" id="tab_final" class="tab" onclick="setTab('final')" data-i18n="final">Final</button>
                         <button type="button" id="tab_resolved" class="tab" onclick="setTab('resolved')" data-i18n="resolvedIps">Resolved IPs</button>
                         <button type="button" id="tab_excludenets" class="tab" onclick="setTab('excludenets')" data-i18n="excludeRanges">Exclude ranges</button>
+                      </div>
+                      <div class="liveFilters">
+                        <label><span data-i18n="filterSearch">Zoeken</span><input type="search" id="liveSearch" oninput="renderLiveTab()"></label>
+                        <div id="flowControls">
+                          <label><span data-i18n="filterSource">Bronapparaat</span><select id="flowSource" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option></select></label>
+                          <label><span data-i18n="filterPort">Poort</span><select id="flowPort" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option></select></label>
+                          <label><span data-i18n="filterState">Lijststatus</span><select id="flowState" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option><option value="final" data-i18n="filterFinal">Definitieve lijst</option><option value="candidate" data-i18n="filterCandidate">Kandidaat</option><option value="excluded" data-i18n="filterExcluded">Uitgesloten</option><option value="other" data-i18n="filterOther">Overige</option></select></label>
+                        </div>
+                        <button type="button" class="btn" onclick="clearLiveFilters()" data-i18n="filterClear">Filters wissen</button>
+                        <span id="liveRowCount" class="muted" aria-live="polite"></span>
                       </div>
                       <div id="liveOutput"></div>
                     </div>

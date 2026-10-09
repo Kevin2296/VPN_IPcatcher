@@ -1,4 +1,12 @@
-# 🛡️ VPN IP Catcher 2.8.6 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.7 · Testrelease / Prerelease
+
+**2.8.7:** Compactere WebUI met livefilters voor zoektekst, bronapparaat,
+poort en lijststatus. Filters blijven bij verversen behouden. Leesbare
+verkeersvolumes. Alleen weergavewijzigingen: geen nieuwe stream- of routingfix.
+
+**2.8.7:** More compact WebUI with live search, source-device, port and
+list-status filters retained across refreshes. Readable traffic volumes.
+Display changes only: no new streaming or routing fix.
 
 **2.8.6:** Versienummer in het amtm-menu werkt ook wanneer amtm het script
 vanuit een andere map opent. Inclusief alle dashboardverbeteringen hieronder.
