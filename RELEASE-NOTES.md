@@ -1,4 +1,10 @@
-# 🛡️ VPN IP Catcher 2.8.5 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.6 · Testrelease / Prerelease
+
+**2.8.6:** Versienummer in het amtm-menu werkt ook wanneer amtm het script
+vanuit een andere map opent. Inclusief alle dashboardverbeteringen hieronder.
+
+**2.8.6:** Menu version detection works when amtm invokes the script from a
+different directory. Includes all dashboard improvements below.
 
 **2.8.5:** Rustiger WebUI-dashboard en compact amtm-menu met versie en VPN-keuze.
 Instellingen zijn gegroepeerd, technische details inklapbaar en uitsluitingen

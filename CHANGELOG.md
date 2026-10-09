@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 2.8.6
+
+- Het amtm-menu leest de versie uit het daadwerkelijk geopende script, ook vanuit een andere werkmap.
+- Extra regressietest voor openen vanuit amtm; alle interfaceverbeteringen van 2.8.5 blijven behouden.
+
 ## 2.8.5
 
 - Compact amtm-hoofdmenu met versienummer, VPN-keuze en korte servicestatus.

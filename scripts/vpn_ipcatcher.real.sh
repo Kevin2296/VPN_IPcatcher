@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.8.5
+# Version: 2.8.6
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -2687,7 +2687,7 @@ live_stream_flows(){
 print_header(){
   load_config
   say "============================================================"
-  version="$($SED -n 's/^# Version: //p' "$SELF" | head -n 1)"
+  version="$($SED -n 's/^# Version: //p' "$0" | head -n 1)"
   say " VPN IP Catcher ${version:-onbekend} | ASUS Merlin / amtm"
   connection="$($SED -n '2p' /jffs/addons/vpn_ipcatcher.d/routing-selection 2>/dev/null)"
   case "$connection" in
