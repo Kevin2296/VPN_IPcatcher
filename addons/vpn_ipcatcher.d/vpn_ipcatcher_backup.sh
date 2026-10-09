@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.8.7
+# Version: 2.8.8
 # Archives stay private on the router, never under /www.
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"

@@ -1,4 +1,15 @@
-# 🛡️ VPN IP Catcher 2.8.7 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.8 · Testrelease / Prerelease
+
+**2.8.8:** WebUI-tab Diagnose: vul een IPv4-apparaat in en start twee minuten
+verbindingsmomentopnamen, op alle poorten en zonder leerdrempel/top-30-filter.
+Alleen verbindingsmetadata; geen URL, inloggegevens of pakketinhoud. Maximaal
+2000 regels per momentopname, met afkapmelding. Geen routingwijzigingen.
+
+**2.8.8:** WebUI Diagnostics tab: enter a device IPv4 address for two minutes
+of all-port connection snapshots, without learning thresholds/top-30 filters.
+Metadata only, no URLs, credentials or payloads. Explicit truncation above
+2000 records per snapshot. No routing changes. Short-lived requests between
+snapshots and IPv6 traffic are not captured.
 
 **2.8.7:** Compactere WebUI met livefilters voor zoektekst, bronapparaat,
 poort en lijststatus. Filters blijven bij verversen behouden. Leesbare

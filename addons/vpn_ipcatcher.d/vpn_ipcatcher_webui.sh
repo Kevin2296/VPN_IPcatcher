@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.8.7
+# Version: 2.8.8
 
 ADDON_NAME="vpn_ipcatcher"
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -138,6 +138,37 @@ ipset_text(){
     END{if(n>limit) print "... truncated ..."}'
 }
 
+DIAGNOSTIC_TARGET="/tmp/vpn_ipcatcher_diagnostic_target"
+valid_diagnostic_ip(){
+  printf '%s\n' "$1" | ${AWK:-awk} -F. 'NF!=4 {exit 1} {for(i=1;i<=4;i++) if($i !~ /^[0-9]+$/ || length($i)>3 || $i+0>255) exit 1}'
+}
+diagnostic_text(){
+  [ -r "$DIAGNOSTIC_TARGET" ] || return 0
+  read -r target checked < "$DIAGNOSTIC_TARGET" || return 0
+  valid_diagnostic_ip "$target" || return 0
+  case "$checked" in ''|*[!0-9]*) return 0 ;; esac
+  age=$(( $(date +%s) - checked ))
+  [ "$age" -ge 0 ] && [ "$age" -le 120 ] || return 0
+  [ -n "$CT" ] || { echo 'ERROR: conntrack unavailable'; return; }
+  # Never publish raw conntrack output or packet payloads.
+  ($CT -L -f ipv4 2>/dev/null || printf "DIAGNOSTIC_ERROR\n") | ${AWK:-awk} -v target="$target" '
+    /^DIAGNOSTIC_ERROR$/ {failed=1;next}
+    /^(tcp|udp|icmp)/ {
+      src="";dst="";port="-";bytes=0;counted=0;state="-";
+      for(i=1;i<=NF;i++) {
+        if($i~/^src=/ && src==""){src=$i;sub(/^src=/,"",src)}
+        if($i~/^dst=/ && dst==""){dst=$i;sub(/^dst=/,"",dst)}
+        if($i~/^dport=/ && port=="-"){port=$i;sub(/^dport=/,"",port)}
+        if($i~/^bytes=[0-9]+$/){b=$i;sub(/^bytes=/,"",b);bytes+=b;counted=1}
+        if($i~/^(SYN_SENT|SYN_RECV|ESTABLISHED|FIN_WAIT|CLOSE_WAIT|TIME_WAIT|CLOSE|LAST_ACK|LISTEN)$/ || $i=="[UNREPLIED]")state=$i;
+      }
+      if(src!=target)next;
+      if(dst !~ /^[0-9.]+$/ || port !~ /^([0-9]+|-)$/)next;
+      count++;
+      if(count<=2000)printf "%s %s %s %s %s %s\n",$1,src,dst,port,state,(counted?sprintf("%.0f",bytes):"-");
+    }
+    END{if(failed)print "ERROR: conntrack failed";if(count>2000)print "TRUNCATED " count;}'
+}
 live_flows_text(){
   [ -n "$CT" ] || { echo "conntrack not found"; return; }
   ports="$(cfg_get PORTS)"; [ -z "$ports" ] && ports="80,443"
@@ -227,6 +258,7 @@ publish_status(){
   wait_text="$(ipset_text "$WAIT_SET" 120 | json_escape)"
   final_text="$(ipset_text "$IPSET_NAME" 120 | json_escape)"
   flows_text="$(live_flows_text | json_escape)"
+  diagnostic_output="$(diagnostic_text | json_escape)"
   exclude_net_count="$(ipset_count "$EXCLUDE_NET_SET")"
   exclude_net_text="$(ipset_text "$EXCLUDE_NET_SET" 160 | json_escape)"
 
@@ -254,7 +286,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   cat > "$tmp_json" <<JSON
 {
-  "version":"2.8.7",
+  "version":"2.8.8",
   "vpn_connection":"$vpn_connection",
   "last_update":"$last_update",
   "engine":"$engine",
@@ -309,6 +341,7 @@ publish_status(){
   "candidate_text":"$cand_text",
   "final_text":"$final_text",
   "flows_text":"$flows_text",
+  "diagnostic_text":"$diagnostic_output",
   "resolved_text":"$resolved_text",
   "exclude_net_text":"$exclude_net_text"
 }
@@ -803,6 +836,22 @@ service_event(){
   [ "$type" = "restart" ] || return 0
 
   case "$event" in
+    vipcE)
+      publish_status
+      return $?
+      ;;
+    vipcD*)
+      target="${event#vipcD}"
+      if [ "$target" = stop ]; then
+        rm -f "$DIAGNOSTIC_TARGET"
+      else
+        valid_diagnostic_ip "$target" || return 1
+        (umask 077; printf '%s %s\n' "$target" "$(date +%s)" > "$DIAGNOSTIC_TARGET.new") || return 1
+        mv "$DIAGNOSTIC_TARGET.new" "$DIAGNOSTIC_TARGET" || return 1
+      fi
+      publish_status
+      return $?
+      ;;
     vipcR*)
       nonce="${event#vipcR}"
       stream_reset "$nonce"

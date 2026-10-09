@@ -1,3 +1,3 @@
 #!/bin/sh
-# Version: 2.8.7
+# Version: 2.8.8
 exec /jffs/scripts/vpn_ipcatcher.sh watchdog

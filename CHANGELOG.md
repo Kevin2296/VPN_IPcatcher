@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.8.8
+
+- Aparte WebUI-diagnose voor een handmatig gekozen IPv4-apparaat, maximaal twee minuten.
+- Verbindingsmomentopnamen op alle poorten, ook zonder bytecounters; geen leerdrempel of top-30-filter.
+- Alleen protocol, bron/bestemming, doelpoort, verbindingsstatus en bytes; geen pakketinhoud of URL.
+- Maximaal 2000 regels per momentopname met expliciete melding bij afkappen.
+- Nieuwe ASUS-eventkoppeling; normale VPN-routering en configuratie blijven ongewijzigd.
+
 ## 2.8.7
 
 - Liveweergave filteren op zoektekst, bronapparaat, poort en lijststatus.

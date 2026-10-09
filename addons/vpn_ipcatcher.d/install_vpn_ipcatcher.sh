@@ -1,6 +1,6 @@
 #!/bin/sh
 # install_vpn_ipcatcher.sh - safe installer/repair script for vpn_ipcatcher WebGUI setup
-# Version: 2.8.7
+# Version: 2.8.8
 set -e
 
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -59,7 +59,7 @@ EOS
 case "$1" in
   restart)
     case "$2" in
-      vpnipcatcher|vpn_ipcatcher|vpnipcatcher_webui|vipcR*|vipcA*|vipcZ*|vipcX*)
+      vpnipcatcher|vpn_ipcatcher|vpnipcatcher_webui|vipcR*|vipcA*|vipcZ*|vipcX*|vipcD*|vipcE)
         /jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh service_event "$@"
       ;;
     esac

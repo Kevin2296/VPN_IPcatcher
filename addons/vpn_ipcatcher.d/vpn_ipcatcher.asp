@@ -395,11 +395,11 @@ table.data tr:last-child td{border-bottom:none}
 .vpn_ipcatcher_dashboard #flowControls{display:contents}
 .vpn_ipcatcher_dashboard .liveFilters label{display:flex;flex:1 1 130px;flex-direction:column;gap:4px;font-size:12px;min-width:0}
 .vpn_ipcatcher_dashboard .liveFilters input,.vpn_ipcatcher_dashboard .liveFilters select{box-sizing:border-box;width:100%;min-width:0;padding:7px;background:#263235;color:#edf3f3;border:1px solid #637375;border-radius:3px}
-.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;margin-bottom:10px}
+.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;margin-bottom:10px}
 .vpn_ipcatcher_dashboard #page_live .tab{padding:7px 4px;font-size:12px;border-radius:3px}
 .vpn_ipcatcher_dashboard #liveOutput table.data td,.vpn_ipcatcher_dashboard #liveOutput table.data th{padding:7px 9px}
-@media(max-width:1100px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:600px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1100px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .vpn_ipcatcher_dashboard{background:#263235;color:#edf3f3}
 .vpn_ipcatcher_dashboard .topbar{text-align:left;padding:12px 0}
 .vpn_ipcatcher_dashboard .title{font-size:22px;text-shadow:none}
@@ -450,6 +450,7 @@ var custom_settings = <% get_custom_settings(); %>;
 if(!custom_settings || typeof custom_settings !== 'object') custom_settings = {}; // Alleen voor compatibiliteit; config gebruikt de rc-service stream.
 
 var dataCache = null, dirty = false, currentTab = 'flows', currentPage = 'overview', actionBusy = false;
+var diagnosticUntil=0,diagnosticBusy=false;
 var PRESET_CATEGORIES = [], protectedPresetIps = [], configLoaded = false, pendingPresetKeys = {};
 var loadedConfigRevision = '', externalConfigWarningShown = false;
 
@@ -842,6 +843,24 @@ function parseLog(txt){
   txt=splitCompactLines(txt);
   return txt.split('\n').map(function(x){return x.trim()}).filter(Boolean).map(function(line){var m=line.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+(.*)$/); return m?{ts:m[1],msg:m[2]}:{ts:'',msg:line};});
 }
+Object.assign(VPNIPC_I18N.nl,{diagnostic:'Diagnose',diagnosticIp:'Apparaat-IP (IPv4)',diagnosticStart:'Start 2 minuten',diagnosticSnapshot:'IPv4-momentopnamen',diagnosticProtocol:'Protocol',diagnosticInvalid:'Vul een geldig IPv4-adres in.'});
+Object.assign(VPNIPC_I18N.en,{diagnostic:'Diagnostics',diagnosticIp:'Device IP (IPv4)',diagnosticStart:'Start 2 minutes',diagnosticSnapshot:'IPv4 snapshots',diagnosticProtocol:'Protocol',diagnosticInvalid:'Enter a valid IPv4 address.'});
+function startDiagnostic(){
+  var ip=byId('diagnosticIp').value.trim();
+  var parts=ip.split('.');
+  if(parts.length!==4 || !parts.every(function(p){return /^\d{1,3}$/.test(p)&&Number(p)<=255;})){showToast(t('diagnosticInvalid'));return;}
+  diagnosticUntil=Date.now()+120000;
+  refreshDiagnostic(true);
+}
+function refreshDiagnostic(start){
+  if(diagnosticBusy || Date.now()>=diagnosticUntil || actionBusy)return;
+  diagnosticBusy=true;
+  postRcEvent(start?'vipcD'+byId('diagnosticIp').value.trim():'vipcE').then(function(){loadStatus();}).catch(function(){showToast(t('noConfirmation'));}).finally(function(){diagnosticBusy=false;});
+}
+function stopDiagnostic(){
+  diagnosticUntil=0;
+  postRcEvent('vipcDstop').then(function(){loadStatus();}).catch(function(){showToast(t('routerActionFailed'));});
+}
 function filterLiveRows(rows){
   var query=(byId('liveSearch').value||'').trim().toLowerCase();
   var source=byId('flowSource').value, port=byId('flowPort').value, state=byId('flowState').value;
@@ -888,8 +907,14 @@ function renderLiveTab(){
   if(currentTab==='resolved') txt=dataCache.resolved_text;
   if(currentTab==='excludenets') txt=dataCache.exclude_net_text;
   var html='';
+  var diagnostic=byId('diagnosticControls');if(diagnostic)diagnostic.hidden=currentTab!=='diagnostic';
+  var liveFilters=byId('liveFilters');if(liveFilters)liveFilters.hidden=currentTab==='diagnostic';
   var flowControls=byId('flowControls');if(flowControls)flowControls.hidden=currentTab!=='flows';
-  if(currentTab==='flows'){
+  if(currentTab==='diagnostic'){
+    var lines=Date.now()<diagnosticUntil?decodeText(dataCache.diagnostic_text).split('\n').filter(function(line){return /^(ERROR:|TRUNCATED)/.test(line)||line.split(/\s+/)[1]===byId('diagnosticIp').value.trim();}):[];
+    var rows=lines.map(function(line){var p=line.split(/\s+/);return p.length===6?td(p[0])+td(p[1],'mono')+td(p[2],'mono')+td(p[3])+td(p[4])+td(formatFlowBytes(p[5])):'<td colspan="6">'+escapeHtml(line)+'</td>';});
+    html=renderTable([t('diagnosticProtocol'),t('source'),t('destination'),t('port'),t('status'),t('trafficVolume')],rows);
+  } else if(currentTab==='flows'){
     var flows=parseFlows(txt);
     updateFlowOptions('flowSource',flows.map(function(r){return r.src;}));
     updateFlowOptions('flowPort',flows.map(function(r){return r.port;}));
@@ -1077,7 +1102,7 @@ window.addEventListener('load', function(){
   organizeSettings();
   vpnipcInitLanguage();
   document.querySelectorAll('.vpn_ipcatcher_dashboard [id^="cfg_"]').forEach(function(e){ e.addEventListener('input', function(){ dirty=true; updateExclusionPreview(); renderPresets(); }); });
-  setPage('overview'); setTab('flows'); loadPresets(); loadStatus(); setInterval(function(){ if(!actionBusy) loadStatus(); }, 5000);
+  setPage('overview'); setTab('flows'); loadPresets(); loadStatus(); setInterval(function(){ if(!actionBusy){if(currentPage==='live'&&currentTab==='diagnostic')refreshDiagnostic();loadStatus();} }, 5000);
 });
 </script>
 </head>
@@ -1197,6 +1222,7 @@ window.addEventListener('load', function(){
                     <div class="panel-body">
                       <div class="tabs">
                         <button type="button" id="tab_flows" class="tab active" onclick="setTab('flows')" data-i18n="liveFlows">Live flows</button>
+                        <button type="button" id="tab_diagnostic" class="tab" onclick="setTab('diagnostic')" data-i18n="diagnostic">Diagnose</button>
                         <button type="button" id="tab_log" class="tab" onclick="setTab('log')" data-i18n="log">Log</button>
                         <button type="button" id="tab_status" class="tab" onclick="setTab('status')" data-i18n="status">Status</button>
                         <button type="button" id="tab_candidate" class="tab" onclick="setTab('candidate')" data-i18n="candidate">Candidate</button>
@@ -1205,7 +1231,13 @@ window.addEventListener('load', function(){
                         <button type="button" id="tab_resolved" class="tab" onclick="setTab('resolved')" data-i18n="resolvedIps">Resolved IPs</button>
                         <button type="button" id="tab_excludenets" class="tab" onclick="setTab('excludenets')" data-i18n="excludeRanges">Exclude ranges</button>
                       </div>
-                      <div class="liveFilters">
+                      <div id="diagnosticControls" class="liveFilters" hidden>
+                        <label><span data-i18n="diagnosticIp">Apparaat-IP (IPv4)</span><input id="diagnosticIp" inputmode="decimal" placeholder="192.0.2.10" oninput="diagnosticUntil=0"></label>
+                        <button type="button" class="btn blue" onclick="startDiagnostic()" data-i18n="diagnosticStart">Start 2 minuten</button>
+                        <button type="button" class="btn" onclick="stopDiagnostic()" data-i18n="stop">Stop</button>
+                        <span class="muted" data-i18n="diagnosticSnapshot">IPv4-momentopnamen</span>
+                      </div>
+                      <div id="liveFilters" class="liveFilters">
                         <label><span data-i18n="filterSearch">Zoeken</span><input type="search" id="liveSearch" oninput="renderLiveTab()"></label>
                         <div id="flowControls">
                           <label><span data-i18n="filterSource">Bronapparaat</span><select id="flowSource" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option></select></label>

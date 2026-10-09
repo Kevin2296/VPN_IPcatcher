@@ -26,8 +26,8 @@ for (const language of ['nl', 'en']) {
   context.setTab('waiting');
   assert.match(element('liveOutput').innerHTML, /203\.0\.113\.10/);
   assert.equal(context.t('waiting'), language === 'nl' ? 'Wachtlijst' : 'Waiting');
-  context.updateOverview({engine:'running',version:'2.8.7',vpn_connection:'ovpnc1',ipset_name:'Example',config:{}});
-  assert.equal(element('addonVersion').textContent,'2.8.7');
+  context.updateOverview({engine:'running',version:'2.8.8',vpn_connection:'ovpnc1',ipset_name:'Example',config:{}});
+  assert.equal(element('addonVersion').textContent,'2.8.8');
   assert.equal(element('selectedVpn').textContent,'OpenVPN 1');
   context.updateOverview({engine:'running',vpn_connection:'wgc3',config:{}});
   assert.equal(element('selectedVpn').textContent,'WireGuard 3');
