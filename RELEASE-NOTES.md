@@ -1,4 +1,10 @@
-# 🛡️ VPN IP Catcher 2.9.1 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.9.2 · Testrelease / Prerelease
+
+**2.9.2:** vaste, aanklikbare kolomkoppen in alle live-tabellen. Oplopend/aflopend
+sorteren en sortering per tab behouden bij verversen. Scrollpositie blijft behouden.
+
+**2.9.2:** sticky, clickable column headers in all live tables. Ascending/descending
+sorting persists per tab across refreshes. Scroll position remains preserved.
 
 **2.9.1:** browserupdates met bevestiging en verplichte lokale back-up; domeinen
 toevoegen aan bestaande DVR v3.2.5-policies; losse presetitems; NL/EN uitleg;

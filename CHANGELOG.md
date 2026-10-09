@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 2.9.2
+
+- Vaste kolomkoppen in alle live-tabellen, ook tijdens scrollen.
+- Klikbare kolomkoppen voor oplopend/aflopend sorteren; sortering per tab behouden bij verversen en wisselen van tab.
+- Numerieke sortering voor IP-adressen, poorten, aantallen en leesbare verkeersvolumes.
+- Desktop- en mobiele browsertests voor sortering, vaste koppen en scrollpositie.
+
 ## 2.9.0
 
 - Diagnose-tijdlijn met waarnemingstijd, lokale zender-/gebeurtenismarkeringen, pauzeren/hervatten en JSON-export.

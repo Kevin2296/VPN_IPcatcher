@@ -114,3 +114,12 @@ for(const state of ['paused','stopped','expired']){
   assert.equal(frozenScroll.scrollLeft,40);
 }
 console.log('PASS: paused/stopped/expired diagnostics retain scroll even with automatic following enabled');
+assert.ok(context.compareLiveValues('2 KB','10 KB')<0);
+assert.ok(context.compareLiveValues('203.0.113.2','203.0.113.10')<0);
+assert.ok(context.compareLiveValues('900 B','1,2 KB')<0);
+context.currentTab='resolved';context.sortLiveColumn(0);
+assert.equal(context.liveSortStates.resolved.descending,false);
+context.sortLiveColumn(0);
+assert.equal(context.liveSortStates.resolved.descending,true);
+assert.match(context.renderTable(['IP'],[context.td('203.0.113.2')]),/aria-sort="descending"/);
+console.log('PASS: numeric byte/IP sorting, direction toggle and accessible column headers');

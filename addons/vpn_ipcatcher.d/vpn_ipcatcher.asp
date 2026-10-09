@@ -412,6 +412,10 @@ table.data tr:last-child td{border-bottom:none}
 .vpn_ipcatcher_dashboard .panel-body{padding:12px 0}
 .vpn_ipcatcher_dashboard .card{background:#344245;border-color:#59686a;border-radius:4px;min-height:108px}
 .vpn_ipcatcher_dashboard .card h3,.vpn_ipcatcher_dashboard table.data th{letter-spacing:0}
+.vpn_ipcatcher_dashboard #liveOutput table.data{overflow:visible}
+.vpn_ipcatcher_dashboard #liveOutput table.data th{position:sticky;top:0;z-index:2}
+.vpn_ipcatcher_dashboard .columnSort{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;padding:0;margin:0;background:none;border:0;border-radius:0;color:inherit;font:inherit;text-align:left;text-transform:inherit;cursor:pointer}
+.vpn_ipcatcher_dashboard .columnSort:focus-visible{outline:2px solid #5cc8bb;outline-offset:3px}
 .vpn_ipcatcher_dashboard .card .muted{overflow-wrap:anywhere}
 .vpn_ipcatcher_dashboard .layoutTabs{gap:0;border-bottom:1px solid #637375}
 .vpn_ipcatcher_dashboard .layoutTab{background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;padding:12px;font-size:14px}
@@ -459,7 +463,7 @@ var diagnosticUntil=0,diagnosticBusy=false;
 var diagnosticState='idle',diagnosticError='',diagnosticClientsBusy=false;
 var diagnosticHistory=[],diagnosticPrevious={},diagnosticSnapshotKey='';
 var diagnosticDnsSeen={},diagnosticDomains={};
-var liveScrollPositions={},renderedLiveTab='';
+var liveScrollPositions={},renderedLiveTab='',liveSortStates={};
 var PRESET_CATEGORIES = [], protectedPresetIps = [], configLoaded = false, pendingPresetKeys = {};
 var loadedConfigRevision = '', externalConfigWarningShown = false;
 
@@ -815,11 +819,35 @@ function setTab(t){
 function renderTable(headers, rows){
   if(!rows||!rows.length) return '<div class="muted">'+escapeHtml(t('noData'))+'</div>';
   var html='<div class="scroll"><table class="data"><thead><tr>';
-  headers.forEach(function(h){html+='<th>'+escapeHtml(h)+'</th>'});
+  headers.forEach(function(h,i){var sort=liveSortStates[currentTab],active=sort&&sort.column===i;html+='<th aria-sort="'+(active?(sort.descending?'descending':'ascending'):'none')+'"><button type="button" class="columnSort" onclick="sortLiveColumn('+i+')">'+escapeHtml(h)+' <span aria-hidden="true">'+(active?(sort.descending?'&#9660;':'&#9650;'):'&#8597;')+'</span></button></th>'});
   html+='</tr></thead><tbody>';
   rows.forEach(function(r){html+='<tr>'+r+'</tr>'});
   html+='</tbody></table></div>';
   return html;
+}
+function sortLiveColumn(column){
+  var previous=liveSortStates[currentTab];
+  liveSortStates[currentTab]={column:column,descending:!!(previous&&previous.column===column&&!previous.descending)};
+  renderLiveTab();
+}
+function compareLiveValues(a,b){
+  function numeric(value){
+    var match=String(value).trim().match(/^([0-9]+(?:[.,][0-9]+)?)\s*(B|KB|MB|GB|TB)?$/i);
+    return match?Number(match[1].replace(',','.'))*Math.pow(1000,['B','KB','MB','GB','TB'].indexOf((match[2]||'B').toUpperCase())):null;
+  }
+  var x=numeric(a),y=numeric(b);
+  return x!==null&&y!==null?x-y:String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:'base'});
+}
+function applyLiveSort(box){
+  var sort=liveSortStates[currentTab],body=box.querySelector?box.querySelector('tbody'):null;
+  if(!sort||!body||!body.rows)return;
+  var group=[];
+  function flush(before){
+    group.sort(function(a,b){var x=a.cells[sort.column],y=b.cells[sort.column];return (sort.descending?-1:1)*compareLiveValues(x.getAttribute('data-sort')||x.getAttribute('title')||x.textContent,y.getAttribute('data-sort')||y.getAttribute('title')||y.textContent);});
+    group.forEach(function(row){body.insertBefore(row,before);});group=[];
+  }
+  Array.from(body.rows).forEach(function(row){if(row.cells.length>sort.column&&row.cells[0].colSpan===1)group.push(row);else flush(row);});
+  flush(null);
 }
 function td(v, cls){return '<td'+(cls?' class="'+cls+'"':'')+'>'+escapeHtml(v||'')+'</td>'}
 function parseKeyValueStatus(txt){
@@ -1097,6 +1125,7 @@ function renderLiveTab(){
   }
   var nextHtml=html||'<div class="muted">'+escapeHtml(t('noData'))+'</div>';
   if(box.innerHTML!==nextHtml)box.innerHTML=nextHtml;
+  applyLiveSort(box);
   var newScroll=box.querySelector?box.querySelector('.scroll'):null;
   var keep=byId('liveKeepPosition'),position=liveScrollPositions[currentTab];
   var frozenDiagnostic=currentTab==='diagnostic'&&diagnosticState!=='active';

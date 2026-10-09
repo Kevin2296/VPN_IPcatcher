@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.1](https://img.shields.io/badge/version-2.9.1-087F8C?style=for-the-badge)
+![Version 2.9.2](https://img.shields.io/badge/version-2.9.2-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,7 +39,7 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.1.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.2.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -228,7 +228,7 @@ Dit maakt het geen officieel amtm-addon; updates lopen via IP Catcher zelf.
 Optie **1** stelt het schema in, **2** schakelt deelname per script aan/uit,
 **3** toont het updatelog en **4** reset de lijst met ondersteunde scripts.
 Een vermelding onder `p1` t/m `p4` geeft niet automatisch AU-ondersteuning.
-VPN IP Catcher ondersteunt vanaf 2.9.1 het `amtmupdate`-protocol, standaard
+VPN IP Catcher ondersteunt vanaf 2.9.2 het `amtmupdate`-protocol, standaard
 uitgeschakeld. Toestaan kan via WebUI > Onderhoud, of `vpn_ipcatcher.sh auto-update enable`.
 Dit is **geen automatische opname in amtm's centrale AU-catalogus**: die vereist
 registratie door de amtm-beheerder. Er wordt geen eigen tijdschema aangelegd.
@@ -238,7 +238,7 @@ Zie de [uitleg van de amtm-beheerder](https://www.snbforums.com/threads/automati
 
 ### 🖥️ Dashboard 2.9.0
 
-### 🧭 Browserbediening vanaf 2.9.1
+### 🧭 Browserbediening vanaf 2.9.2
 
 - **Onderhoud:** update controleren, installeren of dezelfde versie opnieuw installeren.
   Installeren vraagt bevestiging, bewaart instellingen en maakt voor wijzigingen een back-up.
@@ -521,7 +521,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.1.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.2.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -702,7 +702,7 @@ This is not an official amtm addon. Its own updater manages updates.
 Option **1** configures the schedule, **2** enables/disables participation,
 **3** shows the update log and **4** resets the supported-script list.
 Registration under `p1`–`p4` does not automatically provide AU support.
-Version 2.9.1 supports the `amtmupdate` protocol, disabled by default. Opt in through
+Version 2.9.2 supports the `amtmupdate` protocol, disabled by default. Opt in through
 WebUI > Maintenance or `vpn_ipcatcher.sh auto-update enable`. This does **not** enroll
 the addon in the central amtm AU catalog; enrollment requires the amtm maintainer.
 No independent schedule is created. Automatic updates only install a higher version,
@@ -711,7 +711,7 @@ See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-sc
 
 ### 🖥️ Dashboard 2.9.0
 
-### 🧭 Browser controls from 2.9.1
+### 🧭 Browser controls from 2.9.2
 
 - **Maintenance:** check, install or reinstall an update with confirmation and a
   mandatory backup before changes. The progress indicator shows activity, not an ETA.
