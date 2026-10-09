@@ -6,6 +6,7 @@ export PATH
 
 ADDON_NAME="vpn_ipcatcher"
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
+WEBUI="$ADDON_DIR/vpn_ipcatcher_webui.sh"
 ASP_SRC="$ADDON_DIR/vpn_ipcatcher.asp"
 ENGINE="/jffs/scripts/vpn_ipcatcher.sh"
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
@@ -212,7 +213,13 @@ diagnostic_dns_start(){
   diagnostic_dns_stop
   (umask 077; printf 'starting\n' > "$DIAGNOSTIC_DNS_STATE")
   [ -n "$TCPDUMP" ] && [ -n "$TIMEOUT" ] || { printf 'tools-missing\n' > "$DIAGNOSTIC_DNS_STATE"; return 0; }
+  [ -r "$WEBUI" ] || { printf 'capture-error\n' > "$DIAGNOSTIC_DNS_STATE"; return 1; }
   [ ! -L "$DIAGNOSTIC_DNS" ] || return 0
+  # Older launch failures left an empty lock; never remove a populated worker lock.
+  if [ -d "$DIAGNOSTIC_DNS_LOCK" ]; then
+    sleep 1
+    rmdir "$DIAGNOSTIC_DNS_LOCK" 2>/dev/null || true
+  fi
   (umask 077; mkdir "$DIAGNOSTIC_DNS_LOCK") 2>/dev/null || { printf 'capture-busy\n' > "$DIAGNOSTIC_DNS_STATE"; return 0; }
   (umask 077; : > "$DIAGNOSTIC_DNS")
   chmod 600 "$DIAGNOSTIC_DNS"
