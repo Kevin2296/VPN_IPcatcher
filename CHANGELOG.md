@@ -1,5 +1,18 @@
 # Wijzigingen
 
+## 2.9.0
+
+- Diagnose-tijdlijn met waarnemingstijd, lokale zender-/gebeurtenismarkeringen, pauzeren/hervatten en JSON-export.
+- Stoppen en verlopen bewaren maximaal 2000 waarnemingen in de geopende browserpagina; pagina herladen wist die geschiedenis.
+- Optionele, begrensde DNS-meting voor het gekozen IPv4-apparaat: maximaal twee minuten / 400 UDP-DNS-pakketten. Alleen tijd, domein en antwoord-IP; geen URL, token of pakketbestand.
+- DNS-domeinen worden als aanwijzing getoond, niet als bewezen dienst of route. Versleutelde DNS, gecachte antwoorden en IPv6 vallen buiten deze meting.
+- Scrollpositie standaard behouden in alle live-tabbladen; actuele gegevens blijven verversen.
+- Menu UC/U/FU, expliciete update/back-upbevestiging en een fasegebonden voortgangsbalk. Gewone update slaat dezelfde versie over; FU repareert die.
+- Back-upbeheer (26): geselecteerd archief verwijderen, vijf kleine archieven behouden of oude programmakopieen opruimen. Actief herstelpunt, laatste twee programmakopieen en legacy-migratie blijven bij programma-opruiming behouden.
+- Gewone updates herstellen nu ook de ASUS-eventkoppelingen, met herstel bij mislukte installatie.
+- Dynamische geldigheid van de routingcontrole: twee scan-intervallen, minimaal vijftien seconden.
+- Synthetische browser- en shelltests uitgebreid. Praktijktest op de router blijft nodig; geen garantie dat alle IPTV-fouten hiermee zijn opgelost.
+
 ## 2.8.9
 
 - Diagnose-apparatenkeuze via de ASUS-clientlijst: online IPv4-apparaten op naam/IP, plus handmatige invoer.

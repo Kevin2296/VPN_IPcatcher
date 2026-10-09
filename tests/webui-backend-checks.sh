@@ -57,3 +57,36 @@ node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
 service_event restart vipcDstop
 node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.diagnostic_status!=="idle" || d.diagnostic_text!=="")process.exit(1);' "$STATUS_JSON"
 echo 'PASS: diagnostic start confirms nonce and target; stop clears the published snapshot'
+printf '%s\n' \
+  '1760000000.123456 IP (ttl 64)' \
+  '    192.0.2.10.12345 > 192.0.2.1.53: 123+ A? stream.example.invalid. (40)' \
+  '1760000001.123456 IP (ttl 64)' \
+  '    192.0.2.1.53 > 192.0.2.10.12345: 123 q: A? stream.example.invalid. 1/0/0 A 203.0.113.1 (56)' \
+  '1760000002.123456 IP A? https://secret.invalid/token. A 203.0.113.2' \
+  '1760000003.123456 IP A? bad.example.invalid. A 999.0.2.1' | diagnostic_dns_parse 192.0.2.10 > "$work/dns-output"
+grep -q '192.0.2.10 stream.example.invalid 203.0.113.1' "$work/dns-output"
+grep -q '192.0.2.10 stream.example.invalid -' "$work/dns-output"
+if grep -q 'secret\|token\|999.0.2.1' "$work/dns-output"; then exit 1; fi
+echo 'PASS: multiline DNS query/answer metadata, timestamps and no URL or invalid-IP leakage'
+DIAGNOSTIC_DNS_LOCK="$work/dns-lock"
+DIAGNOSTIC_DNS="$work/dns-records"
+mkdir "$DIAGNOSTIC_DNS_LOCK"
+TCPDUMP="$work/fake-tcpdump"
+TIMEOUT="$work/fake-timeout"
+cat > "$TCPDUMP" <<'EOF'
+#!/bin/sh
+printf '%s\n' '1760000000.123456 IP q: A? stream.example.invalid. 1/0/0 A 203.0.113.1'
+EOF
+cat > "$TIMEOUT" <<'EOF'
+#!/bin/sh
+[ "${1:-}" != --help ] || { echo 'timeout SECS PROG'; exit 0; }
+[ "$1" = -s ] && [ "$2" = TERM ] && [ "$3" = 120 ] || exit 1
+shift 3
+exec "$@"
+EOF
+chmod +x "$TCPDUMP" "$TIMEOUT"
+printf '192.0.2.10 1760000000\n' > "$DIAGNOSTIC_TARGET"
+(diagnostic_dns_worker 192.0.2.10 1760000000)
+grep -q 'stream.example.invalid 203.0.113.1' "$DIAGNOSTIC_DNS"
+[ ! -d "$DIAGNOSTIC_DNS_LOCK" ]
+echo 'PASS: DNS worker bounds the producer, writes only parsed metadata and cleans its FIFO/lock'

@@ -135,3 +135,11 @@ grep -q new-hook "$TMP/jffs/scripts/services-start"
 grep -q 'a vpn_ipcatcher_watchdog .*vpn_ipcatcher_watchdog.sh' "$TMP/jffs/cron-events"
 if sh "$TMP/updater" rollback; then echo 'Incomplete legacy menu rollback accepted'; exit 1; fi
 echo 'PASS: legacy migration installs missing helpers, registers watchdog, preserves stopped state and rejects unsafe legacy rollback'
+sh "$TMP/updater" update-source example/vpn-ipcatcher main
+before="$(cat "$TMP/jffs/addons/vpn_ipcatcher.d/last-backup")"
+sh "$TMP/updater" update
+[ "$(cat "$TMP/jffs/addons/vpn_ipcatcher.d/last-backup")" = "$before" ]
+sh "$TMP/updater" force-update
+[ "$(cat "$TMP/jffs/addons/vpn_ipcatcher.d/last-backup")" != "$before" ]
+grep -q new-hook "$TMP/jffs/scripts/services-start"
+echo 'PASS: same-version update is skipped; forced repair creates backup and refreshes hooks'

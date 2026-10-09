@@ -1,4 +1,22 @@
-# 🛡️ VPN IP Catcher 2.8.9 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.9.0 · Testrelease / Prerelease
+
+**2.9.0:** Bewaar de diagnose na Stop, pauzeer/hervat, markeer een zender en
+exporteer de tijdlijn als JSON. DNS-aanwijzingen verschijnen waar zichtbaar
+(alleen normale IPv4/UDP-DNS; twee minuten of 400 pakketten). Geen URL of
+inloggegevens. Scrollpositie blijft behouden. Updates vragen bevestiging,
+maken verplicht een prive-back-up, tonen voortgang en herstellen ASUS-hooks.
+UC/U/FU en back-upbeheer via menu 26 toegevoegd. Geen automatische amtm-AU
+integratie en geen garantie op een oplossing voor alle IPTV-providers.
+
+**2.9.0:** Retained diagnostics, pause/resume, timestamped channel markers and
+JSON export. Bounded plain-DNS hints for one IPv4 device, not proof of service
+identity. Scroll positions retained. Confirmed updates with mandatory private
+backup, phase progress and automatic ASUS hook repair. UC/U/FU aliases and
+backup cleanup in menu 26. Router verification still required.
+
+**Privacy:** Diagnose-export bevat prive-verbindingsmetadata en mogelijk
+domeinen. Niet publiceren op GitHub. Geschiedenis blijft in de geopende pagina;
+exporteer voordat je de pagina sluit of herlaadt.
 
 **2.8.9:** Kies een online IPv4-apparaat uit de ASUS-clientlijst. De diagnose
 wacht nu op bevestiging van de router en onderscheidt lege metingen van fouten.

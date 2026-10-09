@@ -65,3 +65,21 @@ sh "$work/helper-no-id" small
 printf 'Uid:\t0\t1000\t0\t0\n' > "$work/process-status"
 if sh "$work/helper-no-id" small; then echo 'Non-root helper backup accepted' >&2; exit 1; fi
 echo 'PASS: runtime backup helper supports missing id and checks effective UID'
+printf '#!/bin/sh\necho 0\n' > "$work/bin/id"
+chmod +x "$work/bin/id"
+for index in 1 2 3 4 5 6 7; do
+  : > "$work/jffs/vpn-ipcatcher-backups/vpn-ipcatcher-small-20261001-120000-$index.tar.gz"
+done
+if sh "$work/helper" delete '../escape.tar.gz' --confirmed; then exit 1; fi
+if sh "$work/helper" prune-small; then exit 1; fi
+sh "$work/helper" prune-small --confirmed
+set -- "$work/jffs/vpn-ipcatcher-backups/"*small*.tar.gz
+[ "$#" = 5 ]
+set -- "$work/jffs/vpn-ipcatcher-backups/"*full*.tar.gz
+[ -f "$1" ]
+for index in 1 2 3 4; do mkdir -p "$work/jffs/addons/vpn_ipcatcher.d/backups/update-20261001-120000-$index"; done
+printf '%s\n' "$work/jffs/addons/vpn_ipcatcher.d/backups/update-20261001-120000-1" > "$work/jffs/addons/vpn_ipcatcher.d/last-backup"
+sh "$work/helper" prune-code --confirmed
+[ -d "$work/jffs/addons/vpn_ipcatcher.d/backups/update-20261001-120000-1" ]
+[ ! -d "$work/jffs/addons/vpn_ipcatcher.d/backups/update-20261001-120000-2" ]
+echo 'PASS: backup cleanup rejects traversal, requires confirmation, keeps five small archives and active rollback'

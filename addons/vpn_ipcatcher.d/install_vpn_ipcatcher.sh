@@ -1,6 +1,6 @@
 #!/bin/sh
 # install_vpn_ipcatcher.sh - safe installer/repair script for vpn_ipcatcher WebGUI setup
-# Version: 2.8.9
+# Version: 2.9.0
 set -e
 
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"

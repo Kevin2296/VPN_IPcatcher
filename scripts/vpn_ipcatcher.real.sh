@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.8.9
+# Version: 2.9.0
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -989,7 +989,9 @@ learning_route_ready(){
   case "$checked_at" in ''|*[!0-9]*) return 1 ;; esac
   [ "$checked_set" = "$IPSET_NAME" ] || return 1
   route_age=$(( $(current_epoch) - checked_at ))
-  [ "$route_age" -ge 0 ] && [ "$route_age" -le 10 ]
+  max_age=$(( STREAM_SCAN_EVERY * 2 ))
+  [ "$max_age" -ge 15 ] || max_age=15
+  [ "$route_age" -ge 0 ] && [ "$route_age" -le "$max_age" ]
 }
 destination_is_idle(){
   [ -n "$CT" ] || return 1
@@ -2757,6 +2759,8 @@ menu_loop(){
     say " 23) VPN controleren      Bestaande lijst en route controleren"
     say " 24) Maak back-up         Klein (code/settings/hooks) of uitgebreid"
     say " 25) Toevoegen aan amtm   Registreren als persoonlijk script"
+    say " 26) Back-ups beheren     Bekijken, verwijderen of laatste vijf kleine behouden"
+    say " UC) Update controleren   U) Bijwerken   FU) Dezelfde versie repareren"
     say " 17) Terug naar amtm"
     printf "Keuze: "
     read -r choice
@@ -2779,8 +2783,16 @@ menu_loop(){
       15) reset_config; press_enter ;;
       16) ipset_remove_excluded; press_enter ;;
       17|q|Q|exit) trap - INT; exit 0 ;;
-      18) /jffs/scripts/vpn_ipcatcher.sh check-update; press_enter ;;
-      19) /jffs/scripts/vpn_ipcatcher.sh update; exec /jffs/scripts/vpn_ipcatcher.sh menu ;;
+      18|UC|uc) /jffs/scripts/vpn_ipcatcher.sh check-update; press_enter ;;
+      19|U|u|FU|fu)
+        update_action=update
+        case "$choice" in FU|fu) update_action=force-update ;; esac
+        printf "Update installeren / repareren? [j/N]: "; read -r update_answer
+        case "$update_answer" in j|J|y|Y)
+          printf "Eerst een verplichte prive-back-up maken en daarna bijwerken? [j/N]: "; read -r backup_answer
+          case "$backup_answer" in j|J|y|Y) /jffs/scripts/vpn_ipcatcher.sh "$update_action"; press_enter; exec /jffs/scripts/vpn_ipcatcher.sh menu ;; esac
+        esac
+        ;;
       20) /jffs/scripts/vpn_ipcatcher.sh doctor; press_enter ;;
       21) /jffs/scripts/vpn_ipcatcher.sh rollback; exec /jffs/scripts/vpn_ipcatcher.sh menu ;;
       22) /jffs/scripts/vpn_ipcatcher.sh routing-setup; press_enter ;;
@@ -2795,6 +2807,29 @@ menu_loop(){
         esac
         ;;
       25) /jffs/scripts/vpn_ipcatcher.sh amtm-add; press_enter ;;
+      26)
+        /jffs/scripts/vpn_ipcatcher.sh backup list
+        say "1) Een archief verwijderen  2) Laatste vijf kleine archieven behouden"
+        say "3) Oude programmakopieen opruimen (actief herstelpunt blijft)"
+        say "Programmaherstel (optie 21) wordt niet verwijderd."
+        printf "Keuze [1/2/3, Enter=terug]: "; read -r backup_choice
+        case "$backup_choice" in
+          1)
+            printf "Exacte bestandsnaam: "; read -r backup_name
+            printf "Deze back-up definitief verwijderen? [j/N]: "; read -r backup_answer
+            case "$backup_answer" in j|J|y|Y) /jffs/scripts/vpn_ipcatcher.sh backup delete "$backup_name" --confirmed ;; esac
+            ;;
+          2)
+            printf "Oudere kleine archieven verwijderen (uitgebreide blijven)? [j/N]: "; read -r backup_answer
+            case "$backup_answer" in j|J|y|Y) /jffs/scripts/vpn_ipcatcher.sh backup prune-small --confirmed ;; esac
+            ;;
+          3)
+            printf "Oude programmakopieen opruimen (laatste twee en herstelpunt blijven)? [j/N]: "; read -r backup_answer
+            case "$backup_answer" in j|J|y|Y) /jffs/scripts/vpn_ipcatcher.sh backup prune-code --confirmed ;; esac
+            ;;
+        esac
+        press_enter
+        ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done

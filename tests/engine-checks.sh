@@ -13,6 +13,20 @@ AWK=awk; SED=sed; GREP=grep; TR=tr; TAIL=tail
 CONF="$TMP/config"
 default_config > "$CONF"
 load_config
+ROUTING_STATUS="$TMP/routing-status"
+IPSET_NAME=Example
+current_epoch(){ echo 1000; }
+STREAM_SCAN_EVERY=10
+printf '981 Example\n' > "$ROUTING_STATUS"
+learning_route_ready
+printf '979 Example\n' > "$ROUTING_STATUS"
+if learning_route_ready; then echo 'Stale routing accepted' >&2; exit 1; fi
+STREAM_SCAN_EVERY=1
+printf '985 Example\n' > "$ROUTING_STATUS"
+learning_route_ready
+printf '1001 Example\n' > "$ROUTING_STATUS"
+if learning_route_ready; then echo 'Future routing timestamp accepted' >&2; exit 1; fi
+echo 'PASS: routing readiness scales with scan interval, has a 15s floor and rejects future timestamps'
 [ "$PROMOTE_EVERY" = 15 ]
 EXCLUDE_DOMAINS="google.com"
 domain_is_excluded google.com

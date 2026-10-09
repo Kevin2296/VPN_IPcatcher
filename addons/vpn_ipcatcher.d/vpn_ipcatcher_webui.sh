@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.8.9
+# Version: 2.9.0
 
 ADDON_NAME="vpn_ipcatcher"
 ADDON_DIR="/jffs/addons/vpn_ipcatcher.d"
@@ -139,6 +139,81 @@ ipset_text(){
 }
 
 DIAGNOSTIC_TARGET="/tmp/vpn_ipcatcher_diagnostic_target"
+DIAGNOSTIC_DNS="/tmp/vpn_ipcatcher_diagnostic_dns"
+DIAGNOSTIC_DNS_LOCK="/tmp/vpn_ipcatcher_diagnostic_dns.lock"
+TCPDUMP="$(find_bin /opt/bin/tcpdump /usr/sbin/tcpdump /usr/bin/tcpdump)"
+TIMEOUT="$(find_bin /usr/bin/timeout /bin/timeout /opt/bin/timeout)"
+diagnostic_dns_stop(){
+  capture_pid="$(cat "$DIAGNOSTIC_DNS_LOCK/capture-pid" 2>/dev/null || true)"
+  case "$capture_pid" in ''|*[!0-9]*) ;; *)
+    if [ -r "/proc/$capture_pid/cmdline" ]; then
+      if [ -n "$TCPDUMP" ] && grep -F "$TCPDUMP" "/proc/$capture_pid/cmdline" >/dev/null 2>&1 && grep -F 'udp port 53' "/proc/$capture_pid/cmdline" >/dev/null 2>&1; then
+        kill -TERM "$capture_pid" 2>/dev/null || true
+      fi
+    fi
+    ;;
+  esac
+  dns_pid="$(cat "$DIAGNOSTIC_DNS_LOCK/pid" 2>/dev/null || true)"
+  case "$dns_pid" in ''|*[!0-9]*) return ;; esac
+  [ -r "/proc/$dns_pid/cmdline" ] || return
+  if grep -F "$WEBUI" "/proc/$dns_pid/cmdline" >/dev/null 2>&1 && grep -F 'diagnostic-dns' "/proc/$dns_pid/cmdline" >/dev/null 2>&1; then
+    kill -TERM "$dns_pid" 2>/dev/null || true
+  fi
+}
+diagnostic_dns_parse(){
+  ${AWK:-awk} -v device="$1" '
+    function ipv4(s, a,n,i){n=split(s,a,".");if(n!=4)return 0;for(i=1;i<=4;i++)if(a[i]!~/^[0-9]+$/||a[i]+0>255)return 0;return 1}
+    {
+      if($1~/^[0-9]+[.][0-9]+$/)stamp=$1;
+      if(stamp=="")next;
+      domain="";
+      for(i=1;i<NF;i++)if($i=="A?"||$i=="AAAA?"){domain=$(i+1);sub(/[.,]$/,"",domain);break}
+      if(domain==""||length(domain)>253||domain!~/^[A-Za-z0-9_.-]+$/)next;
+      found=0;
+      for(i=1;i<NF;i++)if($i=="A"){address=$(i+1);sub(/,$/,"",address);if(ipv4(address)){if(++count>400)exit;print stamp,device,domain,address;found=1}}
+      if(!found){if(++count>400)exit;print stamp,device,domain,"-"}
+      fflush();
+    }'
+}
+diagnostic_dns_worker(){
+  dns_device="$1";dns_started="$2";dns_child=''
+  trap '[ -z "$dns_child" ] || kill "$dns_child" 2>/dev/null || true; rm -f "$DIAGNOSTIC_DNS_LOCK/pipe" "$DIAGNOSTIC_DNS_LOCK/pid" "$DIAGNOSTIC_DNS_LOCK/capture-pid"; rmdir "$DIAGNOSTIC_DNS_LOCK" 2>/dev/null || true' EXIT
+  trap 'exit 0' TERM INT HUP
+  echo $$ > "$DIAGNOSTIC_DNS_LOCK/pid"
+  valid_diagnostic_ip "$dns_device" || return 1
+  case "$dns_started" in ''|*[!0-9]*) return 1 ;; esac
+  read -r current_device current_started < "$DIAGNOSTIC_TARGET" || return 1
+  [ "$current_device" = "$dns_device" ] && [ "$current_started" = "$dns_started" ] || return 1
+  mkfifo "$DIAGNOSTIC_DNS_LOCK/pipe" || return 1
+  # Bound the packet producer itself, not a shell waiting on a pipeline.
+  case "$("$TIMEOUT" --help 2>&1)" in
+    *'[-t '*|*'-t SECS'*) "$TIMEOUT" -s TERM -t 120 "$TCPDUMP" -i any -nn -tt -l -vv -s 512 -c 400 "host $dns_device and udp port 53" > "$DIAGNOSTIC_DNS_LOCK/pipe" 2>/dev/null & ;;
+    *) "$TIMEOUT" -s TERM 120 "$TCPDUMP" -i any -nn -tt -l -vv -s 512 -c 400 "host $dns_device and udp port 53" > "$DIAGNOSTIC_DNS_LOCK/pipe" 2>/dev/null & ;;
+  esac
+  dns_child=$!
+  echo "$dns_child" > "$DIAGNOSTIC_DNS_LOCK/capture-pid"
+  diagnostic_dns_parse "$dns_device" < "$DIAGNOSTIC_DNS_LOCK/pipe" | while IFS= read -r dns_line; do
+    printf '%s\n' "$dns_line" >> "$DIAGNOSTIC_DNS"
+  done
+  wait "$dns_child" 2>/dev/null
+}
+diagnostic_dns_start(){
+  diagnostic_dns_stop
+  [ -n "$TCPDUMP" ] && [ -n "$TIMEOUT" ] || return 0
+  [ ! -L "$DIAGNOSTIC_DNS" ] || return 0
+  (umask 077; mkdir "$DIAGNOSTIC_DNS_LOCK") 2>/dev/null || return 0
+  (umask 077; : > "$DIAGNOSTIC_DNS")
+  chmod 600 "$DIAGNOSTIC_DNS"
+  sh "$WEBUI" diagnostic-dns "$1" "$2" >/dev/null 2>&1 &
+}
+diagnostic_dns_text(){
+  [ -r "$DIAGNOSTIC_TARGET" ] && [ -r "$DIAGNOSTIC_DNS" ] || return 0
+  read -r dns_target dns_checked < "$DIAGNOSTIC_TARGET" || return 0
+  case "$dns_checked" in ''|*[!0-9]*) return 0 ;; esac
+  dns_age=$(( $(date +%s) - dns_checked ))
+  [ "$dns_age" -ge 0 ] && [ "$dns_age" -le 120 ] || return 0
+  ${AWK:-awk} -v target="$dns_target" -v started="$dns_checked" '$2==target && $1+0>=started {if(++n<=400)print}' "$DIAGNOSTIC_DNS"
+}
 valid_diagnostic_ip(){
   printf '%s\n' "$1" | ${AWK:-awk} -F. 'NF!=4 {exit 1} {for(i=1;i<=4;i++) if($i !~ /^[0-9]+$/ || length($i)>3 || $i+0>255) exit 1}'
 }
@@ -297,7 +372,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   cat > "$tmp_json" <<JSON
 {
-  "version":"2.8.9",
+  "version":"2.9.0",
   "vpn_connection":"$vpn_connection",
   "last_update":"$last_update",
   "engine":"$engine",
@@ -353,6 +428,7 @@ publish_status(){
   "final_text":"$final_text",
   "flows_text":"$flows_text",
   "diagnostic_text":"$diagnostic_output",
+  "diagnostic_dns_text":"$(diagnostic_dns_text | json_escape)",
   "diagnostic_target":"$diagnostic_device",
   "diagnostic_status":"$diagnostic_phase",
   "resolved_text":"$resolved_text",
@@ -365,6 +441,10 @@ JSON
 }
 
 mount_webui(){
+  # Also repair an old event block when upgrading through a pre-2.9 updater.
+  if [ -f "$ADDON_DIR/install_vpn_ipcatcher.sh" ] && ! grep -q 'vipcD\*|vipcE' /jffs/scripts/service-event 2>/dev/null; then
+    sh "$ADDON_DIR/install_vpn_ipcatcher.sh" hooks || return 1
+  fi
   say(){ printf '%s\n' "$*"; }
   say "[vpn_ipcatcher] Veilige WebUI-mount starten..."
 
@@ -859,10 +939,13 @@ service_event(){
       case "$target" in *_*) diagnostic_nonce="${target%%_*}"; target="${target#*_}"; valid_nonce "$diagnostic_nonce" || return 1 ;; esac
       if [ "$target" = stop ]; then
         rm -f "$DIAGNOSTIC_TARGET"
+        diagnostic_dns_stop
       else
         valid_diagnostic_ip "$target" || return 1
         (umask 077; printf '%s %s\n' "$target" "$(date +%s)" > "$DIAGNOSTIC_TARGET.new") || return 1
         mv "$DIAGNOSTIC_TARGET.new" "$DIAGNOSTIC_TARGET" || return 1
+        read -r dns_target dns_epoch < "$DIAGNOSTIC_TARGET"
+        diagnostic_dns_start "$dns_target" "$dns_epoch"
       fi
       [ -z "$diagnostic_nonce" ] || record_action_status "$diagnostic_nonce" diagnostic ok 'Diagnose ingesteld.'
       publish_status
@@ -919,6 +1002,7 @@ service_event(){
 }
 
 case "$1" in
+  diagnostic-dns) shift; diagnostic_dns_worker "$@" ;;
   mount) mount_webui ;;
   cron) install_cron ;;
   publish|status) publish_status ;;

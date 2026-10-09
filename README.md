@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.8.9](https://img.shields.io/badge/version-2.8.9-087F8C?style=for-the-badge)
+![Version 2.9.0](https://img.shields.io/badge/version-2.9.0-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -27,7 +27,7 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.8.9.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.0.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -218,18 +218,40 @@ VPN IP Catcher gebruikt voorlopig **18 · Update controleren** en
 **19 · Update installeren**, met een automatische prive-back-up.
 Zie de [uitleg van de amtm-beheerder](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
-### 🖥️ Dashboard 2.8.9
+### 🖥️ Dashboard 2.9.0
 
-**Diagnose:** open Liveweergave > Diagnose, kies een online IPv4-apparaat uit
-de ASUS-lijst of vul het IP handmatig in, en kies Start 2 minuten.
-Je ziet eerst een routerbevestiging of een foutmelding; een actieve lege meting
-wordt apart aangegeven. De verbindingstabel wordt elke vijf seconden
-opnieuw opgevraagd zolang deze tab open is. Alle poorten tellen mee, ook zonder
-bytecounters. Stop beeindigt de meting. Geen wijzigingen aan VPN of config.
-Dit is geen packetcapture: heel korte verbindingen tussen metingen en IPv6
-ontbreken. Meer dan 2000 verbindingen voor dit apparaat geeft een afkapmelding.
-De lokale WebUI toont alleen verbindingsmetadata, geen URL of pakketinhoud.
-Deel diagnostische screenshots niet op openbaar GitHub.
+**Diagnose in 2.9.0:** kies je apparaat, start twee minuten, open een zender
+en gebruik **Markeren** om de zenderwissel of fout op de tijdlijn te zetten.
+Nieuwe/veranderde verbindingsmomentopnamen verschijnen elke vijf seconden
+zolang deze tab open is, op alle poorten. Tijd is waarnemingstijd, niet de
+oorspronkelijke starttijd van de verbinding. **Pauzeren** stopt de meting;
+**Hervatten** begint opnieuw maximaal twee minuten en behoudt de geschiedenis.
+**Stop**, afloop en fouten wissen geen resultaten. **Exporteren** downloadt JSON.
+Bewaar die export voordat je de pagina herlaadt/sluit: de laatste 2000
+waarnemingen worden alleen in de geopende pagina bewaard. **Resultaat wissen**
+vraagt bevestiging. **Scrollpositie behouden** staat standaard aan.
+
+Een optionele tcpdump/timeout-meting bekijkt uitsluitend normale UDP-DNS voor
+dit IPv4-apparaat, maximaal twee minuten of 400 pakketten. Alleen tijd, domein
+en antwoord-IP worden bewaard; geen pakketbestand, URL of inloggegevens.
+**Domein (DNS-aanwijzing)** kan helpen, maar bewijst geen dienst: gedeelde CDN-IP's,
+DNS-cache en versleutelde DNS beperken de koppeling. Ontbrekende namen blijven
+**Onbekend**. IPv6, TCP-DNS en heel korte verbindingen tussen momentopnamen
+worden niet volledig gedekt. Zonder tcpdump/timeout blijven IP-momentopnamen werken.
+Er wordt niets aan VPN-routing of configuratie veranderd. Exports en screenshots
+bevatten prive-verbindingsgegevens: niet op openbaar GitHub plaatsen.
+
+**Updates:** **UC / 18** controleert, **U / 19** werkt bij na twee bevestigingen
+(installeren en verplichte back-up), **FU** installeert dezelfde versie opnieuw
+om bestanden/ASUS-koppelingen te repareren. Fasevoortgang geeft echte installatiestappen,
+geen geschatte resterende tijd. Gewone updates vernieuwen ook de ASUS-eventkoppelingen.
+
+**Back-upbeheer (26):** bekijk archieven met datum in de naam en grootte;
+verwijder een gekozen archief, behoud de vijf nieuwste kleine archieven, of
+ruim oude programmakopieen op. Elke verwijderactie vraagt bevestiging.
+Uitgebreide archieven worden niet automatisch verwijderd. Programma-opruiming
+bewaart de laatste twee kopieen, het actieve herstelpunt en legacy-migraties.
+Dit is handmatig opruimen, geen stilzwijgend dagelijks verwijderbeleid.
 
 De liveweergave heeft zoeken en filters op bronapparaat, poort en lijststatus.
 Zoeken werkt ook bij de andere liveoverzichten. Filters blijven bij verversen
@@ -271,6 +293,8 @@ Niet-opgeslagen wijzigingen zijn zichtbaar. Voor een andere VPN gebruik je
 | 23 | VPN controleren | VPN/lijstkoppeling controleren |
 | **24** | **Maak back-up** | **1 klein · 2 uitgebreid · Enter terug** |
 | **25** | **Toevoegen aan amtm** | **Registreren als persoonlijk script** |
+| **26** | **Back-ups beheren** | **Bekijken en bevestigd opruimen** |
+| UC / U / FU | Updates | Controleren / bijwerken / dezelfde versie repareren |
 
 **Profielen (12):** 1 Stabiel TV, 2 Voorzichtig leren, 3 Snel zappen,
 4 Analyse/review, 5 Alleen bestaande lijst gebruiken, 6 Terug.
@@ -436,7 +460,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.9.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.0.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -619,18 +643,43 @@ For VPN IP Catcher, use **18 · Update controleren** and
 **19 · Update installeren**, with an automatic private backup.
 See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
-### 🖥️ Dashboard 2.8.9
+### 🖥️ Dashboard 2.9.0
 
 **Diagnostics:** open Live view > Diagnostics, select an online IPv4 device
 from the ASUS list or enter its IP manually, then choose Start 2 minutes.
 Router confirmation, errors and active empty snapshots have separate states.
 Connection snapshots refresh every five seconds
 while this tab is open, on all ports and without requiring byte counters.
-Stop ends the session. No VPN or configuration changes. This is not packet
-capture: short connections between snapshots and IPv6 are not included.
+Stop ends the session without deleting results. No VPN or configuration changes.
+Short connections between snapshots and IPv6 are not fully covered.
 More than 2000 connections for the device produce a truncation notice.
 The local WebUI displays metadata only, never URLs or payloads. Do not publish
 diagnostic screenshots on public GitHub.
+
+**New in 2.9.0:** timestamped history, channel/event markers, pause/resume and
+JSON export. Resume starts a new bounded two-minute measurement while retaining
+history. Stop and expiry keep results; only the last 2000 observations remain
+in the open page. Export before reloading/closing it. Timestamps identify when
+an observation was made, not when a connection originally started.
+
+Optional tcpdump/timeout collection observes only plain UDP-DNS for the selected
+IPv4 device, limited to two minutes or 400 packets. It retains timestamp, domain
+and answer IP only, not packet files, URLs or credentials. Domains are hints,
+not proof of service identity; shared CDN addresses, cached/encrypted DNS and
+TCP-DNS can leave names unknown. IP snapshots still work without DNS tools.
+Exports are private metadata: never upload them to public GitHub.
+
+**Keep scroll position** is enabled by default in all live tabs.
+**UC / 18** checks for updates, **U / 19** confirms installation and mandatory
+private backup, **FU** reinstalls the same version for repair. Progress follows
+installation phases, not an estimated completion time. Ordinary updates now
+refresh ASUS event hooks too.
+
+**Backup management (26):** list archive names/dates and sizes, delete a selected
+archive, keep the five newest small archives, or clean old program snapshots.
+Deletion requires confirmation. Full archives are not automatically pruned.
+Program cleanup preserves the two newest snapshots, the active rollback point
+and legacy migrations. Cleanup is manual, not an automatic retention schedule.
 
 Live view supports search and source-device, port and list-status filters.
 Search also works in the other live views. Filters persist across refreshes
@@ -671,6 +720,8 @@ Use **22 · VPN kiezen** to select another VPN already configured in the ASUS cl
 | 23 | VPN controleren | Check VPN/list binding |
 | **24** | **Maak back-up** | **1 small · 2 full · Enter back** |
 | **25** | **Toevoegen aan amtm** | **Register a personal script** |
+| **26** | **Back-ups beheren** | **Inspect and confirm backup cleanup** |
+| UC / U / FU | Updates | Check / update / reinstall the same version |
 
 **Profiles (12):** 1 Stable TV, 2 Cautious learning, 3 Fast zapping,
 4 Analysis/review, 5 Existing list only, 6 Back.

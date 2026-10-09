@@ -395,6 +395,9 @@ table.data tr:last-child td{border-bottom:none}
 .vpn_ipcatcher_dashboard #flowControls{display:contents}
 .vpn_ipcatcher_dashboard .liveFilters label{display:flex;flex:1 1 130px;flex-direction:column;gap:4px;font-size:12px;min-width:0}
 .vpn_ipcatcher_dashboard .liveFilters input,.vpn_ipcatcher_dashboard .liveFilters select{box-sizing:border-box;width:100%;min-width:0;padding:7px;background:#263235;color:#edf3f3;border:1px solid #637375;border-radius:3px}
+.vpn_ipcatcher_dashboard #diagnosticControls label{flex:1 1 240px}
+.vpn_ipcatcher_dashboard #diagnosticControls [data-i18n="diagnosticDnsNote"],.vpn_ipcatcher_dashboard #diagnosticControls [data-i18n="diagnosticLimited"]{flex-basis:100%}
+.vpn_ipcatcher_dashboard #diagnosticProgress{width:160px;height:10px;accent-color:#69c6b6}
 .vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;margin-bottom:10px}
 .vpn_ipcatcher_dashboard #page_live .tab{padding:7px 4px;font-size:12px;border-radius:3px}
 .vpn_ipcatcher_dashboard #liveOutput table.data td,.vpn_ipcatcher_dashboard #liveOutput table.data th{padding:7px 9px}
@@ -454,6 +457,9 @@ if(!custom_settings || typeof custom_settings !== 'object') custom_settings = {}
 var dataCache = null, dirty = false, currentTab = 'flows', currentPage = 'overview', actionBusy = false;
 var diagnosticUntil=0,diagnosticBusy=false;
 var diagnosticState='idle',diagnosticError='',diagnosticClientsBusy=false;
+var diagnosticHistory=[],diagnosticPrevious={},diagnosticSnapshotKey='';
+var diagnosticDnsSeen={},diagnosticDomains={};
+var liveScrollPositions={},renderedLiveTab='';
 var PRESET_CATEGORIES = [], protectedPresetIps = [], configLoaded = false, pendingPresetKeys = {};
 var loadedConfigRevision = '', externalConfigWarningShown = false;
 
@@ -851,6 +857,67 @@ Object.assign(VPNIPC_I18N.nl,{diagnostic:'Diagnose',diagnosticIp:'Apparaat-IP (I
 Object.assign(VPNIPC_I18N.en,{diagnostic:'Diagnostics',diagnosticIp:'Device IP (IPv4)',diagnosticStart:'Start 2 minutes',diagnosticSnapshot:'IPv4 snapshots',diagnosticProtocol:'Protocol',diagnosticInvalid:'Enter a valid IPv4 address.'});
 Object.assign(VPNIPC_I18N.nl,{diagnosticDevices:'ASUS-apparaten',diagnosticManual:'Handmatig IP',diagnosticReload:'Apparaten vernieuwen',diagnosticLoading:'Apparaten ophalen...',diagnosticClientsFailed:'ASUS-apparatenlijst niet beschikbaar; handmatig IP blijft mogelijk.',diagnostic_idle:'Nog niet gestart',diagnostic_starting:'Wachten op bevestiging van de router...',diagnostic_active:'Meting actief',diagnostic_expired:'Meting afgerond',diagnostic_error:'Diagnose mislukt.',diagnosticEmpty:'Meting actief; geen IPv4-verbindingen gevonden voor dit apparaat.'});
 Object.assign(VPNIPC_I18N.en,{diagnosticDevices:'ASUS devices',diagnosticManual:'Manual IP',diagnosticReload:'Refresh devices',diagnosticLoading:'Loading devices...',diagnosticClientsFailed:'ASUS client list unavailable; manual IP remains available.',diagnostic_idle:'Not started',diagnostic_starting:'Waiting for router confirmation...',diagnostic_active:'Measurement active',diagnostic_expired:'Measurement finished',diagnostic_error:'Diagnostics failed.',diagnosticEmpty:'Measurement active; no IPv4 connections found for this device.'});
+Object.assign(VPNIPC_I18N.nl,{diagnostic_paused:'Gepauzeerd — resultaat bewaard',diagnostic_stopped:'Gestopt — resultaat bewaard',diagnosticPause:'Pauzeren',diagnosticResume:'Hervatten',diagnosticExport:'Exporteren',diagnosticTime:'Waargenomen op',diagnosticClear:'Resultaat wissen',diagnosticClearConfirm:'De bewaarde diagnose wissen?',diagnosticLimited:'Laatste 2000 waarnemingen; export bevat privé-verbindingsgegevens.'});
+Object.assign(VPNIPC_I18N.en,{diagnostic_paused:'Paused — results retained',diagnostic_stopped:'Stopped — results retained',diagnosticPause:'Pause',diagnosticResume:'Resume',diagnosticExport:'Export',diagnosticTime:'Observed at',diagnosticClear:'Clear results',diagnosticClearConfirm:'Clear the retained diagnostics?',diagnosticLimited:'Last 2000 observations; export contains private connection metadata.'});
+Object.assign(VPNIPC_I18N.nl,{keepScrollPosition:'Scrollpositie behouden'});
+Object.assign(VPNIPC_I18N.en,{keepScrollPosition:'Keep scroll position'});
+Object.assign(VPNIPC_I18N.nl,{diagnosticDomain:'Domein (DNS-aanwijzing)',diagnosticUnknown:'Onbekend',diagnosticMarker:'Zender / gebeurtenis',diagnosticMark:'Markeren',diagnosticRemaining:'Resterend',diagnosticDnsNote:'DNS-aanwijzingen zijn geen bewijs van de gebruikte dienst. Versleutelde of eerder gecachte DNS kan ontbreken.'});
+Object.assign(VPNIPC_I18N.en,{diagnosticDomain:'Domain (DNS hint)',diagnosticUnknown:'Unknown',diagnosticMarker:'Channel / event',diagnosticMark:'Mark',diagnosticRemaining:'Remaining',diagnosticDnsNote:'DNS hints do not prove the service used. Encrypted or previously cached DNS may be absent.'});
+function addDiagnosticMarker(){
+  var label=byId('diagnosticMarker').value.trim().slice(0,80);if(!label)return;
+  diagnosticHistory.push({time:new Date().toISOString(),line:'MARKER '+label});
+  diagnosticHistory=diagnosticHistory.slice(-2000);byId('diagnosticMarker').value='';renderLiveTab();
+}
+function updateDiagnosticTimer(){
+  var remaining=diagnosticState==='active'?Math.max(0,Math.ceil((diagnosticUntil-Date.now())/1000)):0;
+  setText('diagnosticCountdown',diagnosticState==='active'?t('diagnosticRemaining')+': '+remaining+'s':'');
+  var progress=byId('diagnosticProgress');if(progress){progress.hidden=diagnosticState!=='active';progress.value=120-remaining;}
+}
+function retainDiagnosticDns(ip){
+  decodeText(dataCache.diagnostic_dns_text).split('\n').forEach(function(line){
+    var p=line.split(/\s+/);if(p.length!==4||p[1]!==ip||!/^[0-9]+\.[0-9]+$/.test(p[0])||diagnosticDnsSeen[line])return;
+    diagnosticDnsSeen[line]=true;
+    if(p[3]!=='-'){
+      var key=ip+'|'+p[3],names=diagnosticDomains[key]||[];
+      if(names.indexOf(p[2])<0)names.push(p[2]);diagnosticDomains[key]=names.slice(-4);
+    }
+    diagnosticHistory.push({time:new Date(Number(p[0])*1000).toISOString(),line:'dns '+ip+' '+p[3]+' 53 '+(p[3]==='-'?'QUERY':'ANSWER')+' -',domain:p[2]});
+  });
+}
+function retainDiagnosticSnapshot(){
+  if(diagnosticState!=='active')return;
+  var ip=byId('diagnosticIp').value.trim(),text=decodeText(dataCache.diagnostic_text);
+  if(dataCache.diagnostic_target!==ip || dataCache.diagnostic_status!=='active')return;
+  retainDiagnosticDns(ip);
+  var key=String(dataCache.last_update||'')+'|'+text;
+  if(key===diagnosticSnapshotKey)return;
+  diagnosticSnapshotKey=key;
+  var next={},time=new Date().toISOString();
+  text.split('\n').filter(function(line){return line&&(/^(ERROR:|TRUNCATED)/.test(line)||line.split(/\s+/)[1]===ip);}).forEach(function(line){
+    next[line]=true;
+    if(!diagnosticPrevious[line])diagnosticHistory.push({time:time,line:line,domain:(diagnosticDomains[ip+'|'+line.split(/\s+/)[2]]||[]).join(', ')});
+  });
+  diagnosticPrevious=next;
+  diagnosticHistory=diagnosticHistory.slice(-2000);
+}
+function pauseDiagnostic(){
+  if(diagnosticBusy)return;
+  if(diagnosticState==='active'){
+    retainDiagnosticSnapshot();diagnosticState='paused';diagnosticUntil=0;diagnosticBusy=true;renderLiveTab();
+    postRcEvent('vipcDstop').then(function(){loadStatus();}).catch(function(){diagnosticState='error';diagnosticError=t('routerActionFailed');renderLiveTab();}).finally(function(){diagnosticBusy=false;});
+  }else if(diagnosticState==='paused')startDiagnostic();
+}
+function clearDiagnostic(){
+  if(!window.confirm(t('diagnosticClearConfirm')))return;
+  diagnosticHistory=[];diagnosticPrevious={};diagnosticSnapshotKey='';diagnosticDnsSeen={};diagnosticDomains={};renderLiveTab();
+}
+function exportDiagnostic(){
+  retainDiagnosticSnapshot();
+  var blob=new Blob([JSON.stringify({format:'vpn-ipcatcher-diagnostic-v1',exported_at:new Date().toISOString(),timestamps:'browser observation time; not connection start time',observations:diagnosticHistory},null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='vpn-ipcatcher-diagnostic-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+  document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
 function startDiagnostic(){
   var ip=byId('diagnosticIp').value.trim();
   var parts=ip.split('.');
@@ -860,6 +927,7 @@ function startDiagnostic(){
   var nonce='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   diagnosticState='starting';diagnosticError='';diagnosticBusy=true;diagnosticUntil=0;renderLiveTab();
   postRcEvent('vipcD'+nonce+'_'+ip).then(function(){return waitForActionResult(nonce,12);}).then(function(){
+    diagnosticDnsSeen={};diagnosticDomains={};diagnosticPrevious={};diagnosticSnapshotKey='';
     diagnosticUntil=Date.now()+120000;diagnosticState='active';renderLiveTab();
   }).catch(function(err){diagnosticState='error';diagnosticError=String(err.message||err);renderLiveTab();}).finally(function(){diagnosticBusy=false;});
 }
@@ -870,7 +938,7 @@ function refreshDiagnostic(start){
 }
 function stopDiagnostic(){
   if(diagnosticBusy)return;
-  diagnosticUntil=0;diagnosticState='idle';renderLiveTab();
+  retainDiagnosticSnapshot();diagnosticUntil=0;diagnosticState='stopped';renderLiveTab();
   return postRcEvent('vipcDstop').then(function(){loadStatus();}).catch(function(){diagnosticState='error';diagnosticError=t('routerActionFailed');renderLiveTab();});
 }
 function diagnosticDevices(data){
@@ -935,6 +1003,8 @@ function formatFlowBytes(bytes){
 function renderLiveTab(){
   if(!dataCache) return;
   var box=byId('liveOutput'), txt='';
+  var oldScroll=box.querySelector?box.querySelector('.scroll'):null;
+  if(renderedLiveTab&&oldScroll)liveScrollPositions[renderedLiveTab]={top:oldScroll.scrollTop,left:oldScroll.scrollLeft,outerLeft:box.scrollLeft};
   if(currentTab==='flows') txt=dataCache.flows_text;
   if(currentTab==='log') txt=dataCache.log_text;
   if(currentTab==='status') txt=dataCache.status_text;
@@ -948,13 +1018,15 @@ function renderLiveTab(){
   var liveFilters=byId('liveFilters');if(liveFilters)liveFilters.hidden=currentTab==='diagnostic';
   var flowControls=byId('flowControls');if(flowControls)flowControls.hidden=currentTab!=='flows';
   if(currentTab==='diagnostic'){
+    retainDiagnosticSnapshot();
     if(diagnosticState==='active'&&(Date.now()>=diagnosticUntil||dataCache.diagnostic_status==='expired'))diagnosticState='expired';
-    var lines=Date.now()<diagnosticUntil?decodeText(dataCache.diagnostic_text).split('\n').filter(function(line){return /^(ERROR:|TRUNCATED)/.test(line)||line.split(/\s+/)[1]===byId('diagnosticIp').value.trim();}):[];
-    var rows=lines.map(function(line){var p=line.split(/\s+/);return p.length===6?td(p[0])+td(p[1],'mono')+td(p[2],'mono')+td(p[3])+td(p[4])+td(formatFlowBytes(p[5])):'<td colspan="6">'+escapeHtml(line)+'</td>';});
-    html=renderTable([t('diagnosticProtocol'),t('source'),t('destination'),t('port'),t('status'),t('trafficVolume')],rows);
+    var rows=diagnosticHistory.slice().reverse().map(function(entry){var p=entry.line.split(/\s+/);return p.length===6&&!/^MARKER /.test(entry.line)?td(new Date(entry.time).toLocaleString())+td(p[0])+td(p[1],'mono')+td(p[2],'mono')+td(entry.domain||t('diagnosticUnknown'))+td(p[3])+td(p[4])+td(formatFlowBytes(p[5])):td(new Date(entry.time).toLocaleString())+'<td colspan="7">'+escapeHtml(entry.line)+'</td>';});
+    html=renderTable([t('diagnosticTime'),t('diagnosticProtocol'),t('source'),t('destination'),t('diagnosticDomain'),t('port'),t('status'),t('trafficVolume')],rows);
+    setText('diagnosticPauseButton',t(diagnosticState==='paused'?'diagnosticResume':'diagnosticPause'));
     var phase=dataCache.diagnostic_status==='error'&&diagnosticState==='active'?'error':diagnosticState;
     var message=t('diagnostic_'+phase)+(phase==='error'&&diagnosticError?' '+diagnosticError:'');
     setText('diagnosticState',message);
+    updateDiagnosticTimer();
     if(!rows.length)html='<div class="muted">'+escapeHtml(phase==='active'?t('diagnosticEmpty'):message)+'</div>';
   } else if(currentTab==='flows'){
     var flows=parseFlows(txt);
@@ -980,7 +1052,18 @@ function renderLiveTab(){
     var rows=filterLiveRows(dump.rows).map(function(r){return td(r.range,'mono')+td(r.comment);});
     html=meta+renderTable([t('range'),t('comment')], rows);
   }
-  box.innerHTML=html||'<div class="muted">'+escapeHtml(t('noData'))+'</div>';
+  var nextHtml=html||'<div class="muted">'+escapeHtml(t('noData'))+'</div>';
+  if(box.innerHTML!==nextHtml)box.innerHTML=nextHtml;
+  var newScroll=box.querySelector?box.querySelector('.scroll'):null;
+  var keep=byId('liveKeepPosition'),position=liveScrollPositions[currentTab];
+  if(newScroll){
+    if(!keep||keep.checked){
+      newScroll.scrollTop=position?position.top:0;newScroll.scrollLeft=position?position.left:0;box.scrollLeft=position?position.outerLeft:0;
+    }else{
+      newScroll.scrollTop=currentTab==='log'?newScroll.scrollHeight:0;
+    }
+  }
+  renderedLiveTab=currentTab;
 }
 function updateOverview(d){
   setText('addonVersion',d.version||'-');
@@ -1145,6 +1228,7 @@ window.addEventListener('load', function(){
   vpnipcInitLanguage();
   document.querySelectorAll('.vpn_ipcatcher_dashboard [id^="cfg_"]').forEach(function(e){ e.addEventListener('input', function(){ dirty=true; updateExclusionPreview(); renderPresets(); }); });
   setPage('overview'); setTab('flows'); loadPresets(); loadStatus(); setInterval(function(){ if(!actionBusy){if(currentPage==='live'&&currentTab==='diagnostic')refreshDiagnostic();loadStatus();} }, 5000);
+  setInterval(function(){if(currentPage==='live'&&currentTab==='diagnostic')updateDiagnosticTimer();},1000);
 });
 </script>
 </head>
@@ -1280,8 +1364,16 @@ window.addEventListener('load', function(){
                         <label><span data-i18n="diagnosticIp">Apparaat-IP (IPv4)</span><input id="diagnosticIp" inputmode="decimal" placeholder="192.0.2.10" oninput="diagnosticUntil=0;diagnosticState='idle';renderLiveTab()"></label>
                         <button type="button" class="btn blue" onclick="startDiagnostic()" data-i18n="diagnosticStart">Start 2 minuten</button>
                         <button type="button" class="btn" onclick="stopDiagnostic()" data-i18n="stop">Stop</button>
+                        <button type="button" id="diagnosticPauseButton" class="btn" onclick="pauseDiagnostic()" data-i18n="diagnosticPause">Pauzeren</button>
+                        <button type="button" class="btn" onclick="exportDiagnostic()" data-i18n="diagnosticExport">Exporteren</button>
+                        <button type="button" class="btn" onclick="clearDiagnostic()" data-i18n="diagnosticClear">Resultaat wissen</button>
                         <span class="muted" data-i18n="diagnosticSnapshot">IPv4-momentopnamen</span>
                         <span id="diagnosticState" class="muted" role="status"></span>
+                        <span id="diagnosticCountdown" class="muted"></span><progress id="diagnosticProgress" max="120" value="0" hidden></progress>
+                        <label><span data-i18n="diagnosticMarker">Zender / gebeurtenis</span><input id="diagnosticMarker" maxlength="80"></label>
+                        <button type="button" class="btn" onclick="addDiagnosticMarker()" data-i18n="diagnosticMark">Markeren</button>
+                        <span class="muted" data-i18n="diagnosticDnsNote">DNS-aanwijzingen zijn geen bewijs van de gebruikte dienst. Versleutelde of eerder gecachte DNS kan ontbreken.</span>
+                        <span class="muted" data-i18n="diagnosticLimited">Laatste 2000 waarnemingen; export bevat privé-verbindingsgegevens.</span>
                       </div>
                       <div id="liveFilters" class="liveFilters">
                         <label><span data-i18n="filterSearch">Zoeken</span><input type="search" id="liveSearch" oninput="renderLiveTab()"></label>
@@ -1293,6 +1385,7 @@ window.addEventListener('load', function(){
                         <button type="button" class="btn" onclick="clearLiveFilters()" data-i18n="filterClear">Filters wissen</button>
                         <span id="liveRowCount" class="muted" aria-live="polite"></span>
                       </div>
+                      <label><input type="checkbox" id="liveKeepPosition" checked onchange="renderLiveTab()"> <span data-i18n="keepScrollPosition">Scrollpositie behouden</span></label>
                       <div id="liveOutput"></div>
                     </div>
                   </div>

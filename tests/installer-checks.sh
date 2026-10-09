@@ -25,6 +25,7 @@ sh -n "$SERVICES_START"
 if grep -q '### vpn_ipcatcher WebUI start' "$SERVICE_EVENT"; then exit 1; fi
 if grep -q '# BEGIN vpn_ipcatcher SAFE' "$SERVICES_START"; then exit 1; fi
 grep -q 'vipcR\*|vipcA\*|vipcZ\*|vipcX\*' "$SERVICE_EVENT"
+grep -q 'vipcD\*|vipcE' "$SERVICE_EVENT"
 grep -q '/jffs/scripts/ExampleOtherAddon startup' "$SERVICES_START"
 grep -q '/jffs/scripts/ExampleEventAddon' "$SERVICE_EVENT"
 grep -q 'vpn_ipcatcher.sh watchdog' "$SERVICES_START"

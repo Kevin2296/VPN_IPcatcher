@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.8.9
+# Version: 2.9.0
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -24,6 +24,9 @@ WATCHDOG_JOB=''
 STATUS_JOB=''
 
 fail(){ printf 'FOUT: %s\n' "$*" >&2; exit 1; }
+progress(){
+  printf '\r[%s] %3s%% %s\n' "$2" "$1" "$3"
+}
 find_on_path(){
   (
     IFS=:
@@ -111,7 +114,7 @@ if [ "$action" = update-source ]; then
   exit 0
 fi
 
-case "$action" in check-update|update|rollback|migrate) ;; *) fail "Onbekende actie: $action" ;; esac
+case "$action" in check-update|update|force-update|rollback|migrate) ;; *) fail "Onbekende actie: $action" ;; esac
 if [ "$action" = migrate ]; then
   [ "$#" = 3 ] && valid_repo "$2" && valid_ref "$3" || fail 'Gebruik: migrate eigenaar/repository commit'
   [ -s "$ENGINE" ] && [ -s /jffs/scripts/vpn_ipcatcher.real.sh ] && [ -f /jffs/scripts/vpn_ipcatcher.conf ] || fail 'Oude engine/configuratie ontbreekt.'
@@ -157,6 +160,11 @@ else
   local_version="$(sed -n 's/^# Version: //p' "$ENGINE" | head -n 1)"
   printf 'Geinstalleerd: %s\nGitHub: %s\nCommit: %s\n' "$local_version" "$remote" "$commit"
   [ "$action" = check-update ] && exit 0
+  if [ "$action" = update ] && [ "$local_version" = "$remote" ]; then
+    echo 'Deze versie is al geinstalleerd. Gebruik force-update om de bestanden en koppelingen te repareren.'
+    exit 0
+  fi
+  progress 10 '##------------------' 'Bestanden downloaden en controleren'
   for relative in $FILES; do
     mkdir -p "$STAGE/$(dirname "$relative")"
     download "$relative"
@@ -173,6 +181,7 @@ else
     sh "$STAGE/scripts/vpn_ipcatcher.real.sh" validate-config || fail 'De oude configuratie is niet compatibel; niets vervangen. Pas geen instellingen blind aan.'
   fi
   sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh" "$backup_mode" --update-owner "$$"
+  progress 45 '#########-----------' 'Back-up gereed; installatie voorbereiden'
   sh "$STAGE/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh" install-dependencies
   BACKUP="$ADDON/backups/update-$(date +%Y%m%d-%H%M%S)-$$"
   mkdir -p "$BACKUP"
@@ -194,12 +203,12 @@ else
   done
   if [ "$action" = migrate ]; then
     : > "$BACKUP/legacy-migration"
+  fi
     for relative in $HOOKS; do
       mkdir -p "$BACKUP/$(dirname "$relative")"
       if [ -e "/jffs/$relative" ]; then cp -p "/jffs/$relative" "$BACKUP/$relative"
       else : > "$BACKUP/$relative.missing"; fi
     done
-  fi
 fi
 
 [ ! -f "$ADDON/updating" ] || fail "Een update of herstel staat al als actief geregistreerd."
@@ -218,6 +227,7 @@ if [ "$action" = migrate ]; then
   cru d vpn_ipcatcher_status
 fi
 "$ENGINE" stop
+progress 60 '############--------' 'Programma en ASUS-koppelingen bijwerken'
 if [ "$action" != rollback ] && [ ! -f "$ADDON/routing-selection" ]; then
   cp -p /jffs/scripts/vpn_ipcatcher.conf "$BACKUP/private-config"
   SELECTION_CHANGED=1
@@ -235,11 +245,11 @@ else
     mv "/jffs/$relative.new" "/jffs/$relative"
   done
 fi
-if [ "$action" = migrate ]; then
+if [ "$action" != rollback ]; then
   HOOKS_CHANGED=1
   sh "$ADDON/install_vpn_ipcatcher.sh" hooks
   # An unrecognized legacy running state stays stopped until explicit Start.
-  [ "$WAS_RUNNING" = 1 ] || WAS_DISABLED=1
+  if [ "$action" = migrate ]; then [ "$WAS_RUNNING" = 1 ] || WAS_DISABLED=1; fi
 fi
 # Check startup before accepting the new files; finish restores them on failure.
 if [ "$WAS_RUNNING" = 1 ]; then
@@ -253,3 +263,4 @@ MODIFIED=0
 if [ "$action" != rollback ]; then printf '%s\n' "$BACKUP" > "$ADDON/last-backup"; fi
 "$ADDON/vpn_ipcatcher_webui.sh" mount || echo "WebUI mount niet gelukt; controleer doctor."
 echo "Bestanden bijgewerkt. Persoonlijke configuratie behouden."
+progress 100 '####################' 'Klaar'

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.8.9
+# Version: 2.9.0
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
@@ -43,7 +43,7 @@ case "$1" in
     VPNIPC_INTERNAL=1 "$REAL" start
     ;;
   run) exec "$REAL" run ;;
-  check-update|update|update-source|rollback)
+  check-update|update|force-update|update-source|rollback)
     action="$1"; shift
     exec "$ADDON/vpn_ipcatcher_update.sh" "$action" "$@"
     ;;

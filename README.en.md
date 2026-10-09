@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.8.9](https://img.shields.io/badge/version-2.8.9-087F8C?style=for-the-badge)
+![Version 2.9.0](https://img.shields.io/badge/version-2.9.0-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -25,7 +25,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.8.9.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.0.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 > [!IMPORTANT]
@@ -208,18 +208,43 @@ For VPN IP Catcher, use **18 · Update controleren** and
 **19 · Update installeren**, with an automatic private backup.
 See the [amtm maintainer's guide](https://www.snbforums.com/threads/automatic-script-updates-a-guide-for-script-developers-of-how-to-add-amtmupdate-support-into-scripts-deadline-set-to-july-7-2026.97061/).
 
-### 🖥️ Dashboard 2.8.9
+### 🖥️ Dashboard 2.9.0
 
 **Diagnostics:** open Live view > Diagnostics, select an online IPv4 device
 from the ASUS list or enter its IP manually, then choose Start 2 minutes.
 Router confirmation, errors and active empty snapshots have separate states.
 Connection snapshots refresh every five seconds
 while this tab is open, on all ports and without requiring byte counters.
-Stop ends the session. No VPN or configuration changes. This is not packet
-capture: short connections between snapshots and IPv6 are not included.
+Stop ends the session without deleting results. No VPN or configuration changes.
+Short connections between snapshots and IPv6 are not fully covered.
 More than 2000 connections for the device produce a truncation notice.
 The local WebUI displays metadata only, never URLs or payloads. Do not publish
 diagnostic screenshots on public GitHub.
+
+**New in 2.9.0:** timestamped history, channel/event markers, pause/resume and
+JSON export. Resume starts a new bounded two-minute measurement while retaining
+history. Stop and expiry keep results; only the last 2000 observations remain
+in the open page. Export before reloading/closing it. Timestamps identify when
+an observation was made, not when a connection originally started.
+
+Optional tcpdump/timeout collection observes only plain UDP-DNS for the selected
+IPv4 device, limited to two minutes or 400 packets. It retains timestamp, domain
+and answer IP only, not packet files, URLs or credentials. Domains are hints,
+not proof of service identity; shared CDN addresses, cached/encrypted DNS and
+TCP-DNS can leave names unknown. IP snapshots still work without DNS tools.
+Exports are private metadata: never upload them to public GitHub.
+
+**Keep scroll position** is enabled by default in all live tabs.
+**UC / 18** checks for updates, **U / 19** confirms installation and mandatory
+private backup, **FU** reinstalls the same version for repair. Progress follows
+installation phases, not an estimated completion time. Ordinary updates now
+refresh ASUS event hooks too.
+
+**Backup management (26):** list archive names/dates and sizes, delete a selected
+archive, keep the five newest small archives, or clean old program snapshots.
+Deletion requires confirmation. Full archives are not automatically pruned.
+Program cleanup preserves the two newest snapshots, the active rollback point
+and legacy migrations. Cleanup is manual, not an automatic retention schedule.
 
 Live view supports search and source-device, port and list-status filters.
 Search also works in the other live views. Filters persist across refreshes
@@ -260,6 +285,8 @@ Use **22 · VPN kiezen** to select another VPN already configured in the ASUS cl
 | 23 | VPN controleren | Check VPN/list binding |
 | **24** | **Maak back-up** | **1 small · 2 full · Enter back** |
 | **25** | **Toevoegen aan amtm** | **Register a personal script** |
+| **26** | **Back-ups beheren** | **Inspect and confirm backup cleanup** |
+| UC / U / FU | Updates | Check / update / reinstall the same version |
 
 **Profiles (12):** 1 Stable TV, 2 Cautious learning, 3 Fast zapping,
 4 Analysis/review, 5 Existing list only, 6 Back.
