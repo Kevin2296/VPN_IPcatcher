@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.8.3
+# Version: 2.8.4
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"

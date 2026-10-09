@@ -1,4 +1,13 @@
-# 🛡️ VPN IP Catcher 2.8.3 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.8.4 · Testrelease / Prerelease
+
+**2.8.4 fix:** VPN-herkenning werkt zonder POSIX-tekenklassen in `tr`. De juiste
+OpenVPN/WireGuard-instellingssleutel wordt rechtstreeks opgebouwd. Alle tien
+sleutels zijn getest met een gesimuleerde ongeschikte `tr`; veiligheidscontroles
+op markering, VPN-route en tunnelstatus blijven actief.
+
+**2.8.4 fix:** VPN detection no longer depends on POSIX character classes in
+`tr`. OpenVPN/WireGuard setting keys are constructed directly. All ten keys are
+tested with an incompatible `tr`; marking, route and tunnel checks remain active.
 
 **Migratie:** aparte `migrate`-optie voor oudere installaties zonder updater,
 met gecontroleerde downloads, een volledige prive-back-up en herstel bij fouten

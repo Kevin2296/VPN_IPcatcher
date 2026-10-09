@@ -38,3 +38,20 @@ if set_check; then echo 'Incompatible set accepted' >&2; exit 1; fi
 CONNECTION=ovpnc1
 if binding_read; then echo 'Wrong policy binding accepted' >&2; exit 1; fi
 echo 'Routing checks passed'
+# Model a router whose tr interprets character classes incorrectly.
+tr(){ printf 'pvpnc1\n'; }
+for number in 1 2 3 4 5; do
+  printf 'OVPNC%sFWMARK=0x1000\nOVPNC%sMASK=0xf000\nWGC%sFWMARK=0x2000\nWGC%sMASK=0xf000\n' "$number" "$number" "$number" "$number" > "$GLOBAL"
+  CONNECTION="ovpnc$number"
+  mark_read
+  [ "$key" = "OVPNC$number" ] && [ "$MARK/$MASK" = 0x1000/0xf000 ]
+  CONNECTION="wgc$number"
+  mark_read
+  [ "$key" = "WGC$number" ] && [ "$MARK/$MASK" = 0x2000/0xf000 ]
+done
+CONNECTION=ovpnc6
+if mark_read; then echo 'Invalid VPN accepted' >&2; exit 1; fi
+CONNECTION=ovpnc1
+: > "$GLOBAL"
+if mark_read; then echo 'Missing VPN mark accepted' >&2; exit 1; fi
+echo 'PASS: all OpenVPN/WireGuard keys work with broken tr; invalid/missing settings remain rejected'

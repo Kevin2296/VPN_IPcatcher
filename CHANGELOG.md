@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 2.8.4
+
+- VPN-herkenning gebruikt vaste OpenVPN/WireGuard-sleutels in plaats van hoofdletteromzetting met `tr`.
+- Werkt ook op Merlin-builds waar `tr` de POSIX-tekenklassen niet ondersteunt.
+- Regresstest voor alle tien VPN-sleutels met een gesimuleerde ongeschikte `tr`.
+- Controles op ontbrekende instellingen, juiste VPN-route en actieve tunnel blijven behouden.
+
 ## 2.8.3
 
 - Aparte `migrate`-optie voor bestaande legacy-installaties zonder updater.

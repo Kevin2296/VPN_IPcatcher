@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.8.3
+# Version: 2.8.4
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -86,7 +86,11 @@ binding_read(){
 }
 mark_read(){
   valid_connection "$CONNECTION" || return 1
-  key="$(printf '%s' "$CONNECTION" | tr '[:lower:]' '[:upper:]')"
+  # Some Merlin tr builds do not support POSIX character classes.
+  case "$CONNECTION" in
+    ovpnc*) key="OVPNC${CONNECTION#ovpnc}" ;;
+    wgc*) key="WGC${CONNECTION#wgc}" ;;
+  esac
   MARK="$(setting "$GLOBAL" "${key}FWMARK")"
   MASK="$(setting "$GLOBAL" "${key}MASK")"
   printf '%s\n' "$MARK/$MASK" | grep -Eq '^0x[0-9a-fA-F]+/0x[0-9a-fA-F]+$' || { error 'VPN-markering ontbreekt of is ongeldig.'; return 1; }
