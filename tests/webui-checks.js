@@ -123,3 +123,7 @@ context.sortLiveColumn(0);
 assert.equal(context.liveSortStates.resolved.descending,true);
 assert.match(context.renderTable(['IP'],[context.td('203.0.113.2')]),/aria-sort="descending"/);
 console.log('PASS: numeric byte/IP sorting, direction toggle and accessible column headers');
+assert.equal(context.td(0),'<td>0</td>');
+assert.match(context.td('31-12-2026',null,1798675200000),/data-sort="1798675200000"/);
+assert.ok(context.compareLiveValues('1761868800000','1764547200000')<0);
+console.log('PASS: zero counters and locale-independent chronological sort keys');

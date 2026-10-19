@@ -1,5 +1,17 @@
 # Wijzigingen
 
+## 2.9.4
+
+- Onderhoudsrelease na vergelijking van alle 36 bestaande publieke bestanden en herhaling van de testreeks.
+- WebUI toont effectieve enginewaarden, ook bij een minimale configuratie van een nieuwe installatie.
+- Bewust lege domein-/netwerkuitsluitingen blijven leeg; verwijderde configvelden houden geen oude waarden vast.
+- Verwijderde uitsluitdomeinen werken niet langer door via oude DNS-cacheregels. Gedeelde IPs bewaren hun afzonderlijke domeinkoppelingen.
+- Timers met voorloopnullen worden als decimale waarden verwerkt, zonder octale rekenfouten.
+- Diagnose sorteert tijden op echte tijdwaarden en verkeer op ongeronde bytes; nulwaarden blijven zichtbaar.
+- CI controleert syntax van alle publieke shellscripts en start ook bij codewijzigingen en pull requests. Alleen main kan een release publiceren.
+- Gewone release in plaats van prerelease; testdekking en praktische grenzen beschreven in TESTING.md.
+- Geen reset van je instellingen, nieuwe standaarduitsluitingen of automatische WAN-fallback.
+
 ## 2.9.3
 
 - Compact hoofdmenu met submenu's voor liveweergave, instellingen, VPN en onderhoud. E gaat terug; updateacties alleen UC/U/FU.

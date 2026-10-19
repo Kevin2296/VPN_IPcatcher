@@ -851,7 +851,7 @@ function applyLiveSort(box){
   Array.from(body.rows).forEach(function(row){if(row.cells.length>sort.column&&row.cells[0].colSpan===1)group.push(row);else flush(row);});
   flush(null);
 }
-function td(v, cls){return '<td'+(cls?' class="'+cls+'"':'')+'>'+escapeHtml(v||'')+'</td>'}
+function td(v, cls, sort){return '<td'+(cls?' class="'+cls+'"':'')+(sort!==undefined?' data-sort="'+escapeHtml(sort)+'"':'')+'>'+escapeHtml(v==null?'':v)+'</td>'}
 function parseKeyValueStatus(txt){
   txt=splitCompactLines(txt);
   var lines=txt.split('\n').map(function(x){return x.trim()}).filter(Boolean), rows=[];
@@ -1105,7 +1105,7 @@ function renderLiveTab(){
   if(currentTab==='diagnostic'){
     retainDiagnosticSnapshot();
     if(diagnosticState==='active'&&(Date.now()>=diagnosticUntil||dataCache.diagnostic_status==='expired'))diagnosticState='expired';
-    var rows=diagnosticHistory.slice().reverse().map(function(entry){var p=entry.line.split(/\s+/);return p.length===6&&!/^MARKER /.test(entry.line)?td(new Date(entry.time).toLocaleString())+td(p[0])+td(p[1],'mono')+td(p[2],'mono')+td(entry.domain||t('diagnosticUnknown'))+td(p[3])+td(p[4])+td(formatFlowBytes(p[5])):td(new Date(entry.time).toLocaleString())+'<td colspan="7">'+escapeHtml(entry.line)+'</td>';});
+    var rows=diagnosticHistory.slice().reverse().map(function(entry){var p=entry.line.split(/\s+/);return p.length===6&&!/^MARKER /.test(entry.line)?td(new Date(entry.time).toLocaleString(),null,entry.time)+td(p[0])+td(p[1],'mono')+td(p[2],'mono')+td(entry.domain||t('diagnosticUnknown'))+td(p[3])+td(p[4])+td(formatFlowBytes(p[5]),null,p[5]):td(new Date(entry.time).toLocaleString(),null,entry.time)+'<td colspan="7">'+escapeHtml(entry.line)+'</td>';});
     html=renderTable([t('diagnosticTime'),t('diagnosticProtocol'),t('source'),t('destination'),t('diagnosticDomain'),t('port'),t('status'),t('trafficVolume')],rows);
     setText('diagnosticPauseButton',t(diagnosticState==='paused'?'diagnosticResume':'diagnosticPause'));
     var phase=dataCache.diagnostic_status==='error'&&diagnosticState==='active'?'error':diagnosticState;

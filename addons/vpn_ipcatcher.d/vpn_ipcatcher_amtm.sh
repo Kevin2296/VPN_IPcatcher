@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.3
+# Version: 2.9.4
 # Documented amtm personal_script.mod registry, not the amtm program itself.
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"

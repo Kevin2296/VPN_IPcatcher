@@ -1,4 +1,23 @@
-# 🛡️ VPN IP Catcher 2.9.3 · Testrelease / Prerelease
+# 🛡️ VPN IP Catcher 2.9.4 · Maintenance Release
+
+**Nederlands:** gecontroleerde onderhoudsrelease. Effectieve standaardwaarden in
+de WebUI, blijvend lege uitsluitingen, correcte config-herlading en decimalen met
+voorloopnullen. Verwijderde domeinen werken niet door via oude uitsluitcache;
+gedeelde IPs houden hun domeinkoppelingen. Tijdsortering gebruikt echte tijdwaarden.
+
+Werk bij via **7 > U** en herlaad de WebUI met Ctrl+F5. Configuratie blijft
+behouden; de updater maakt vooraf een verplichte lokale back-up. Geen reset nodig.
+Geen nieuwe uitsluitpresets of automatische omleiding buiten VPN toegevoegd.
+
+**English:** verified maintenance release. Effective WebUI defaults, explicit
+empty exclusions, clean config reloads, decimal timers, current-domain DNS cache
+matching and chronological diagnostic sorting. Update through **7 > U**; private
+backup is mandatory and configuration is preserved. Reload the WebUI afterward.
+
+See [TESTING.md](TESTING.md) for test coverage and limits. Automated/synthetic
+tests and browser checks do not guarantee every real router, VPN or IPTV service.
+
+---
 
 **2.9.3:** compacte submenu's, E om terug te gaan en alleen UC/U/FU voor updates.
 Een bevestiging inclusief back-up, rustige voortgang en technische details in een

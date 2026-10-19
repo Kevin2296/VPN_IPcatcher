@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.3
+# Version: 2.9.4
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -181,8 +181,12 @@ ensure_config(){
   chmod 600 "$CONF" 2>/dev/null
 }
 
+CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
+
 load_config(){
   ensure_config
+  # A removed key must not retain a value from an earlier reload or environment.
+  for config_key in $CONFIG_KEYS; do unset "$config_key"; done
   # Parse data without executing shell commands from a configuration file.
   while IFS= read -r config_line || [ -n "$config_line" ]; do
     case "$config_line" in ''|\#*) continue ;; esac
@@ -214,9 +218,9 @@ load_config(){
 
   DEFAULT_EXCLUDE_DOMAINS="quad9.net one.one.one.one dns.google xboxlive.com xboxservices.com xbox.com officecdn.microsoft.com office.com office365.com microsoft.com msedge.net azureedge.net apple.com icloud.com mzstatic.com aaplimg.com apple-dns.net appldnld.apple.com swcdn.apple.com github.com api.github.com github.io raw.githubusercontent.com githubusercontent.com githubassets.com objects.githubusercontent.com facebook.com www.facebook.com graph.facebook.com fbcdn.net fbsbx.com mqtt-mini.facebook.com edge-mqtt.facebook.com gateway.facebook.com whatsapp.com web.whatsapp.com static.whatsapp.net mmg.whatsapp.net media.whatsapp.net instagram.com www.instagram.com cdninstagram.com i.instagram.com snapchat.com app.snapchat.com sc-analytics.appspot.com feelinsonice.appspot.com eufylife.com security-app.eufylife.com eufy.com anker.com anker-in.com imoulife.com easy4ip.com lechange.com dahuasecurity.com dahuatech.com dahua2w.com dahuap2p.com"
   DEFAULT_EXCLUDE_NETS="31.13.24.0/21 31.13.64.0/18 45.64.40.0/22 57.144.0.0/14 66.220.144.0/20 69.63.176.0/20 69.171.224.0/19 74.119.76.0/22 102.132.96.0/20 103.4.96.0/22 129.134.0.0/16 157.240.0.0/16 163.70.128.0/17 173.252.64.0/18 179.60.192.0/22 185.60.216.0/22 204.15.20.0/22"
-  EXCLUDE_DOMAINS="${EXCLUDE_DOMAINS:-$DEFAULT_EXCLUDE_DOMAINS}"
+  EXCLUDE_DOMAINS="${EXCLUDE_DOMAINS-$DEFAULT_EXCLUDE_DOMAINS}"
   EXCLUDE_IPS="${EXCLUDE_IPS:-}"
-  EXCLUDE_NETS="${EXCLUDE_NETS:-$DEFAULT_EXCLUDE_NETS}"
+  EXCLUDE_NETS="${EXCLUDE_NETS-$DEFAULT_EXCLUDE_NETS}"
   EXCLUDE_NET_SET="${IPSET_NAME}_exclude"
 
   # Vaste safety-blocklist: deze mogen nooit in candidate/final ipset komen,
@@ -243,6 +247,9 @@ load_config(){
     numeric_value="${numeric_pair#*=}"
     case "$numeric_value" in *[!0-9]*|'') say "Ongeldig getal: $numeric_key" >&2; return 1 ;; esac
     [ "${#numeric_value}" -le 10 ] || return 1
+    # POSIX shell arithmetic treats leading zeroes as octal on some routers.
+    while :; do case "$numeric_value" in 0?*) numeric_value="${numeric_value#0}" ;; *) break ;; esac; done
+    export "$numeric_key=$numeric_value"
   done
   [ "$PROMOTE_EVERY" -gt 0 ] && [ "$STREAM_SCAN_EVERY" -gt 0 ] && [ "$RETRY_DELAY" -gt 0 ] || return 1
   [ "${#IPSET_NAME}" -le 23 ] || { say "IPSet-naam te lang voor afgeleide sets" >&2; return 1; }
@@ -260,6 +267,12 @@ load_config(){
   for port_value in "$@"; do
     [ "${#port_value}" -le 5 ] && [ "$port_value" -ge 1 ] && [ "$port_value" -le 65535 ] || return 1
   done
+}
+
+effective_config(){
+  load_config || return 1
+  for config_key in $CONFIG_KEYS; do export "$config_key"; done
+  printf '%s\n' "$CONFIG_KEYS" | $AWK '{for(i=1;i<=NF;i++)print $i "=\"" ENVIRON[$i] "\""}'
 }
 
 validate_prereqs(){
@@ -667,7 +680,10 @@ ip_in_resolved_exclude_cache(){
   ip="$1"
   [ "$EXCLUDE_RESOLVE_CACHE" = "yes" ] || return 1
   [ -f "$CACHE_EXCLUDE_IPS" ] || return 1
-  $AWK -v ip="$ip" '$1==ip {found=1} END{exit found?0:1}' "$CACHE_EXCLUDE_IPS" 2>/dev/null
+  $AWK -v ip="$ip" -v domains="$EXCLUDE_DOMAINS" '
+    BEGIN {n=split(tolower(domains),items,/ +/);for(i=1;i<=n;i++)enabled[items[i]]=1}
+    $1==ip && enabled[tolower($2)] {found=1}
+    END{exit found?0:1}' "$CACHE_EXCLUDE_IPS" 2>/dev/null
 }
 
 valid_cidr(){
@@ -816,7 +832,7 @@ refresh_exclusion_ip_cache(){
   done
 
   if [ -s "$tmp" ]; then
-    $AWK '!seen[$1]++ {print}' "$tmp" > "${tmp}.uniq"
+    $AWK '!seen[$1 FS $2]++ {print}' "$tmp" > "${tmp}.uniq"
     mv "${tmp}.uniq" "$CACHE_EXCLUDE_IPS"
   else
     : > "$CACHE_EXCLUDE_IPS"
@@ -2914,6 +2930,7 @@ case "$1" in
   status) status_report ;;
   show-config) show_config ;;
   validate-config) load_config ;;
+  effective-config) effective_config ;;
   edit-config) edit_config ;;
   log) show_log ;;
   live-log) live_log ;;

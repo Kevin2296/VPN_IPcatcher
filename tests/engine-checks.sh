@@ -25,6 +25,24 @@ load_config
 [ "$(menu_action_key vpn 2)" = 23 ]
 [ "$(menu_action_key view 1)" = 4 ]
 echo 'PASS: documented defaults, compact submenus, E navigation and unique update keys'
+printf 'PROMOTE_EVERY="008"\nEXCLUDE_DOMAINS=""\nEXCLUDE_NETS=""\n' > "$CONF"
+load_config
+[ "$PROMOTE_EVERY" = 8 ] && [ "$EXCLUDE_DOMAINS" = '' ] && [ "$EXCLUDE_NETS" = '' ]
+[ "$((PROMOTE_EVERY * 2))" = 16 ]
+printf 'INTERFACES="br0"\n' > "$CONF"
+load_config
+[ "$PROMOTE_EVERY" = 15 ] && [ -n "$EXCLUDE_DOMAINS" ]
+effective_config > "$TMP/effective-config"
+grep -q '^STREAM_MIN_BYTES="15000000"$' "$TMP/effective-config"
+grep -q '^PROMOTE_MODE="auto"$' "$TMP/effective-config"
+EXCLUDE_RESOLVE_CACHE=yes; EXCLUDE_DOMAINS='kept.example.invalid'
+CACHE_EXCLUDE_IPS="$TMP/exclude-cache"
+printf '203.0.113.10 removed.example.invalid\n203.0.113.10 kept.example.invalid\n203.0.113.11 removed.example.invalid\n' > "$CACHE_EXCLUDE_IPS"
+ip_in_resolved_exclude_cache 203.0.113.10
+if ip_in_resolved_exclude_cache 203.0.113.11; then echo 'Removed domain still excluded'; exit 1; fi
+default_config > "$CONF"
+load_config
+echo 'PASS: effective defaults, explicit empty exclusions, removed keys, decimal timers and shared-domain cache'
 menu_output="$(printf '7\nE\nE\n' | (soft_clear(){ :; }; print_header(){ :; }; menu_loop))"
 printf '%s\n' "$menu_output" | grep -q 'UC) Update controleren'
 if printf '%s\n' "$menu_output" | grep -Eq '18\)|19\)|17\)'; then exit 1; fi
@@ -103,6 +121,9 @@ echo 'PASS: promotion includes download bytes and respects source filter'
 sed "s|^CONF=.*|CONF=\"$TMP/cli-config\"|" "$ROOT/scripts/vpn_ipcatcher.real.sh" > "$TMP/validator"
 default_config > "$TMP/cli-config"
 sh "$TMP/validator" validate-config
+sh "$TMP/validator" effective-config > "$TMP/cli-effective"
+grep -q '^PROMOTE_MODE="auto"$' "$TMP/cli-effective"
+grep -q '^STREAM_MIN_BYTES="15000000"$' "$TMP/cli-effective"
 printf 'INTERFACES="$(touch %s)"\n' "$TMP/cli-executed" > "$TMP/cli-config"
 if sh "$TMP/validator" validate-config; then echo 'CLI validator accepted executable config'; exit 1; fi
 [ ! -e "$TMP/cli-executed" ]

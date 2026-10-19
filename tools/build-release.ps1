@@ -35,7 +35,7 @@ $releaseRoot = Join-Path $projectRoot 'release'
 $version = (Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'VERSION')).Trim()
 $packageRoot = Join-Path $releaseRoot "vpn-ipcatcher-$version"
 New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
-$publishFiles = $files + @('install.sh', 'backup.sh', 'VERSION', 'SHA256SUMS', 'README.md', 'README.en.md', 'CHANGELOG.md', 'RELEASE-NOTES.md', '.gitattributes',
+$publishFiles = $files + @('install.sh', 'backup.sh', 'VERSION', 'SHA256SUMS', 'README.md', 'README.en.md', 'CHANGELOG.md', 'RELEASE-NOTES.md', 'TESTING.md', '.gitattributes',
     'tests/engine-checks.sh', 'tests/update-checks.sh', 'tests/lifecycle-checks.sh', 'tests/installer-checks.sh', 'tests/path-checks.sh', 'tests/routing-checks.sh', 'tests/managed-routing-checks.sh', 'tests/bootstrap-checks.sh', 'tests/stream-safety-checks.sh', 'tests/backup-checks.sh', 'tests/amtm-checks.sh', 'tests/webui-backend-checks.sh', 'tests/webui-checks.js', '.github/workflows/release.yml', 'tools/build-release.ps1')
 foreach ($relative in $publishFiles) {
     $target = Join-Path $packageRoot $relative

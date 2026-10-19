@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.9.3
+# Version: 2.9.4
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -70,6 +70,10 @@ json_escape(){
 
 cfg_get(){
   key="$1"
+  if [ -n "${EFFECTIVE_CONFIG:-}" ]; then
+    printf '%s\n' "$EFFECTIVE_CONFIG" | ${SED:-sed} -n "s#^${key}=\"\(.*\)\"#\1#p" | ${TAIL:-tail} -n 1
+    return
+  fi
   [ -f "$CONF" ] || { echo ""; return; }
   ${SED:-sed} -n "s#^${key}=\"\(.*\)\"#\1#p; s#^${key}=\([^\"].*\)#\1#p" "$CONF" | ${TAIL:-tail} -n 1
 }
@@ -327,6 +331,8 @@ publish_status(){
   ensure_engine >/dev/null 2>&1
   [ -f "$CONF" ] || "$ENGINE" show-config >/dev/null 2>&1
 
+  # Use the validated engine defaults too, even for a minimal first-install config.
+  EFFECTIVE_CONFIG="$("$ENGINE" effective-config 2>/dev/null)" || EFFECTIVE_CONFIG=''
   IPSET_NAME="$(cfg_get IPSET_NAME)"; [ -z "$IPSET_NAME" ] && IPSET_NAME="DVR-StreamsVPNSW-v4"
   CAND_SET="${IPSET_NAME}_cand"
   WAIT_SET="${IPSET_NAME}_wait"
@@ -396,7 +402,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   cat > "$tmp_json" <<JSON
 {
-  "version":"2.9.3",
+  "version":"2.9.4",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -464,6 +470,7 @@ publish_status(){
 JSON
   mv -f "$tmp_json" "$STATUS_JSON"
   chmod 644 "$STATUS_JSON" 2>/dev/null
+  unset EFFECTIVE_CONFIG
   publish_lock_release
 }
 
