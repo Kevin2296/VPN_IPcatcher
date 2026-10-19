@@ -1,5 +1,16 @@
 # Release Verification / Releasecontrole
 
+## 2.9.5 Hotfix
+
+The 2.9.4 fixtures did not require the simulated engine to validate the internal
+start marker. A live-router report exposed that gap. The updater now exports
+`VPNIPC_INTERNAL=1` explicitly inside a subshell, not via an assignment on a shell
+function. The regression fixture requires that marker while the update guard
+still exists, then verifies rollback and failed-start recovery too.
+
+This test is deliberately stricter than the previous successful no-op engine
+fixture. Synthetic tests still do not replace actual BusyBox/router validation.
+
 ## Scope
 
 Version 2.9.4 is a maintenance release. The public GitHub tree was compared with

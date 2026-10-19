@@ -61,6 +61,28 @@ echo 'PASS: update preserves configuration and intentionally stopped state'
 sh "$TMP/updater" rollback
 grep -q '2.6.0' "$TMP/jffs/scripts/vpn_ipcatcher.sh"
 echo 'PASS: rollback restores the previous version'
+# A real running-update start must receive the internal marker while updating exists.
+mkdir -p "$TMP/runtime/vpn_ipcatcher_pids"
+sleep 120 &
+test_pid=$!
+echo "$test_pid" > "$TMP/runtime/vpn_ipcatcher_pids/engine.pid"
+export TEST_UPDATE_ROOT="$TMP/jffs"
+cat > "$TMP/remote/scripts/vpn_ipcatcher.real.sh" <<'EOF'
+#!/bin/sh
+# Version: 2.6.1
+[ "${VPNIPC_INTERNAL:-0}" = 1 ] || { echo 'Internal start marker missing'; exit 1; }
+[ "$1" = start ] || exit 1
+[ -f "$TEST_UPDATE_ROOT/addons/vpn_ipcatcher.d/updating" ] || exit 1
+echo 'verified-internal-start' >> "$TEST_UPDATE_ROOT/internal-starts"
+EOF
+(cd "$TMP/remote"; sha256sum $FILES) > "$TMP/remote/SHA256SUMS"
+sh "$TMP/updater" update
+grep -q verified-internal-start "$TMP/jffs/internal-starts"
+[ ! -f "$TMP/jffs/addons/vpn_ipcatcher.d/updating" ]
+kill "$test_pid"
+rm -f "$TMP/runtime/vpn_ipcatcher_pids/engine.pid"
+sh "$TMP/updater" rollback
+echo 'PASS: live update exports internal start permission without removing the update guard'
 # Simulate a live engine and a downloaded engine that cannot start.
 mkdir -p "$TMP/runtime/vpn_ipcatcher_pids"
 sleep 120 &

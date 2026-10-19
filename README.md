@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.4](https://img.shields.io/badge/version-2.9.4-087F8C?style=for-the-badge)
+![Version 2.9.5](https://img.shields.io/badge/version-2.9.5-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,7 +39,7 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.4.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.5.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 **Onderhoudsrelease 2.9.4:** effectieve instellingen in de WebUI, correct behouden
@@ -125,6 +125,12 @@ sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 <a name="bijwerken"></a>
 
 ## 🔄 Bijwerken
+
+**Hotfix 2.9.5:** krijg je bij een live-update op 2.9.3/2.9.4 de melding
+`Update bezig; start overgeslagen`, gebruik dan eenmaal het onderstaande
+updatecommando. Dit gebruikt de nieuwe updater; de oude menu-updater opnieuw
+proberen verhelpt zijn eigen startfout niet. Back-up en configuratiebehoud blijven
+actief. Verwijder geen updateblokkering handmatig en gebruik geen `migrate` of reset.
 
 Voor een bestaande installatie met veilige updater (2.6.0 of nieuwer):
 
@@ -558,7 +564,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.4.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.5.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 **Maintenance release 2.9.4:** effective WebUI settings, preserved empty exclusions
@@ -643,6 +649,12 @@ sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 <a name="updates"></a>
 
 ## 🔄 Updates
+
+**2.9.5 hotfix:** if a live update from 2.9.3/2.9.4 fails with
+`Update bezig; start overgeslagen`, use the bootstrap update command below once.
+It runs the corrected updater; retrying the old menu updater still runs old code.
+Backup/configuration preservation remains active. Do not manually remove the update
+guard, migrate or reset configuration to fix this.
 
 **Upgrading 2.8.0 to 2.8.1 or newer:** use the README update command once to install the
 new backup/amtm helpers. Future updates can use the menu.

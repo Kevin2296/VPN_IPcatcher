@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.4
+# Version: 2.9.5
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -32,6 +32,14 @@ progress(){
 }
 run_logged(){
   "$@" >> "$DETAIL_LOG" 2>&1 || fail "Stap mislukt. Technische details: $DETAIL_LOG"
+}
+start_internal(){
+  # Explicit export: BusyBox ash need not export assignments on a shell function.
+  (
+    VPNIPC_INTERNAL=1
+    export VPNIPC_INTERNAL
+    /jffs/scripts/vpn_ipcatcher.real.sh start
+  )
 }
 find_on_path(){
   (
@@ -273,7 +281,7 @@ if [ "$action" != rollback ]; then
 fi
 # Check startup before accepting the new files; finish restores them on failure.
 if [ "$WAS_RUNNING" = 1 ]; then
-  VPNIPC_INTERNAL=1 run_logged /jffs/scripts/vpn_ipcatcher.real.sh start
+  run_logged start_internal
 fi
 if [ "$action" = migrate ]; then
   cru a vpn_ipcatcher_watchdog '* * * * * /jffs/scripts/vpn_ipcatcher_watchdog.sh'

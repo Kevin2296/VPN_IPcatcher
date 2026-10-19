@@ -1,4 +1,20 @@
-# 🛡️ VPN IP Catcher 2.9.4 · Maintenance Release
+# 🛡️ VPN IP Catcher 2.9.5 · Live Update Hotfix
+
+**Nederlands:** herstel voor 'Update bezig; start overgeslagen' bij een live-update.
+De interne startmarker wordt expliciet geexporteerd. De updateblokkering blijft
+intact en de vorige configuratie blijft behouden. De test-engine controleert nu
+de marker en het bestaan van de updateblokkering tijdens de interne start.
+
+**Bij 2.9.3/2.9.4 met dit probleem:** gebruik eenmaal het installatiecommando met
+`update` uit de README. Dat voert de nieuwe, geverifieerde updater uit. Alleen
+opnieuw U kiezen gebruikt nog de oude updater. Geen migratie of reset nodig.
+
+**English:** explicitly export the internal-start marker during live updates.
+The update guard remains active, configuration is preserved and strict regression
+tests verify the start context. For affected older installations, run the README
+bootstrap command with `update` once to execute the corrected updater.
+
+---
 
 **Nederlands:** gecontroleerde onderhoudsrelease. Effectieve standaardwaarden in
 de WebUI, blijvend lege uitsluitingen, correcte config-herlading en decimalen met

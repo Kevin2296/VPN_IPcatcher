@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.9.5
+
+- Hotfix voor een live-update die bij 60% wordt geweigerd met 'Update bezig; start overgeslagen'.
+- Interne starttoestemming wordt expliciet in een subshell geexporteerd, onafhankelijk van BusyBox-gedrag rond functie-assignments.
+- De updateblokkering blijft actief; geen ongecontroleerde start door watchdog of gebruikerscommando tijdens het kopieren.
+- Strikte regressietest controleert de interne marker bij een draaiende installatie, daarna rollback en foutafhandeling.
+- Eenmalig bijwerken met install.sh update gebruikt de nieuwe updater; een oudere menu-updater blijft zelf de oude code uitvoeren.
+
 ## 2.9.4
 
 - Onderhoudsrelease na vergelijking van alle 36 bestaande publieke bestanden en herhaling van de testreeks.
