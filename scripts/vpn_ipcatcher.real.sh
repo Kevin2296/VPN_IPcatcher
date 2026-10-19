@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.5
+# Version: 2.9.6
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -990,13 +990,42 @@ add_candidate_once(){
   $IPSET add "$CAND_SET" "$ip" -exist timeout "$CANDIDATE_TIMEOUT" comment "$comment" >/dev/null 2>&1
 }
 
+route_log_summary(){
+  $AWK 'NR<=6 {gsub(/[[:cntrl:]]/," ");if(NR>1)printf " | ";printf "%s",substr($0,1,200)} END{print ""}'
+}
 check_learning_route(){
-  if [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" prepare >/dev/null 2>&1; then
+  route_prepare_rc=127
+  route_prepare_text='Routing-helper ontbreekt of is niet uitvoerbaar.'
+  if [ -x "$ROUTING_HELPER" ]; then
+    if route_prepare_text="$("$ROUTING_HELPER" prepare 2>&1)"; then route_prepare_rc=0; else route_prepare_rc=$?; fi
+  fi
+  if [ "$route_prepare_rc" = 0 ]; then
     printf '%s %s\n' "$(current_epoch)" "$IPSET_NAME" > "${ROUTING_STATUS}.new"
     mv "${ROUTING_STATUS}.new" "$ROUTING_STATUS"
+    if [ -f "${ROUTING_STATUS}.failure" ]; then
+      log 'Routingcontrole hersteld; nieuwe IPs mogen weer naar de finale lijst.'
+      rm -f "${ROUTING_STATUS}.failure"
+    fi
   else
     rm -f "$ROUTING_STATUS"
-    log "Routingcontrole faalt; geen nieuwe IPs naar de finale lijst."
+    route_check_rc=127; route_check_text='Niet uitgevoerd: routing-helper ontbreekt.'
+    if [ -x "$ROUTING_HELPER" ]; then
+      if route_check_text="$("$ROUTING_HELPER" check 2>&1)"; then route_check_rc=0; else route_check_rc=$?; fi
+    fi
+    route_prepare_text="$(printf '%s\n' "$route_prepare_text" | route_log_summary)"
+    route_check_text="$(printf '%s\n' "$route_check_text" | route_log_summary)"
+    route_reason="prepare=$route_prepare_rc: ${route_prepare_text:-geen fouttekst}; check=$route_check_rc: ${route_check_text:-geen fouttekst}"
+    route_now="$(current_epoch)"; route_previous_time=0; route_previous_reason=''
+    if [ -r "${ROUTING_STATUS}.failure" ]; then
+      route_previous_time="$($SED -n '1p' "${ROUTING_STATUS}.failure")"
+      route_previous_reason="$($SED -n '2p' "${ROUTING_STATUS}.failure")"
+    fi
+    case "$route_previous_time" in ''|*[!0-9]*) route_previous_time=0 ;; esac
+    if [ "$route_reason" != "$route_previous_reason" ] || [ "$((route_now-route_previous_time))" -ge 300 ] || [ "$route_now" -lt "$route_previous_time" ]; then
+      log "Routingcontrole faalt; geen nieuwe IPs naar de finale lijst. $route_reason"
+      (umask 077; printf '%s\n%s\n' "$route_now" "$route_reason" > "${ROUTING_STATUS}.failure.new") &&
+        mv "${ROUTING_STATUS}.failure.new" "${ROUTING_STATUS}.failure"
+    fi
   fi
 }
 learning_route_ready(){

@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.9.6
+
+- Bij een mislukte routingvoorbereiding meteen een extra alleen-lezen routingcontrole uitvoeren.
+- Lokale logregel bevat exitcodes en begrensde fouttekst van prepare en check; geen volledige routerdump of upload.
+- Gelijke fouten maximaal eenmaal per vijf minuten loggen; gewijzigde fouten direct, herstel eenmaal melden.
+- Vergrendelde routingvoorbereiding krijgt een expliciete melding, zodat deze niet wordt verward met een verdwenen VPN.
+- Regresstests voor foutdetails, herhaalbegrenzing, gewijzigde oorzaak en herstel.
+
 ## 2.9.5
 
 - Hotfix voor een live-update die bij 60% wordt geweigerd met 'Update bezig; start overgeslagen'.

@@ -1,4 +1,17 @@
-# 🛡️ VPN IP Catcher 2.9.5 · Live Update Hotfix
+# 🛡️ VPN IP Catcher 2.9.6 · Routing Diagnostics
+
+**Nederlands:** bij een routingfout wordt direct een extra alleen-lezen controle
+uitgevoerd. Het lokale log toont de exitcodes en begrensde foutteksten van zowel
+prepare als check. Identieke fouten verschijnen maximaal eenmaal per vijf minuten;
+een gewijzigde oorzaak en herstel worden meteen gemeld. Geen upload of routerdump.
+De beveiliging die nieuwe VPN-bestemmingen tegenhoudt bij routingproblemen blijft intact.
+
+**English:** immediate read-only routing diagnostics on preparation failure, with
+bounded local error details and exit codes. Duplicate logs are limited to once per
+five minutes; changed errors and recovery are logged immediately. No upload or
+automatic WAN fallback. Existing learning safeguards remain in place.
+
+---
 
 **Nederlands:** herstel voor 'Update bezig; start overgeslagen' bij een live-update.
 De interne startmarker wordt expliciet geexporteerd. De updateblokkering blijft

@@ -61,6 +61,45 @@ learning_route_ready
 printf '1001 Example\n' > "$ROUTING_STATUS"
 if learning_route_ready; then echo 'Future routing timestamp accepted' >&2; exit 1; fi
 echo 'PASS: routing readiness scales with scan interval, has a 15s floor and rejects future timestamps'
+(
+  ROUTING_HELPER="$TMP/routing-probe"
+  cat > "$ROUTING_HELPER" <<'EOF'
+#!/bin/sh
+case "$1" in
+  prepare) printf 'Routing: test tunnel missing\n' >&2; exit 3 ;;
+  check) printf 'Routing: test default route missing\n' >&2; exit 4 ;;
+esac
+EOF
+  chmod +x "$ROUTING_HELPER"
+  log(){ printf '%s\n' "$*" >> "$TMP/routing-log"; }
+  test_epoch=1000
+  current_epoch(){ echo "$test_epoch"; }
+  check_learning_route
+  [ ! -f "$ROUTING_STATUS" ]
+  grep -q 'prepare=3: Routing: test tunnel missing; check=4: Routing: test default route missing' "$TMP/routing-log"
+  check_learning_route
+  [ "$(wc -l < "$TMP/routing-log")" -eq 1 ]
+  test_epoch=1301
+  check_learning_route
+  [ "$(wc -l < "$TMP/routing-log")" -eq 2 ]
+  printf '#!/bin/sh\nprintf "Routing: changed reason\\n" >&2\nexit 2\n' > "$ROUTING_HELPER"
+  check_learning_route
+  [ "$(wc -l < "$TMP/routing-log")" -eq 3 ]
+  printf '#!/bin/sh\nexit 0\n' > "$ROUTING_HELPER"
+  check_learning_route
+  [ -f "$ROUTING_STATUS" ] && [ ! -f "${ROUTING_STATUS}.failure" ]
+  grep -q 'Routingcontrole hersteld' "$TMP/routing-log"
+  check_learning_route
+  [ "$(wc -l < "$TMP/routing-log")" -eq 4 ]
+  printf '#!/bin/sh\ncase "$1" in prepare) echo "Routing: config locked";exit 1;;check) echo "OK: test route";exit 0;;esac\n' > "$ROUTING_HELPER"
+  check_learning_route
+  [ ! -f "$ROUTING_STATUS" ]
+  grep -q 'prepare=1: Routing: config locked; check=0: OK: test route' "$TMP/routing-log"
+  ROUTING_HELPER="$TMP/missing-routing-helper"
+  check_learning_route
+  grep -q 'prepare=127:' "$TMP/routing-log"
+)
+echo 'PASS: routing failure logs immediate prepare/check details, throttles duplicates and logs recovery'
 [ "$PROMOTE_EVERY" = 15 ]
 EXCLUDE_DOMAINS="google.com"
 domain_is_excluded google.com

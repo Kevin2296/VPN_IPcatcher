@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.5
+# Version: 2.9.6
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -293,7 +293,7 @@ case "${1:-check}" in
   prepare)
     (
       # Firewall hooks and periodic checks must not add the same mark concurrently.
-      mkdir "$CONFIG_LOCK" 2>/dev/null || exit 1
+      mkdir "$CONFIG_LOCK" 2>/dev/null || { error 'Configuratie is vergrendeld; prepare overgeslagen.'; exit 1; }
       echo $$ > "$CONFIG_LOCK/pid"
       trap 'rm -f "$CONFIG_LOCK/pid"; rmdir "$CONFIG_LOCK" 2>/dev/null' EXIT
       trap 'exit 1' HUP INT TERM

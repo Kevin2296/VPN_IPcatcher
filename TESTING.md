@@ -1,5 +1,12 @@
 # Release Verification / Releasecontrole
 
+## 2.9.6 Routing Diagnostics
+
+Regression fixtures verify immediate prepare/check error details, duplicate
+suppression for five minutes, immediate changed-error reporting and one recovery
+message. A failed prepare still removes routing readiness even if the additional
+read-only check succeeds. Errors stay in the local log, with no external upload.
+
 ## 2.9.5 Hotfix
 
 The 2.9.4 fixtures did not require the simulated engine to validate the internal
