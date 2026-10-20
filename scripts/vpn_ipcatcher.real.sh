@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.6
+# Version: 2.9.7
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -88,6 +88,28 @@ config_write_unlock(){ rm -rf "$CONFIG_WRITE_LOCK" 2>/dev/null; }
 log(){
   $LOGGER -t vpn_ipcatcher "$*"
   echo "$(date '+%F %T') $*" >> "$LOGFILE"
+}
+process_label(){
+  (
+    trace_pid="$1"
+    case "$trace_pid" in ''|*[!0-9]*) printf 'unknown'; exit 0 ;; esac
+    trace_name="$(awk '/^Name:/ {gsub(/[^A-Za-z0-9_.:-]/,"",$2);print substr($2,1,32);exit}' "/proc/$trace_pid/status" 2>/dev/null)"
+    trace_script=''
+    if [ -r "/proc/$trace_pid/cmdline" ]; then
+      trace_script="$(tr '\000' '\n' < "/proc/$trace_pid/cmdline" 2>/dev/null | awk 'NR<=3 && /^\/jffs\/(scripts|addons)\// && !/[^A-Za-z0-9_.\/-]/ {sub(/^.*\//,"");print substr($0,1,64);exit}')"
+    fi
+    printf '%s' "${trace_name:-gone}"
+    [ -z "$trace_script" ] || printf '/%s' "$trace_script"
+    exit 0
+  )
+}
+lifecycle_context(){
+  (
+    trace_parent="${PPID:-0}"
+    trace_disabled=no; [ ! -f /tmp/vpn_ipcatcher.disabled ] || trace_disabled=yes
+    trace_updating=no; [ ! -f /jffs/addons/vpn_ipcatcher.d/updating ] || trace_updating=yes
+    log "Lifecycle engine=$1 pid=$$ parent=$trace_parent($(process_label "$trace_parent")) disabled=$trace_disabled updating=$trace_updating"
+  )
 }
 human_duration(){
   s="$1"
@@ -1351,8 +1373,8 @@ run_engine(){
   write_pidfiles
   set_runtime_state "STARTING"
 
-  trap 'log "SIGINT ontvangen"; cleanup' INT
-  trap 'log "SIGTERM ontvangen"; cleanup' TERM
+  trap 'lifecycle_context signal-INT; log "SIGINT ontvangen; afzender onbekend, zie eerdere Lifecycle-regels"; cleanup' INT
+  trap 'lifecycle_context signal-TERM; log "SIGTERM ontvangen; afzender onbekend, zie eerdere Lifecycle-regels"; cleanup' TERM
 
   ensure_set "$CAND_SET" "$CANDIDATE_TIMEOUT" || { log "FOUT: '$CAND_SET'"; cleanup; }
   ensure_set "$IPSET_NAME" "$FINAL_TIMEOUT"   || { log "FOUT: '$IPSET_NAME'"; cleanup; }
@@ -1603,6 +1625,7 @@ start_service(){
   fi
 
   mkdir -p "$PIDDIR" "$CACHE_DIR"
+  lifecycle_context start
   hard_stop_all_instances
   rm -f "$LOCK" "$ENGINE_PIDFILE" "$PROMOTE_PIDFILE" "$CAP_PIDFILE" "$STATUS_FILE" "$WEB_STATUS_FILE"
 
@@ -1622,6 +1645,7 @@ stop_service(){
     /jffs/scripts/vpn_ipcatcher.sh stop
     return $?
   fi
+  lifecycle_context stop
   hard_stop_all_instances
   sleep 1
 

@@ -1,5 +1,13 @@
 # Release Verification / Releasecontrole
 
+## 2.9.7 Lifecycle Diagnostics
+
+Fixtures verify lifecycle request/recovery logs and intentional-stop/update guards.
+A secret test argument must never appear in the log. Process labels expose only
+bounded process names and selected local script basenames, never complete argv
+or environment contents. Signal context is not represented as sender attribution.
+No test or change disables Skynet, modifies its schedule or bypasses its rules.
+
 ## 2.9.6 Routing Diagnostics
 
 Regression fixtures verify immediate prepare/check error details, duplicate

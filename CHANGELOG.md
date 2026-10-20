@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.9.7
+
+- Lokale Lifecycle-regels voor start/stop/restart, routing-setup, update/herstel en watchdog-herstel.
+- Procesnummer, parent en ancestor met begrensde proces-/scriptnamen; geen volledige commandoregels, parameters of omgeving.
+- Engine logt echte start/stopacties en procescontext bij INT/TERM. Externe signaalafzender blijft expliciet onbekend.
+- Geen Skynet-aanpassingen, automatische firewall-uitzonderingen of extra netwerkverkeer.
+- Regresstests voor lifecyclecontext, bewuste Stop, watchdog en het weglaten van geheime argumenten.
+
 ## 2.9.6
 
 - Bij een mislukte routingvoorbereiding meteen een extra alleen-lezen routingcontrole uitvoeren.

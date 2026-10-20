@@ -37,3 +37,11 @@ rm "$TMP/runtime/vpn_ipcatcher.disabled"
 sh "$TMP/guard" watchdog
 [ "$(tail -n 1 "$STATE")" = start ]
 echo 'PASS: stop suppresses watchdog until Start or reboot; crash recovery resumes; update blocks starts'
+grep -q 'Lifecycle request=stop' "$TMP/runtime/vpn_ipcatcher.log"
+grep -q 'Lifecycle request=start' "$TMP/runtime/vpn_ipcatcher.log"
+grep -q 'Lifecycle request=watchdog-recovery' "$TMP/runtime/vpn_ipcatcher.log"
+grep -q 'parent=.*ancestor=.*disabled=.*updating=' "$TMP/runtime/vpn_ipcatcher.log"
+if grep -q 'SECRET_TEST_ARGUMENT' "$TMP/runtime/vpn_ipcatcher.log"; then exit 1; fi
+sh "$TMP/guard" start SECRET_TEST_ARGUMENT
+if grep -q 'SECRET_TEST_ARGUMENT' "$TMP/runtime/vpn_ipcatcher.log"; then exit 1; fi
+echo 'PASS: lifecycle actions and recovery record bounded parent context without command arguments'

@@ -1,4 +1,18 @@
-# 🛡️ VPN IP Catcher 2.9.6 · Routing Diagnostics
+# 🛡️ VPN IP Catcher 2.9.7 · Lifecycle Diagnostics
+
+**Nederlands:** nieuwe lokale Lifecycle-regels helpen onverwachte herstarts te
+onderzoeken. Start/stopaanvragen, watchdog-herstel en engineacties tonen PID en
+begrensde procescontext. Bij INT/TERM wordt context gelogd, maar niet beweerd dat
+de parent ook de afzender is. Een directe externe signaalafzender blijft onbekend.
+Skynet en firewallbeleid blijven ongewijzigd; dit is diagnose, geen bewezen fix
+voor de eerder waargenomen onderbreking rond 10:25. Geen upload of commandoparameters.
+
+**English:** local lifecycle diagnostics for requests, watchdog recovery and
+engine start/stop/signals. Bounded process context only; no full command arguments
+or environment. A signal's parent is not assumed to be its sender. No Skynet or
+firewall policy changes; diagnostics do not prove or fix the original cause.
+
+---
 
 **Nederlands:** bij een routingfout wordt direct een extra alleen-lezen controle
 uitgevoerd. Het lokale log toont de exitcodes en begrensde foutteksten van zowel
