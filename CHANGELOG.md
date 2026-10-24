@@ -1,5 +1,14 @@
 # Wijzigingen
 
+## 2.9.11
+
+- De WebGUI uploadt bij opslaan uitsluitend gewijzigde velden, zodat het aanvinken van een gedeeltelijke Google Play-preset geen volledige routerconfiguratie opnieuw hoeft te versturen.
+- Na bevestiging wordt de configuratie direct vanuit de router opnieuw geladen; de status Volledig/Gedeeltelijk komt voortaan overeen met de opgeslagen velden.
+- Een opslagcontrole vergelijkt uitsluitend de daadwerkelijk gewijzigde uitsluitingsvelden.
+- Tijdelijke upload-bevestiging krijgt weer unieke proces-PID in de bestandsnaam.
+- Regressietest: bestaande twee gedeelde Google-domains, aanvinken nieuwe preset, daarna alle vier opgeslagen; niet-gerelateerde routing behouden.
+
+
 ## 2.9.10
 
 - WebGUI wacht op expliciete routerbevestiging voor ieder configuratiedeel en verifieert uitsluitingen na opslaan.

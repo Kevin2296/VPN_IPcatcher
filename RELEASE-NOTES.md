@@ -1,3 +1,11 @@
+# VPN IP Catcher v2.9.11 · Gedeeltelijke presetopslag
+
+**Nederlands:** De WebGUI stuurt bij het selecteren van een preset alleen gewijzigde instellingen naar de router en verifieert de opgeslagen uitsluitingen. De nieuwe status verschijnt op basis van de werkelijk opgeslagen configuratie. Dit vermindert het aantal Merlin-service-events aanzienlijk en behoudt alle andere VPN- en apparaatinstellingen. Tevens is een fout in de tijdelijke ontvangstbevestiging gecorrigeerd.
+
+**English:** Send only changed configuration values when saving presets, verify saved exclusions and reload the confirmed values. The unique temporary acknowledgement filename is restored. No VPN-routing changes.
+
+---
+
 # VPN IP Catcher v2.9.10 · Presetopslag
 
 De router bevestigt nu elk deel van de configuratie afzonderlijk. Een succesvolle opslag wordt alleen getoond na vergelijking van de opgeslagen uitsluitingen met de geselecteerde opties. Router/VPN-instellingen blijven verder ongewijzigd.
