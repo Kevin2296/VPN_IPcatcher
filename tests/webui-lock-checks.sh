@@ -6,7 +6,9 @@ mkdir -p "$work"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 sed '/^case "\$1" in/,$d' "$ROOT/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh" > "$work/library"
 set +e
+TEST_PATH="$PATH"
 . "$work/library"
+PATH="$TEST_PATH"
 set -e
 PUBLISH_LOCK="$work/status.lock"
 STATUS_JSON="$work/status.json"
