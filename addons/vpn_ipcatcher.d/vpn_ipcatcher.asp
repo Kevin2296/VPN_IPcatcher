@@ -468,6 +468,7 @@ var diagnosticDnsSeen={},diagnosticDomains={};
 var liveScrollPositions={},renderedLiveTab='',liveSortStates={};
 var PRESET_CATEGORIES = [], protectedPresetIps = [], configLoaded = false, pendingPresetKeys = {};
 var loadedConfigRevision = '', externalConfigWarningShown = false;
+var loadedConfigValues = {};
 
 
 
@@ -504,7 +505,7 @@ var VPNIPC_I18N={
     waitingConfirmation:'Wachten op bevestiging van de router…', saveSuccess:'Configuratie is door de router opgeslagen.', saveRestartSuccess:'Configuratie is opgeslagen en de engine is herstart.', actionSuccess:'Actie succesvol uitgevoerd.',
     routerActionFailed:'De router meldde dat de actie is mislukt.', noConfirmation:'Geen bevestiging ontvangen. Controleer /jffs/scripts/service-event.', externalChanged:'De configuratie is intussen via amtm gewijzigd. Sla lokaal op of kies Opnieuw laden uit configuratie.',
     localDiscarded:'Lokale wijzigingen zijn verworpen; de configuratie wordt opnieuw geladen.', addedConfig:'Toegevoegd aan configuratie: ', removedConfig:'Verwijderd uit configuratie: ', rememberSave:' - vergeet Configuratie opslaan of Opslaan + herstarten niet',
-    presetsLoading:'Presetdatabase wordt geladen…', presetLoadFailed:'Presetdatabase kon niet worden geladen: ', streamAckTimeout:'Ontvangst configuratiedeel niet bevestigd:',streamAckError:'Configuratiedeel door router afgewezen:',savedConfigMismatch:'De opgeslagen uitsluitingen wijken af van je selectie. Lokale wijzigingen blijven staan.',jsonFailed:'JSON kon niet worden gelezen. Fout: ',
+    presetsLoading:'Presetdatabase wordt geladen…', presetLoadFailed:'Presetdatabase kon niet worden geladen: ', streamAckTimeout:'Ontvangst configuratiedeel niet bevestigd:',streamAckError:'Configuratiedeel door router afgewezen:',savedConfigMismatch:'De opgeslagen uitsluitingen wijken af van je selectie. Lokale wijzigingen blijven staan.',noChangesToSave:'Geen gewijzigde instellingen om op te slaan.',jsonFailed:'JSON kon niet worden gelezen. Fout: ',
     auto:'automatisch', age:'leeftijd', immediate:'direct', yes:'ja', no:'nee', candidateValue:'kandidaat', finalValue:'definitief', emptyAllDevices:'leeg = alle apparaten', empty:'leeg',
     cat_dns:'DNS-providers', cat_social:'Sociaal / berichten', cat_cameras:'Beveiligingscamera’s / IoT-cloud', cat_github:'GitHub / ontwikkel-CDN', cat_games:'Games / downloads', cat_updates:'Besturingssysteem- / app-updates', cat_tv:'Smart-tv-telemetrie', cat_streaming:'Streamingdiensten',
     note_dns:'Meestal uitsluiten zodat DNS-resolvers nooit via VPN Director worden geleerd.', note_social:'Voorkomt dat Meta, WhatsApp, Instagram en Snapchat als bijvangst worden geleerd.', note_cameras:'Sluit camera- en IoT-cloudverkeer uit.', note_github:'Voorkomt dat GitHub/CDN-verkeer als stream wordt geleerd.', note_games:'Voorkomt dat grote gamedownloads als stream worden geleerd.', note_updates:'Sluit updates en software-CDN-verkeer uit.', note_tv:'Vermindert achtergrond- en telemetrieverkeer van smart-tv-platformen.', note_streaming:'Alleen inschakelen voor diensten die juist NIET via deze VPN-regel mogen.',
@@ -540,7 +541,7 @@ var VPNIPC_I18N={
     waitingConfirmation:'Waiting for confirmation from the router…', saveSuccess:'Configuration was saved by the router.', saveRestartSuccess:'Configuration was saved and the engine restarted.', actionSuccess:'Action completed successfully.',
     routerActionFailed:'The router reported that the action failed.', noConfirmation:'No confirmation received. Check /jffs/scripts/service-event.', externalChanged:'The configuration was changed through amtm. Save the local version or choose Reload from configuration.',
     localDiscarded:'Local changes were discarded; reloading the configuration.', addedConfig:'Added to configuration: ', removedConfig:'Removed from configuration: ', rememberSave:' - remember to use Save configuration or Save + restart',
-    presetsLoading:'Loading preset database…', presetLoadFailed:'Preset database could not be loaded: ', streamAckTimeout:'Router did not acknowledge configuration chunk:',streamAckError:'Router rejected configuration chunk:',savedConfigMismatch:'Saved exclusions differ from your selection. Local changes are retained.',jsonFailed:'JSON could not be read. Error: ',
+    presetsLoading:'Loading preset database…', presetLoadFailed:'Preset database could not be loaded: ', streamAckTimeout:'Router did not acknowledge configuration chunk:',streamAckError:'Router rejected configuration chunk:',savedConfigMismatch:'Saved exclusions differ from your selection. Local changes are retained.',noChangesToSave:'No changed settings to save.',jsonFailed:'JSON could not be read. Error: ',
     auto:'auto', age:'age', immediate:'immediate', yes:'yes', no:'no', candidateValue:'candidate', finalValue:'final', emptyAllDevices:'empty = all devices', empty:'empty',
     cat_dns:'DNS providers', cat_social:'Social / messaging', cat_cameras:'Security cameras / IoT cloud', cat_github:'GitHub / dev CDN', cat_games:'Games / downloads', cat_updates:'OS / app updates', cat_tv:'Smart TV telemetry', cat_streaming:'Streaming services',
     note_dns:'Usually exclude these so DNS resolvers are never learned through VPN Director.', note_social:'Prevents Meta, WhatsApp, Instagram and Snapchat from being learned as collateral traffic.', note_cameras:'Excludes camera and IoT cloud traffic.', note_github:'Prevents GitHub/CDN traffic from being learned as a stream.', note_games:'Prevents large game downloads from being learned as streams.', note_updates:'Excludes updates and software CDN traffic.', note_tv:'Reduces background and telemetry traffic from smart TV platforms.', note_streaming:'Enable only for services that should NOT use this VPN rule.',
@@ -699,16 +700,21 @@ function postRcEvent(eventName){
     return new Promise(function(resolve){setTimeout(function(){resolve(r);},120);});
   });
 }
+function normalizeConfigValue(value){
+  return String(value==null?'':value).replace(/\r?\n/g,' ').replace(/\s+/g,' ').trim();
+}
 function buildConfigPayload(){
+  // Send only changed values: preset changes must not overwrite unrelated settings.
   var keys=['INTERFACES','IPSET_NAME','PORTS','PROMOTE_MODE','PROMOTE_EVERY','MIN_AGE','MIN_BYTES','CANDIDATE_TIMEOUT','FINAL_TIMEOUT','STREAM_FLOW_SCAN','SOURCE_IPS','STREAM_SCAN_EVERY','STREAM_MIN_BYTES','STREAM_MIN_DELTA','STREAM_REQUIRE_GROWTH','STREAM_FLOW_TARGET','EXCLUDE_DOMAINS','EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_RESOLVE_CACHE','EXCLUDE_RESOLVE_EVERY','REVERSE_DNS_CHECK','CAPTURE_GENERIC_HOSTNAMES','ALLOW_EXTERNAL_DNS','EXTERNAL_DNS_SERVER','RETRY_DELAY','MAX_RETRY_DELAY'];
   var lines=[];
   keys.forEach(function(k){
     var el=byId('cfg_'+k);
     if(!el) return;
-    var value=String(el.value==null?'':el.value).replace(/\r?\n/g,' ').replace(/\s+/g,' ').trim();
-    lines.push(k+'='+value);
+    var value=normalizeConfigValue(el.value);
+    if(!Object.prototype.hasOwnProperty.call(loadedConfigValues,k) ||
+       value!==normalizeConfigValue(loadedConfigValues[k])) lines.push(k+'='+value);
   });
-  return lines.join('\n')+'\n';
+  return lines.length?lines.join('\n')+'\n':'';
 }
 function waitForStreamReceipt(nonce,next,tries){
   return fetch('/user/vpn_ipcatcher_stream_ack.json?ts='+Date.now(),{cache:'no-store',credentials:'same-origin'})
@@ -727,7 +733,8 @@ function waitForStreamReceipt(nonce,next,tries){
 function configExclusionsMatch(saved,expected){
   if(!saved||!expected)return false;
   return ['EXCLUDE_DOMAINS','EXCLUDE_IPS','EXCLUDE_NETS'].every(function(k){
-    return getWords(saved[k]).join(' ')===getWords(expected[k]).join(' ');
+    return !Object.prototype.hasOwnProperty.call(expected,k) ||
+      getWords(saved[k]).join(' ')===getWords(expected[k]).join(' ');
   });
 }
 function exclusionValuesFromPayload(payload){
@@ -779,8 +786,15 @@ function applyAction(action){
   actionBusy=true;
   var nonce=Date.now().toString(36);
   showToast(isSave?t('sendingConfig'):t('actionSent',{action:action}));
-  var expectedExclusions=isSave?exclusionValuesFromPayload(buildConfigPayload()):null;
-  var sendPromise=isSave?sendStreamedConfig(action,nonce):sendSimpleAction(action,nonce);
+  var savePayload=isSave?buildConfigPayload():null;
+  if(isSave && !savePayload){
+    showToast(t('noChangesToSave'));
+    buttons.forEach(function(b){b.disabled=false;});
+    actionBusy=false; dirty=false; pendingPresetKeys={}; renderPresets();
+    return;
+  }
+  var expectedExclusions=isSave?exclusionValuesFromPayload(savePayload):null;
+  var sendPromise=isSave?sendStreamedConfig(action,nonce,savePayload):sendSimpleAction(action,nonce);
   sendPromise
     .then(function(){setText('toast',t('waitingConfirmation')); return waitForActionResult(nonce,action.indexOf('update')>=0?800:120);})
     .then(function(result){
@@ -790,7 +804,7 @@ function applyAction(action){
       if(isSave){
         dirty=false; pendingPresetKeys={}; externalConfigWarningShown=false;
         loadedConfigRevision=result.config_revision||loadedConfigRevision;
-        renderPresets();
+        fillConfig(result.config,result.config_revision);
       }
       if(action.indexOf('update')>=0)setText('maintenanceResult',result.last_action_message||t('actionSuccess'));
       showToast(isSave?(action==='save_config_restart'?t('saveRestartSuccess'):t('saveSuccess')):t('actionSuccess'));
@@ -828,6 +842,8 @@ function fillConfig(cfg, revision){
     return;
   }
   Object.keys(cfg).forEach(function(k){var el=byId('cfg_'+k); if(el) el.value=(cfg[k]===undefined||cfg[k]===null)?'':cfg[k];});
+  loadedConfigValues={};
+  Object.keys(cfg).forEach(function(k){loadedConfigValues[k]=normalizeConfigValue(cfg[k]);});
   configLoaded=true;
   loadedConfigRevision=revision||loadedConfigRevision;
   externalConfigWarningShown=false;
