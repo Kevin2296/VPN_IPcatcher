@@ -129,7 +129,7 @@ assert.ok(context.compareLiveValues('1761868800000','1764547200000')<0);
 console.log('PASS: zero counters and locale-independent chronological sort keys');
 
 const chosenExcludes={EXCLUDE_DOMAINS:'dl.google.com play.googleapis.com',EXCLUDE_IPS:'192.0.2.8',EXCLUDE_NETS:'198.51.100.0/24'};
-const payloadExcludes=Object.entries(chosenExcludes).map(([k,v])=>k+'='+v).join('\\n')+'\\n';
+const payloadExcludes=Object.entries(chosenExcludes).map(([k,v])=>k+'='+v).join('\n')+'\n';
 assert.equal(context.configExclusionsMatch(chosenExcludes,context.exclusionValuesFromPayload(payloadExcludes)),true);
 assert.equal(context.configExclusionsMatch({...chosenExcludes,EXCLUDE_DOMAINS:'dl.google.com'},context.exclusionValuesFromPayload(payloadExcludes)),false);
 console.log('PASS: persistent preset values confirmed');
