@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.9.9](https://img.shields.io/badge/version-2.9.10-087F8C?style=for-the-badge)
+![Version 2.9.9](https://img.shields.io/badge/version-2.9.11-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -37,7 +37,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.10.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.11.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 **2.9.9 WebUI status fix:** stale publisher locks without a PID are recovered automatically, preventing missing `vpn_ipcatcher_status.json` and stuck dashboard loading. Lock contention and JSON output errors no longer report false success; existing VPN and domain preferences are preserved. Update as usual; no router restart is required.

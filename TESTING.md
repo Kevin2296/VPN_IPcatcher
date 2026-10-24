@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## 2.9.11 Partial preset persistence
+
+Frontend regression verifies a partially selected Google Play preset becoming fully selected, a one-field upload and status remaining fully selected after reload. Backend regression verifies the persisted four-host list and unchanged streaming/source config values. Tests cannot guarantee a Google Play download works through the live network.
+
+
 ## v2.9.10
 
 Run `tests/webui-stream-ack-checks.sh` and existing WebUI tests. The actual router requires verification.

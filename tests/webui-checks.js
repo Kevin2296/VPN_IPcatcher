@@ -133,3 +133,24 @@ const payloadExcludes=Object.entries(chosenExcludes).map(([k,v])=>k+'='+v).join(
 assert.equal(context.configExclusionsMatch(chosenExcludes,context.exclusionValuesFromPayload(payloadExcludes)),true);
 assert.equal(context.configExclusionsMatch({...chosenExcludes,EXCLUDE_DOMAINS:'dl.google.com'},context.exclusionValuesFromPayload(payloadExcludes)),false);
 console.log('PASS: persistent preset values confirmed');
+
+// Confirm Google Play partial selection saves precisely one changed field.
+const playPreset={key:'upd_google_play',label:'Google Play',domains:['dl.google.com','play.googleapis.com','android.clients.google.com','redirector.gvt1.com'],ips:[],nets:[]};
+const defaultConfigEntries=Object.fromEntries(context.buildConfigPayload().trim().split('\n').map(x=>[x.split('=')[0],'']));
+const partialConfig={...defaultConfigEntries,EXCLUDE_DOMAINS:'play.googleapis.com android.clients.google.com',EXCLUDE_IPS:'',EXCLUDE_NETS:'',SOURCE_IPS:'',STREAM_FLOW_TARGET:'final'};
+context.dirty=false;
+context.fillConfig(partialConfig,'revision-before');
+context.PRESET_CATEGORIES=[{name:'OS / app updates',items:[playPreset]}];
+assert.equal(context.presetState(playPreset),'PART');
+context.togglePresetDirect({checked:true,getAttribute:k=>k==='data-key'?'upd_google_play':''});
+assert.equal(context.presetState(playPreset),'ON');
+const onlyChanged=context.buildConfigPayload();
+const onlyLines=onlyChanged.trim().split('\n');
+assert.equal(onlyLines.length,1);
+assert.match(onlyLines[0],/^EXCLUDE_DOMAINS=/);
+assert.equal(context.configExclusionsMatch({EXCLUDE_DOMAINS:element('cfg_EXCLUDE_DOMAINS').value},context.exclusionValuesFromPayload(onlyChanged)),true);
+context.dirty=false;
+context.fillConfig({...partialConfig,EXCLUDE_DOMAINS:element('cfg_EXCLUDE_DOMAINS').value},'revision-after');
+assert.equal(context.presetState(playPreset),'ON');
+assert.equal(context.buildConfigPayload(),'');
+console.log('PASS: partial Google Play preset => fully saved, only one changed config field');
