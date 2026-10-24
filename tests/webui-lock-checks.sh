@@ -30,11 +30,13 @@ if publish_status; then echo 'Busy publisher returned success' >&2; exit 1; fi
 echo 'PASS: live lock remains intact; skipped status publication is not success'
 
 # A dead owner can be safely reclaimed (never recursively delete the directory).
+set -x
 printf '%s\n' 99999999 > "$PUBLISH_LOCK/pid"
 publish_lock_acquire
 [ "$(cat "$PUBLISH_LOCK/pid")" = "$$" ]
 publish_lock_release
 [ ! -e "$PUBLISH_LOCK" ]
+set +x
 echo 'PASS: dead process lock recovered and released'
 
 # Exact user failure: orphaned lock directory without a pid file.
