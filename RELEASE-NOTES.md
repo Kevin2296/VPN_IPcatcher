@@ -1,3 +1,13 @@
+# 🛡️ VPN IP Catcher 2.9.9 · WebGUI status lock recovery
+
+**Nederlands:** herstelt automatisch een achtergebleven WebGUI-publicatie-lock zonder PID. Dit was de oorzaak van ontbrekende `vpn_ipcatcher_status.json`, een dashboard dat op 'LADEN' bleef en een melding 'Unexpected token <' bij het ophalen van JSON. De nieuwe versie bewaart actieve locks, verwijdert geen onbekende bestanden en retourneert een fout wanneer publicatie niet lukt. Status-JSON wordt atomair gepubliceerd en met `jq` gecontroleerd waar beschikbaar. Bestaande VPN-routes, domein-uitsluitingen en instellingen veranderen niet.
+
+**Installeren:** update via het bestaande U/Update-menu. De eerstvolgende statuspublicatie herstelt een oude PID-loze lock automatisch. Bij een blijvende fout controleer `ls -ld /tmp/vpn_ipcatcher_webui_status.lock` en `ls -l /www/user/vpn_ipcatcher_status.json` zonder router-reboot.
+
+**English:** recover abandoned PID-less WebUI status publication locks safely. Fail closed for active or non-empty foreign locks, report actual failure codes, validate JSON with jq where installed, and write status atomically. No VPN or configuration changes. Regression coverage includes active, dead and absent PIDs and recreated status JSON.
+
+---
+
 # 🛡️ VPN IP Catcher 2.9.8 · Optional Google Play exclusions
 
 **Nederlands:** onder **Presetlijsten → OS / app updates** staat nu **Google Play Store / app downloads**. De vier domeinen zijn afzonderlijk aanvinkbaar: `dl.google.com`, `play.googleapis.com`, `android.clients.google.com` en `redirector.gvt1.com`. De bestaande resolver haalt automatisch de wisselende IPv4-adressen op nadat je de uitsluiting zelf hebt geselecteerd. De update **activeert niets automatisch**: alle apparaten, ook de telefoon, kunnen streaming blijven leren. Na het aanvinken en opslaan kan de cache worden ververst met `resolve-excludes` en kunnen reeds geleerde uitgesloten IP's met `clean-excluded` worden verwijderd. Geen aanpassing van normale WAN-/VPN-routeringsregels; geen gegarandeerde fix voor Play Store als de blokkade elders zit.

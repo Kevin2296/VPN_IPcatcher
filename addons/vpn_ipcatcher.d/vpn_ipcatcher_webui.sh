@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.9.8
+# Version: 2.9.9
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -310,15 +310,61 @@ config_revision(){
   fi
 }
 publish_lock_acquire(){
-  if mkdir "$PUBLISH_LOCK" 2>/dev/null; then echo $$ > "$PUBLISH_LOCK/pid" 2>/dev/null; return 0; fi
-  oldpid="$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)"
-  if [ -n "$oldpid" ] && ! kill -0 "$oldpid" 2>/dev/null; then
-    rm -rf "$PUBLISH_LOCK" 2>/dev/null
-    mkdir "$PUBLISH_LOCK" 2>/dev/null && { echo $$ > "$PUBLISH_LOCK/pid" 2>/dev/null; return 0; }
+  # The lock directory is created atomically; the PID file follows immediately.
+  # A crashed process can leave an empty directory. Never rm -rf an active lock.
+  if ! mkdir "$PUBLISH_LOCK" 2>/dev/null; then
+    [ -d "$PUBLISH_LOCK" ] && [ ! -L "$PUBLISH_LOCK" ] || {
+      log "Statuspublicatie: lockpad is geen gewone directory: $PUBLISH_LOCK"
+      return 1
+    }
+    lockpid="$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" || lockpid=''
+    case "$lockpid" in
+      ''|*[!0-9]*)
+        # A newly-created lock may not contain its PID yet. Check directory age.
+        lockmtime="$(stat -c %Y "$PUBLISH_LOCK" 2>/dev/null)" || lockmtime=''
+        locknow="$(date +%s 2>/dev/null)" || locknow=''
+        case "$lockmtime:$locknow" in
+          *[!0-9:]*|:*) sleep 2 ;;
+          *)
+            lockage=$((locknow - lockmtime))
+            if [ "$lockage" -lt 3 ]; then return 75; fi
+            ;;
+        esac
+        # Verify again after the grace period, without removing an active owner.
+        lockpid="$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" || lockpid=''
+        ;;
+    esac
+    if [ -n "$lockpid" ]; then
+      case "$lockpid" in *[!0-9]*) : ;; *)
+        kill -0 "$lockpid" 2>/dev/null && return 75
+        ;;
+      esac
+    fi
+    # If another process repaired/replaced the lock, leave it alone.
+    [ "$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" = "$lockpid" ] || return 75
+    if [ -e "$PUBLISH_LOCK/pid" ]; then
+      [ -f "$PUBLISH_LOCK/pid" ] && [ ! -L "$PUBLISH_LOCK/pid" ] || return 1
+      rm -f "$PUBLISH_LOCK/pid" 2>/dev/null || return 1
+    fi
+    if ! rmdir "$PUBLISH_LOCK" 2>/dev/null; then
+      log "Statuspublicatie: lock niet leeg; niet verwijderd."
+      return 75
+    fi
+    log "Statuspublicatie: achtergebleven lock veilig opgeruimd."
+    mkdir "$PUBLISH_LOCK" 2>/dev/null || return 75
   fi
-  return 1
+  if ! (umask 077; printf '%s\n' "$$" > "$PUBLISH_LOCK/pid") 2>/dev/null; then
+    rmdir "$PUBLISH_LOCK" 2>/dev/null || true
+    log "Statuspublicatie: kon eigen lock PID niet schrijven."
+    return 1
+  fi
+  return 0
 }
-publish_lock_release(){ rm -rf "$PUBLISH_LOCK" 2>/dev/null; }
+publish_lock_release(){
+  [ "$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" = "$$" ] || return 1
+  rm -f "$PUBLISH_LOCK/pid" 2>/dev/null || return 1
+  rmdir "$PUBLISH_LOCK" 2>/dev/null
+}
 publish_presets(){
   [ -f "$PRESET_LIB" ] || return 1
   [ -f "$PRESET_JSON" ] && [ "$PRESET_JSON" -nt "$PRESET_LIB" ] && return 0
@@ -327,7 +373,7 @@ publish_presets(){
 }
 
 publish_status(){
-  publish_lock_acquire || return 0
+  publish_lock_acquire || { log 'Statuspublicatie overgeslagen: lock bezet of herstel mislukt.'; return 75; }
   ensure_engine >/dev/null 2>&1
   [ -f "$CONF" ] || "$ENGINE" show-config >/dev/null 2>&1
 
@@ -400,9 +446,9 @@ publish_status(){
   tmp_json="${STATUS_JSON}.$$"
   vpn_connection="$(sed -n '2p' "$ADDON_DIR/routing-selection" 2>/dev/null || true)"
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
-  cat > "$tmp_json" <<JSON
+  if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.9.8",
+  "version":"2.9.9",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -468,10 +514,39 @@ publish_status(){
   "exclude_net_text":"$exclude_net_text"
 }
 JSON
-  mv -f "$tmp_json" "$STATUS_JSON"
+  then
+    log "Statuspublicatie mislukt: JSON kon niet worden geschreven."
+    rm -f "$tmp_json" 2>/dev/null
+    unset EFFECTIVE_CONFIG
+    publish_lock_release
+    return 1
+  fi
+  if [ ! -s "$tmp_json" ]; then
+    log "Statuspublicatie mislukt: leeg statusbestand."
+    rm -f "$tmp_json" 2>/dev/null
+    unset EFFECTIVE_CONFIG
+    publish_lock_release
+    return 1
+  fi
+  # jq is part of the validated installer dependencies; avoid publishing broken JSON.
+  if command -v jq >/dev/null 2>&1 && ! jq -e . "$tmp_json" >/dev/null 2>&1; then
+    log "Statuspublicatie mislukt: ongeldige JSON, oud bestand behouden."
+    rm -f "$tmp_json" 2>/dev/null
+    unset EFFECTIVE_CONFIG
+    publish_lock_release
+    return 1
+  fi
+  if ! mv -f "$tmp_json" "$STATUS_JSON"; then
+    log "Statuspublicatie mislukt: statusbestand kon niet atomair worden geplaatst."
+    rm -f "$tmp_json" 2>/dev/null
+    unset EFFECTIVE_CONFIG
+    publish_lock_release
+    return 1
+  fi
   chmod 644 "$STATUS_JSON" 2>/dev/null
   unset EFFECTIVE_CONFIG
-  publish_lock_release
+  publish_lock_release || { log "Statuspublicatie geslaagd maar eigen lock kon niet worden vrijgegeven."; return 1; }
+  return 0
 }
 
 mount_webui(){
