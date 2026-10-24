@@ -353,7 +353,7 @@ publish_lock_acquire(){
     log "Statuspublicatie: achtergebleven lock veilig opgeruimd."
     mkdir "$PUBLISH_LOCK" 2>/dev/null || return 75
   fi
-  if ! (umask 077; printf '%s\n' "$" > "$PUBLISH_LOCK/pid") 2>/dev/null; then
+  if ! (umask 077; printf '%s\n' "$$" > "$PUBLISH_LOCK/pid") 2>/dev/null; then
     rmdir "$PUBLISH_LOCK" 2>/dev/null || true
     log "Statuspublicatie: kon eigen lock PID niet schrijven."
     return 1
@@ -361,7 +361,7 @@ publish_lock_acquire(){
   return 0
 }
 publish_lock_release(){
-  [ "$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" = "$" ] || return 1
+  [ "$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" = "$$" ] || return 1
   rm -f "$PUBLISH_LOCK/pid" 2>/dev/null || return 1
   rmdir "$PUBLISH_LOCK" 2>/dev/null
 }
