@@ -136,7 +136,8 @@ console.log('PASS: persistent preset values confirmed');
 
 // Confirm Google Play partial selection saves precisely one changed field.
 const playPreset={key:'upd_google_play',label:'Google Play',domains:['dl.google.com','play.googleapis.com','android.clients.google.com','redirector.gvt1.com'],ips:[],nets:[]};
-const partialConfig={EXCLUDE_DOMAINS:'play.googleapis.com android.clients.google.com',EXCLUDE_IPS:'',EXCLUDE_NETS:'',SOURCE_IPS:'',STREAM_FLOW_TARGET:'final'};
+const defaultConfigEntries=Object.fromEntries(context.buildConfigPayload().trim().split('\n').map(x=>[x.split('=')[0],'']));
+const partialConfig={...defaultConfigEntries,EXCLUDE_DOMAINS:'play.googleapis.com android.clients.google.com',EXCLUDE_IPS:'',EXCLUDE_NETS:'',SOURCE_IPS:'',STREAM_FLOW_TARGET:'final'};
 context.dirty=false;
 context.fillConfig(partialConfig,'revision-before');
 context.PRESET_CATEGORIES=[{name:'OS / app updates',items:[playPreset]}];
