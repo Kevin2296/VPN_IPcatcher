@@ -37,7 +37,6 @@ publish_lock_release
 [ ! -e "$PUBLISH_LOCK" ]
 echo 'PASS: dead process lock recovered and released'
 
-set -x
 # Exact user failure: orphaned lock directory without a pid file.
 mkdir "$PUBLISH_LOCK"
 touch -t 202001010101 "$PUBLISH_LOCK"
