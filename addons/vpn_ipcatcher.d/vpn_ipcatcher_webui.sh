@@ -317,7 +317,7 @@ publish_lock_acquire(){
       log "Statuspublicatie: lockpad is geen gewone directory: $PUBLISH_LOCK"
       return 1
     }
-    lockpid="$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)"
+    lockpid="$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" || lockpid=''
     case "$lockpid" in
       ''|*[!0-9]*)
         # A newly-created lock may not contain its PID yet. Check directory age.
@@ -331,7 +331,7 @@ publish_lock_acquire(){
             ;;
         esac
         # Verify again after the grace period, without removing an active owner.
-        lockpid="$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)"
+        lockpid="$(cat "$PUBLISH_LOCK/pid" 2>/dev/null)" || lockpid=''
         ;;
     esac
     if [ -n "$lockpid" ]; then
