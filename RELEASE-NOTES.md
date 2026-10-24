@@ -1,3 +1,11 @@
+# 🛡️ VPN IP Catcher 2.9.8 · Optional Google Play exclusions
+
+**Nederlands:** onder **Presetlijsten → OS / app updates** staat nu **Google Play Store / app downloads**. De vier domeinen zijn afzonderlijk aanvinkbaar: `dl.google.com`, `play.googleapis.com`, `android.clients.google.com` en `redirector.gvt1.com`. De bestaande resolver haalt automatisch de wisselende IPv4-adressen op nadat je de uitsluiting zelf hebt geselecteerd. De update **activeert niets automatisch**: alle apparaten, ook de telefoon, kunnen streaming blijven leren. Na het aanvinken en opslaan kan de cache worden ververst met `resolve-excludes` en kunnen reeds geleerde uitgesloten IP's met `clean-excluded` worden verwijderd. Geen aanpassing van normale WAN-/VPN-routeringsregels; geen gegarandeerde fix voor Play Store als de blokkade elders zit.
+
+**English:** a new manually selectable **Google Play Store / app downloads** option appears under **Preset lists → OS / app updates**. Four hostnames can be selected individually. The existing IPv4 exclusion resolver handles addresses after manual opt-in; no source-device restrictions or default exclusions change. Shared CDN IPs and other routing rules remain limitations.
+
+---
+
 # 🛡️ VPN IP Catcher 2.9.7 · Lifecycle Diagnostics
 
 **Nederlands:** nieuwe lokale Lifecycle-regels helpen onverwachte herstarts te

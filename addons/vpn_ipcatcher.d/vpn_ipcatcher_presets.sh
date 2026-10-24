@@ -28,6 +28,7 @@ preset_domains(){
     upd_office) echo "officecdn.microsoft.com office.com office365.com microsoft.com msedge.net azureedge.net" ;;
     upd_apple) echo "apple.com icloud.com mzstatic.com aaplimg.com apple-dns.net appldnld.apple.com swcdn.apple.com" ;;
     upd_google) echo "googleapis.com gvt1.com gvt2.com android.clients.google.com play.googleapis.com" ;;
+    upd_google_play) echo "dl.google.com play.googleapis.com android.clients.google.com redirector.gvt1.com" ;;
     tv_samsung) echo "samsungcloudsolution.net samsungcloudsolution.com samsungacr.com samsung.com" ;;
     tv_philips) echo "philips.com tpv-tech.com philips-tvconsumercare.com" ;;
     tv_android) echo "androidtv.com android.com gstatic.com googleapis.com" ;;
@@ -85,6 +86,7 @@ preset_label(){
     upd_office) echo "Office / Microsoft CDN" ;;
     upd_apple) echo "Apple / iCloud updates" ;;
     upd_google) echo "Google / Android updates" ;;
+    upd_google_play) echo "Google Play Store / app downloads" ;;
     tv_samsung) echo "Samsung Smart TV telemetry" ;;
     tv_philips) echo "Philips Smart TV telemetry" ;;
     tv_android) echo "Android TV telemetry" ;;
@@ -106,7 +108,7 @@ preset_keys_for_category(){
     "Security cameras / IoT cloud") echo "cam_eufy cam_dahua_imou" ;;
     "GitHub / dev CDN") echo "dev_github" ;;
     "Games / downloads") echo "game_steam game_epic game_xbox game_playstation game_nintendo game_battlenet" ;;
-    "OS / app updates") echo "upd_windows upd_msstore upd_office upd_apple upd_google" ;;
+    "OS / app updates") echo "upd_windows upd_msstore upd_office upd_apple upd_google upd_google_play" ;;
     "Smart TV telemetry") echo "tv_samsung tv_philips tv_android tv_lg" ;;
     "Streamingdiensten") echo "stream_netflix stream_youtube stream_disney stream_prime stream_videoland stream_viaplay" ;;
     *) echo "" ;;
