@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## 2.9.8 Google Play selectable presets
+
+`tests/google-play-presets-checks.sh` checks the four Google Play hostnames, shared WebUI/amtm preset registry, opt-in default state, partial/full selection, unrestricted source IPs and cached-IP exclusions. No WAN override is added or asserted; validate router behavior separately.
+
+
 ## 2.9.7 Lifecycle Diagnostics
 
 Fixtures verify lifecycle request/recovery logs and intentional-stop/update guards.

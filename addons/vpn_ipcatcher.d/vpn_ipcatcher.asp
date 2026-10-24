@@ -556,7 +556,7 @@ var VPNIPC_CATEGORY_NOTE_KEYS={
   'Games / downloads':'note_games','OS / app updates':'note_updates','Smart TV telemetry':'note_tv','Streamingdiensten':'note_streaming'
 };
 var VPNIPC_PRESET_LABEL_NL={
-  upd_apple:'Apple / iCloud-updates',upd_google:'Google / Android-updates',tv_samsung:'Samsung Smart TV-telemetrie',tv_philips:'Philips Smart TV-telemetrie',tv_android:'Android TV-telemetrie',tv_lg:'LG Smart TV-telemetrie'
+  upd_apple:'Apple / iCloud-updates',upd_google:'Google / Android-updates',upd_google_play:'Google Play Store / app-downloads',tv_samsung:'Samsung Smart TV-telemetrie',tv_philips:'Philips Smart TV-telemetrie',tv_android:'Android TV-telemetrie',tv_lg:'LG Smart TV-telemetrie'
 };
 function vpnipcRouterLanguage(){
   var raw=String((byId('routerPreferredLang')||{}).value||'').toLowerCase();

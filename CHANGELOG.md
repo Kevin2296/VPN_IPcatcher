@@ -1,5 +1,16 @@
 # Wijzigingen
 
+## 2.9.8
+
+- Optionele, afzonderlijke preset **Google Play Store / app downloads** onder **OS / app updates**, zichtbaar in WebGUI en amtm.
+- Nieuwe afzonderlijk aanvinkbare uitsluitdomeinen: `dl.google.com`, `play.googleapis.com`, `android.clients.google.com`, `redirector.gvt1.com`.
+- Bestaande uitsluitingsresolver zoekt de IPv4-adressen automatisch op; geen vaste IP-lijst nodig.
+- **Handmatig inschakelen:** de update wijzigt geen EXCLUDE_DOMAINS, SOURCE_IPS, bestaande VPN-routing of geleerde IPsets.
+- Na opt-in kan de gebruiker de cache verversen (`resolve-excludes`) en eerder uitgesloten adressen gericht opruimen (`clean-excluded`).
+- Uitsluiten is niet hetzelfde als verplicht via WAN sturen; gedeelde CDN-IPv4-adressen blijven een beperking.
+- Regressietest voor opt-in, gedeelde WebGUI/amtm-registratie, presetstatus en IPv4-cache.
+
+
 ## 2.9.7
 
 - Lokale Lifecycle-regels voor start/stop/restart, routing-setup, update/herstel en watchdog-herstel.

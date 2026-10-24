@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.7
+# Version: 2.9.8
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -1973,6 +1973,7 @@ preset_domains(){
     upd_office) echo "officecdn.microsoft.com office.com office365.com microsoft.com msedge.net azureedge.net" ;;
     upd_apple) echo "apple.com icloud.com mzstatic.com aaplimg.com apple-dns.net appldnld.apple.com swcdn.apple.com" ;;
     upd_google) echo "googleapis.com gvt1.com gvt2.com android.clients.google.com play.googleapis.com" ;;
+    upd_google_play) echo "dl.google.com play.googleapis.com android.clients.google.com redirector.gvt1.com" ;;
 
     tv_samsung) echo "samsungcloudsolution.net samsungcloudsolution.com samsungacr.com samsung.com" ;;
     tv_philips) echo "philips.com tpv-tech.com philips-tvconsumercare.com" ;;
@@ -2022,6 +2023,7 @@ preset_label(){
     upd_office) echo "Office / Microsoft CDN" ;;
     upd_apple) echo "Apple / iCloud updates" ;;
     upd_google) echo "Google / Android updates" ;;
+    upd_google_play) echo "Google Play Store / app downloads" ;;
     tv_samsung) echo "Samsung Smart TV telemetry" ;;
     tv_philips) echo "Philips Smart TV telemetry" ;;
     tv_android) echo "Android TV telemetry" ;;
@@ -2306,7 +2308,7 @@ preset_exclusion_menu(){
     cam_keys="$(preset_keys_for_category "Security cameras / IoT cloud")"; [ -n "$cam_keys" ] || cam_keys="cam_eufy cam_dahua_imou"
     dev_keys="$(preset_keys_for_category "GitHub / dev CDN")"; [ -n "$dev_keys" ] || dev_keys="dev_github"
     game_keys="$(preset_keys_for_category "Games / downloads")"; [ -n "$game_keys" ] || game_keys="game_steam game_epic game_xbox game_playstation game_nintendo game_battlenet"
-    upd_keys="$(preset_keys_for_category "OS / app updates")"; [ -n "$upd_keys" ] || upd_keys="upd_windows upd_msstore upd_office upd_apple upd_google"
+    upd_keys="$(preset_keys_for_category "OS / app updates")"; [ -n "$upd_keys" ] || upd_keys="upd_windows upd_msstore upd_office upd_apple upd_google upd_google_play"
     tv_keys="$(preset_keys_for_category "Smart TV telemetry")"; [ -n "$tv_keys" ] || tv_keys="tv_samsung tv_philips tv_android tv_lg"
     stream_keys="$(preset_keys_for_category "Streamingdiensten")"; [ -n "$stream_keys" ] || stream_keys="stream_netflix stream_youtube stream_disney stream_prime stream_videoland stream_viaplay"
     say " 1) Bekijk alles"
