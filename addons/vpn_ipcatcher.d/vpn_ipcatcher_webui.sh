@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.9.9
+# Version: 2.9.10
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -25,6 +25,7 @@ ACTION_STATUS="/tmp/vpn_ipcatcher_webui_action.status"
 ACTION_RUN_LOCK="/tmp/vpn_ipcatcher_webui_action.lock"
 MAINTENANCE_LOG="/tmp/vpn_ipcatcher_maintenance.log"
 STREAM_ROOT="/tmp/vpn_ipcatcher_webui_stream"
+STREAM_ACK="/www/user/vpn_ipcatcher_stream_ack.json"
 
 find_bin(){ for p in "$@"; do [ -x "$p" ] && { echo "$p"; return 0; }; done; return 1; }
 IPSET="$(find_bin /usr/sbin/ipset /sbin/ipset /opt/sbin/ipset /opt/bin/ipset)"
@@ -448,7 +449,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.9.9",
+  "version":"2.9.10",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -920,6 +921,17 @@ action_run_lock(){
 
 action_run_unlock(){ rm -rf "$ACTION_RUN_LOCK" 2>/dev/null; }
 
+stream_ack(){
+  ack_nonce="$1"; ack_next="$2"; ack_state="$3"
+  valid_nonce "$ack_nonce" || return 1
+  case "$ack_next" in ''|*[!0-9]*) return 1 ;; esac
+  case "$ack_state" in ready|received|error) ;; *) return 1 ;; esac
+  ack_tmp="${STREAM_ACK}.$"
+  (umask 022; printf '{"nonce":"%s","next":%s,"state":"%s"}\n' "$ack_nonce" "$ack_next" "$ack_state" > "$ack_tmp") || return 1
+  mv -f "$ack_tmp" "$STREAM_ACK" || { rm -f "$ack_tmp"; return 1; }
+  chmod 644 "$STREAM_ACK" 2>/dev/null || true
+}
+
 stream_reset(){
   nonce="$1"; valid_nonce "$nonce" || return 1
   dir="${STREAM_ROOT}_${nonce}"
@@ -928,6 +940,7 @@ stream_reset(){
   : > "$dir/data"
   echo 0 > "$dir/next"
   log "Stream reset: nonce=$nonce"
+  stream_ack "$nonce" 0 ready || { log "Stream ACK failed: reset $nonce"; return 1; }
   return 0
 }
 
@@ -939,9 +952,17 @@ stream_append(){
   dir="${STREAM_ROOT}_${nonce}"
   [ -d "$dir" ] || return 1
   expected="$(cat "$dir/next" 2>/dev/null)"
-  [ "$seq" = "$expected" ] || { log "Stream sequence mismatch nonce=$nonce expected=$expected got=$seq"; return 1; }
-  printf '%s' "$chunk" >> "$dir/data" || return 1
-  echo $((expected+1)) > "$dir/next"
+  [ "$seq" = "$expected" ] || {
+    log "Stream sequence mismatch nonce=$nonce expected=$expected got=$seq"
+    stream_ack "$nonce" "${expected:-0}" error || true
+    return 1
+  }
+  if ! printf '%s' "$chunk" >> "$dir/data"; then
+    stream_ack "$nonce" "$expected" error || true
+    return 1
+  fi
+  echo $((expected+1)) > "$dir/next" || return 1
+  stream_ack "$nonce" "$((expected+1))" received || { log "Stream ACK failed: append $nonce/$seq"; return 1; }
   return 0
 }
 
