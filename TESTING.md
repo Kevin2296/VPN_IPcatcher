@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## 2.9.9 WebGUI status lock recovery
+
+`tests/webui-lock-checks.sh` verifies a live PID lock is preserved, an orphan lock with no PID is reclaimed, dead-PID recovery works, unknown lock-directory contents are left alone, status publication does not silently return success on lock contention, and a recovered publication creates valid JSON. The existing WebUI backend fixture still checks status schema and escaped strings. Final live-router verification is required.
+
+
 ## 2.9.8 Google Play selectable presets
 
 `tests/google-play-presets-checks.sh` checks the four Google Play hostnames, shared WebUI/amtm preset registry, opt-in default state, partial/full selection, unrestricted source IPs and cached-IP exclusions. No WAN override is added or asserted; validate router behavior separately.

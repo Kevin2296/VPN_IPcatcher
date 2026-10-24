@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.8](https://img.shields.io/badge/version-2.9.8-087F8C?style=for-the-badge)
+![Version 2.9.9](https://img.shields.io/badge/version-2.9.9-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,8 +39,10 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.8.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.9.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**WebGUI-fix 2.9.9:** bij een achtergebleven `/tmp/vpn_ipcatcher_webui_status.lock` zonder PID herstelt de statuspublicatie zichzelf. Je hoeft alleen de VPN IP Catcher bij te werken; VPN-, domein- en bronapparaatinstellingen blijven onveranderd. Als `/www/user/vpn_ipcatcher_status.json` na een update ontbreekt, controleer de status met `/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh publish`: een mislukking geeft nu een foutcode, geen vals succes.
 
 **Nieuw 2.9.8 (zelf aanvinken):** **Presetlijsten > OS / app updates > Google Play Store / app downloads** biedt vier individuele domeinopties voor Play Store-downloads. Vink de preset of gewenste domeinen onder Details aan en kies Opslaan + herstarten. De bestaande resolver verwerkt IPv4-adressen; de update schakelt **niets automatisch in** en beperkt geen bronapparaten. Daarna kun je desgewenst `vpn_ipcatcher.sh resolve-excludes` en `vpn_ipcatcher.sh clean-excluded` uitvoeren om de cache te vernieuwen en reeds uitgesloten IP's op te schonen. Geen geforceerde WAN-route; gedeelde CDN-IP's blijven een beperking.
 
@@ -578,8 +580,10 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.8.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.9.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**2.9.9 WebUI status fix:** stale publisher locks without a PID are recovered automatically, preventing missing `vpn_ipcatcher_status.json` and stuck dashboard loading. Lock contention and JSON output errors no longer report false success; existing VPN and domain preferences are preserved. Update as usual; no router restart is required.
 
 **New in 2.9.8 (manual opt-in):** **Preset lists > OS / app updates > Google Play Store / app downloads** offers four individual Google Play domain exclusions. Check the preset or its individual domains in Details, then Save + restart. The existing resolver handles IPv4 addresses; the update **does not enable anything automatically** and does not limit source devices. If required, run `vpn_ipcatcher.sh resolve-excludes` and `vpn_ipcatcher.sh clean-excluded` to refresh and clean previously learned excluded IPs. This does not force WAN routing; shared CDN IPs remain a limitation.
 

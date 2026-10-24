@@ -1,5 +1,16 @@
 # Wijzigingen
 
+## 2.9.9
+
+- Herstelt de WebGUI die op **LADEN** bleef doordat `/www/user/vpn_ipcatcher_status.json` ontbrak.
+- Herkent achtergebleven `vpn_ipcatcher_webui_status.lock` directories zonder PID, met wachttijd voor nieuwe locks en zonder actieve PID-locks te verwijderen.
+- Geen recursieve verwijdering van onbekende lockinhoud; locks worden uitsluitend door de eigenaar vrijgegeven.
+- Publicatie meldt voortaan een foutcode bij een bezette lock of mislukte JSON-output, in plaats van onterecht exitcode 0.
+- Status wordt eerst tijdelijk geschreven, waar mogelijk als JSON gevalideerd en pas daarna atomair gepubliceerd.
+- Regressietest voor actieve/stale/PID-loze locks, onbekende inhoud en opnieuw aanmaken van het JSON-statusbestand.
+- Alleen WebGUI/statuspublicatie aangepast; geen wijziging aan VPN-configuratie, domeinregels of IPSets.
+
+
 ## 2.9.8
 
 - Optionele, afzonderlijke preset **Google Play Store / app downloads** onder **OS / app updates**, zichtbaar in WebGUI en amtm.
