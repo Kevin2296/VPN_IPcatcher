@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 2.9.10
+
+- WebGUI wacht op expliciete routerbevestiging voor ieder configuratiedeel en verifieert uitsluitingen na opslaan.
+- Onvolledige presetopslag toont een fout zonder de lokale wijzigingen te wissen.
+- Geen wijzigingen aan VPN-route of automatisch aangevinkte opties.
+
+
 ## 2.9.9
 
 - Herstelt de WebGUI die op **LADEN** bleef doordat `/www/user/vpn_ipcatcher_status.json` ontbrak.

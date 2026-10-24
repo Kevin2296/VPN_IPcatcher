@@ -1,3 +1,7 @@
+# VPN IP Catcher v2.9.10 · Presetopslag
+
+De router bevestigt nu elk deel van de configuratie afzonderlijk. Een succesvolle opslag wordt alleen getoond na vergelijking van de opgeslagen uitsluitingen met de geselecteerde opties. Router/VPN-instellingen blijven verder ongewijzigd.
+
 # 🛡️ VPN IP Catcher 2.9.9 · WebGUI status lock recovery
 
 **Nederlands:** herstelt automatisch een achtergebleven WebGUI-publicatie-lock zonder PID. Dit was de oorzaak van ontbrekende `vpn_ipcatcher_status.json`, een dashboard dat op 'LADEN' bleef en een melding 'Unexpected token <' bij het ophalen van JSON. De nieuwe versie bewaart actieve locks, verwijdert geen onbekende bestanden en retourneert een fout wanneer publicatie niet lukt. Status-JSON wordt atomair gepubliceerd en met `jq` gecontroleerd waar beschikbaar. Bestaande VPN-routes, domein-uitsluitingen en instellingen veranderen niet.

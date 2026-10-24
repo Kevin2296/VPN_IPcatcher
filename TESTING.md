@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## v2.9.10
+
+Run `tests/webui-stream-ack-checks.sh` and existing WebUI tests. The actual router requires verification.
+
+
 ## 2.9.9 WebGUI status lock recovery
 
 `tests/webui-lock-checks.sh` verifies a live PID lock is preserved, an orphan lock with no PID is reclaimed, dead-PID recovery works, unknown lock-directory contents are left alone, status publication does not silently return success on lock contention, and a recovered publication creates valid JSON. The existing WebUI backend fixture still checks status schema and escaped strings. Final live-router verification is required.
