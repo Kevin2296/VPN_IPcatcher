@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.12](https://img.shields.io/badge/version-2.9.12-087F8C?style=for-the-badge)
+![Version 2.9.13](https://img.shields.io/badge/version-2.9.13-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,8 +39,10 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.12.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.13.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**Provider-netwerken 2.9.13:** naast de uitgesloten domeinen haalt IP Catcher dagelijks de eigen IPv4-ranges op van geselecteerde providers (Google/YouTube, Netflix Open Connect, Meta, GitHub en Apple). Controle: `/jffs/scripts/vpn_ipcatcher.sh provider-ranges-status`. Direct verversen: `provider-ranges-refresh`. De WebGUI heeft een aan/uit-instelling. Gedeelde cloudnetten van AWS/Azure/Alibaba/Fastly/Cloudflare worden **niet** blind uitgesloten; daarop kunnen ook IPTV-servers staan. Voor Dahua/Imou blijven de bestaande domein/DNS-uitsluitingen gelden. De functie garandeert dus niet dat iedere server van een merk bij voorbaat is uitgesloten.
 
 **IPTV-uitsluitingsfix 2.9.12:** de YouTube/Google-range `136.22.128.0/19` (inclusief `136.22.151.14`) kan niet meer als IPTV-bestemming worden geleerd. Nieuwe optionele presets: Reddit, Claude en ChatGPT. Houd bestaande IPTV-routes tijdens actief kijken intact en voer `clean-excluded` alleen uit als je geen stream bekijkt. De bescherming dekt niet alle Google-IP-adressen of diensten.
 

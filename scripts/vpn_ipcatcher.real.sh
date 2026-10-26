@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.12
+# Version: 2.9.13
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -10,6 +10,10 @@ FLOW_STATE="$CACHE_DIR/flow_prev"
 LIVE_FLOW_STATE="$CACHE_DIR/live_flow_prev"
 CACHE_EXCLUDE_IPS="$CACHE_DIR/exclude_ips"
 CACHE_EXCLUDE_TS="$CACHE_DIR/exclude_ips.ts"
+PROVIDER_CACHE="/jffs/addons/vpn_ipcatcher.d/provider_ranges.cache"
+PROVIDER_CACHE_TS="/jffs/addons/vpn_ipcatcher.d/provider_ranges.ts"
+PROVIDER_ATTEMPT="/tmp/vpn_ipcatcher_provider_attempt"
+PROVIDER_LOCK="/tmp/vpn_ipcatcher_provider_lock"
 CACHE_PTR="$CACHE_DIR/ptr_cache"
 LOGFILE="/tmp/vpn_ipcatcher.log"
 LOCK="/tmp/vpn_ipcatcher.lock"
@@ -36,6 +40,8 @@ SED="$(find_bin /bin/sed /usr/bin/sed /opt/bin/sed)"
 GREP="$(find_bin /bin/grep /usr/bin/grep /opt/bin/grep)"
 AWK="$(find_bin /bin/awk /usr/bin/awk /opt/bin/awk)"
 NSLOOKUP="$(find_bin /usr/bin/nslookup /bin/nslookup /opt/bin/nslookup)"
+CURL="$(find_bin /opt/bin/curl /usr/bin/curl /bin/curl)"
+JQ="$(find_bin /opt/bin/jq /usr/bin/jq /bin/jq)"
 IPBIN="$(find_bin /sbin/ip /bin/ip /usr/sbin/ip /usr/bin/ip /opt/sbin/ip /opt/bin/ip)"
 CT="$(find_bin /opt/sbin/conntrack /opt/bin/conntrack /usr/sbin/conntrack /usr/bin/conntrack /sbin/conntrack)"
 TAIL="$(find_bin /usr/bin/tail /bin/tail /opt/bin/tail)"
@@ -186,6 +192,8 @@ STREAM_FLOW_TARGET="candidate"
 # Dit is belangrijk voor conntrack-first detectie, omdat conntrack meestal alleen dst-IP ziet.
 EXCLUDE_RESOLVE_CACHE="yes"
 EXCLUDE_RESOLVE_EVERY="3600"
+# Daily verified ASN prefix refresh for selected provider exclusions.
+PROVIDER_RANGE_AUTO="yes"
 
 # Reverse DNS check bij nieuwe stream-flow IPs. Minder betrouwbaar dan forward-resolve cache,
 # maar kan helpen als een dst-IP een bruikbare PTR/naam teruggeeft. Standaard uit voor stabiliteit.
@@ -203,7 +211,7 @@ ensure_config(){
   chmod 600 "$CONF" 2>/dev/null
 }
 
-CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
+CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY PROVIDER_RANGE_AUTO REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
 
 load_config(){
   ensure_config
@@ -214,7 +222,7 @@ load_config(){
     case "$config_line" in ''|\#*) continue ;; esac
     config_key="${config_line%%=*}"
     case "$config_key" in
-      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) ;;
+      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) ;;
       *) say "Ongeldige configuratieregel: $config_key" >&2; return 1 ;;
     esac
     config_value="${config_line#*=}"
@@ -265,6 +273,8 @@ load_config(){
   STREAM_FLOW_TARGET="${STREAM_FLOW_TARGET:-candidate}"
   EXCLUDE_RESOLVE_CACHE="${EXCLUDE_RESOLVE_CACHE:-yes}"
   EXCLUDE_RESOLVE_EVERY="${EXCLUDE_RESOLVE_EVERY:-3600}"
+  PROVIDER_RANGE_AUTO="${PROVIDER_RANGE_AUTO:-yes}"
+  case "$PROVIDER_RANGE_AUTO" in yes|no) ;; *) say "Ongeldige PROVIDER_RANGE_AUTO waarde" >&2; return 1 ;; esac
   REVERSE_DNS_CHECK="${REVERSE_DNS_CHECK:-no}"
 
   RETRY_DELAY="${RETRY_DELAY:-20}"
@@ -750,11 +760,157 @@ rebuild_exclude_net_set(){
       return 1
     fi
   done
+  # Merge provider-owned network prefixes into the private non-routing exclude IPSet.
+  if [ "$PROVIDER_RANGE_AUTO" = yes ] && [ -r "$PROVIDER_CACHE" ]; then
+    provider_restore="$CACHE_DIR/provider-restore.$"
+    : > "$provider_restore"
+    while read -r pname cidr extra; do
+      case "$pname" in ''|'#'*) continue ;; esac
+      [ -z "$extra" ] || { rm -f "$provider_restore"; $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+      provider_is_selected "$pname" || continue
+      printf 'add %s %s -exist\n' "$exclude_build" "$cidr" >> "$provider_restore"
+    done < "$PROVIDER_CACHE"
+    if [ -s "$provider_restore" ]; then
+      $IPSET restore -exist < "$provider_restore" >/dev/null 2>&1 ||
+        { rm -f "$provider_restore"; $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+    fi
+    rm -f "$provider_restore"
+  fi
   # Keep the previous exclusions active until the entire replacement is ready.
   $IPSET swap "$EXCLUDE_NET_SET" "$exclude_build" >/dev/null 2>&1
   exclude_result=$?
   $IPSET destroy "$exclude_build" >/dev/null 2>&1
   return "$exclude_result"
+}
+
+
+# A selected service expands to its own BGP origin ASNs, NOT to shared hosting.
+provider_is_selected(){
+  pname="$1"
+  case "$pname" in
+    google)  pdomains="google.com youtube.com googlevideo.com googleapis.com android.com dl.google.com" ;;
+    netflix) pdomains="netflix.com nflxvideo.net nflxso.net" ;;
+    meta)    pdomains="facebook.com whatsapp.com instagram.com" ;;
+    github)  pdomains="github.com githubusercontent.com githubassets.com" ;;
+    apple)   pdomains="apple.com icloud.com mzstatic.com" ;;
+    *) return 1 ;;
+  esac
+  for pdomain in $pdomains; do
+    case " $EXCLUDE_DOMAINS " in *" $pdomain "*) return 0 ;; esac
+  done
+  return 1
+}
+
+# Source: owners' peering records; shared AWS/Azure/Fastly/Cloudflare ASNs excluded.
+provider_asns(){
+  case "$1" in
+    google) echo "15169 36040 19527" ;;
+    netflix) echo "2906 40027" ;;
+    meta) echo "32934" ;;
+    github) echo "36459" ;;
+    apple) echo "714" ;;
+    *) return 1 ;;
+  esac
+}
+
+provider_cache_validate(){
+  input="$1"
+  [ -s "$input" ] || return 1
+  # Efficient bounded single process even for 1000s of BGP prefixes.
+  "$AWK" '
+    NF != 2 {bad=1;exit}
+    $1 !~ /^(google|netflix|meta|github|apple)$/ {bad=1;exit}
+    {
+      n=split($2,cidr,"/")
+      if(n!=2 || cidr[2]!~/^[0-9]+$/ || cidr[2]+0<8 || cidr[2]+0>32) {bad=1;exit}
+      n=split(cidr[1],octet,".")
+      if(n!=4) {bad=1;exit}
+      for(i=1;i<=4;i++) if(octet[i]!~/^[0-9]+$/ || octet[i]+0>255) {bad=1;exit}
+      if(++count>30000) {bad=1;exit}
+    }
+    END {if(bad || count<1) exit 1}
+  ' "$input"
+}
+
+refresh_provider_ranges(){
+  mode="$1"
+  load_config || return 1
+  [ "$PROVIDER_RANGE_AUTO" = yes ] || return 0
+  now="$(current_epoch)"
+  case "$now" in ''|*[!0-9]*) return 1 ;; esac
+  old="$(cat "$PROVIDER_CACHE_TS" 2>/dev/null || true)"
+  lasttry="$(cat "$PROVIDER_ATTEMPT" 2>/dev/null || true)"
+  case "$old" in ''|*[!0-9]*) old=0 ;; esac
+  case "$lasttry" in ''|*[!0-9]*) lasttry=0 ;; esac
+  if [ "$mode" != force ] && [ -s "$PROVIDER_CACHE" ] &&
+     [ $((now-old)) -ge 0 ] && [ $((now-old)) -lt 86400 ]; then return 0; fi
+  if [ "$mode" != force ] && [ $((now-lasttry)) -ge 0 ] &&
+     [ $((now-lasttry)) -lt 3600 ]; then return 0; fi
+  mkdir "$PROVIDER_LOCK" 2>/dev/null || return 0
+  echo "$now" > "$PROVIDER_ATTEMPT"
+  mkdir -p "$(dirname "$PROVIDER_CACHE")" "$CACHE_DIR" 2>/dev/null
+  work="$CACHE_DIR/providers.$"
+  mkdir "$work" 2>/dev/null || { rmdir "$PROVIDER_LOCK" 2>/dev/null; return 1; }
+  result=0
+  : > "$work/combined"
+  for service in google netflix meta github apple; do
+    provider_is_selected "$service" || continue
+    : > "$work/$service"
+    failed=0
+    if [ -z "$CURL" ] || [ -z "$JQ" ]; then
+      failed=1
+    else
+      for asn in $(provider_asns "$service"); do
+        url="https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS$asn"
+        if ! "$CURL" -fsSL --connect-timeout 5 --max-time 20 "$url" -o "$work/result"; then
+          failed=1; break
+        fi
+        if ! "$JQ" -e '.status == "ok" and (.data.prefixes | type == "array")' "$work/result" >/dev/null 2>&1; then
+          failed=1; break
+        fi
+        "$JQ" -r '.data.prefixes[]?.prefix // empty | select(contains("."))' "$work/result" |
+          "$AWK" -v p="$service" '{print p, $0}' >> "$work/$service"
+      done
+    fi
+    if [ "$failed" -ne 0 ] || [ ! -s "$work/$service" ]; then
+      result=1
+      "$AWK" -v p="$service" '$1==p && NF==2 {print}' "$PROVIDER_CACHE" 2>/dev/null > "$work/$service" || :
+      log "Provider lookup failed for $service, existing prefixes retained"
+    fi
+    cat "$work/$service" >> "$work/combined"
+  done
+  LC_ALL=C sort -u "$work/combined" > "$work/validated"
+  if ! provider_cache_validate "$work/validated"; then
+    log "Invalid provider prefix feed, existing exclusions retained"
+    result=1
+  else
+    chmod 600 "$work/validated"
+    if mv "$work/validated" "$PROVIDER_CACHE"; then
+      [ "$result" -ne 0 ] || echo "$now" > "$PROVIDER_CACHE_TS"
+      rebuild_exclude_net_set ||
+        { log "Provider IPSet update failed, previous set retained"; result=1; }
+      log "Provider network prefixes: $(wc -l < "$PROVIDER_CACHE"), result=$result"
+    else
+      result=1
+    fi
+  fi
+  rm -rf "$work"
+  rmdir "$PROVIDER_LOCK" 2>/dev/null
+  return "$result"
+}
+
+show_provider_ranges(){
+  load_config || return 1
+  echo "Provider-owned range lookup: $PROVIDER_RANGE_AUTO"
+  if [ ! -f "$PROVIDER_CACHE" ]; then
+    echo "Nog geen prefix-cache: gebruik provider-ranges-refresh"
+    return 0
+  fi
+  echo "Laatste volledige update (Unix): $(cat "$PROVIDER_CACHE_TS" 2>/dev/null)"
+  "$AWK" 'NF==2 {n[$1]++} END {for(k in n) print k ": " n[k] " prefixes"}' "$PROVIDER_CACHE"
+  for p in google netflix meta github apple; do
+    if provider_is_selected "$p"; then echo "$p: aan"; else echo "$p: uit"; fi
+  done
 }
 
 ip_in_exclude_net_set(){
@@ -1422,13 +1578,20 @@ run_engine(){
   # Exclusion cache verversen op de achtergrond.
   (
     refresh_exclusion_ip_cache auto
+    refresh_provider_ranges auto || :
   ) &
 
+  provider_last_check="$(current_epoch)"
   while true; do
-    echo $$ > "$LOCK"
-    echo $$ > "$ENGINE_PIDFILE"
+    echo $ > "$LOCK"
+    echo $ > "$ENGINE_PIDFILE"
     ensure_workers_alive
     write_web_status
+    check_time="$(current_epoch)"
+    if [ $((check_time-provider_last_check)) -ge 3600 ]; then
+      provider_last_check="$check_time"
+      (refresh_provider_ranges auto || :) &
+    fi
     sleep 10
   done
 }
@@ -3023,6 +3186,8 @@ case "$1" in
   safe-excludes) apply_recommended_safe_excludes ;;
   repair-excludes) repair_safe_excludes ;;
   resolve-excludes) refresh_exclusion_ip_cache force || exit $?; show_resolved_exclusion_cache ;;
+  provider-ranges-refresh) refresh_provider_ranges force; show_provider_ranges ;;
+  provider-ranges-status) show_provider_ranges ;;
   show-excludes) show_all_exclusions ;;
   clean-excluded) ipset_remove_excluded ;;
   webstatus) write_web_status ;;

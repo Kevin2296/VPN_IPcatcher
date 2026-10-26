@@ -1,3 +1,15 @@
+# VPN IP Catcher v2.9.13 — Netwerkbereiken van bekende diensten
+
+**NL:** Als een bekende dienst in je uitsluitingsdomeinen staat, kan VPN IP Catcher voortaan automatisch de IPv4-prefixen van de aantoonbaar eigen provider-ASNs ophalen via RIPEstat en in de bestaande uitsluitings-IPSet opnemen. Nu voor Google/YouTube, Netflix Open Connect, Meta, Apple en GitHub. De update draait buiten de IPTV-scan, met dagelijkse controle en behoud van laatst werkende data bij lookup-fouten. Handmatige uitsluitingen en NordVPN/DVR-routes worden niet aangepast.
+
+**Bediening:** WebGUI-optie "Eigen provider-netwerken automatisch ophalen" (standaard ja). SSH: `/jffs/scripts/vpn_ipcatcher.sh provider-ranges-refresh` en `/jffs/scripts/vpn_ipcatcher.sh provider-ranges-status`. Verwijder oude foutieve final-matches alleen wanneer je geen stream bekijkt via `clean-excluded`.
+
+**Reikwijdte:** niet alle IP-adressen waarop een dienst bij derden draait zijn ondubbelzinnig aan die dienst toe te schrijven. Dahua/Imou, Reddit en veel cloud/CDN-verkeer gebruiken gedeelde infrastructuur; die volledige ASN's uitsluiten zou IPTV op dezelfde hosting blokkeren. Google Cloud-klantnetten worden niet blind meegenomen. IPv4-only, echte ASUS-routertest blijft noodzakelijk.
+
+**EN:** Automatically supplement selected domain exclusions with RIPEstat owner-originated IPv4 prefixes for Google, Netflix Open Connect, Meta, GitHub and Apple; background daily refresh, persistent per-provider fallback, atomic exclusion IPSet rebuild, no changes to VPN policies. Shared AWS/Azure/Fastly/Alibaba hosting is intentionally not blanket-excluded; not a guarantee to cover all service endpoints.
+
+---
+
 # VPN IP Catcher 2.9.12 — Google/YouTube false-positive guard
 
 **NL:** Beschermt de geverifieerde YouTube/Google-IPv4-range `136.22.128.0/19` tegen nieuwe IPTV-IP-learning. Inclusief `136.22.151.14`, dat eerder onbedoeld door de catcher naar NordVPN werd gerouteerd. Nieuwe optionele presets voor Reddit, Claude en ChatGPT. De DNS-resolver behoudt een eerder geldige cache bij een tijdelijke totale DNS-uitval. Bestaande routeringspolicies, IPTV-IPSet en SOURCE_IPS worden niet automatisch vervangen. Om oude foutieve entries op te schonen: wacht tot er geen streams zijn en gebruik `vpn_ipcatcher.sh clean-excluded`.

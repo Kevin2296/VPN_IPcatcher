@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.9.12](https://img.shields.io/badge/version-2.9.12-087F8C?style=for-the-badge)
+![Version 2.9.13](https://img.shields.io/badge/version-2.9.13-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -37,8 +37,10 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.12.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.13.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**2.9.13 Provider-owned network exclusions:** Daily RIPEstat IPv4 prefix lookup for Google, Netflix Open Connect, Meta, GitHub and Apple when corresponding domains are excluded. Settings: PROVIDER_RANGE_AUTO and `provider-ranges-refresh`/`provider-ranges-status`. Not all endpoints hosted on shared cloud/CDNs can be safely excluded, particularly Dahua/Imou.
 
 **2.9.12 IPTV known-service guard:** Excludes the documented YouTube/Google 136.22.128.0/19 edge range from learned IPTV routes and adds opt-in Reddit, Claude and ChatGPT presets. Existing routing and SOURCE_IPS remain unchanged. Use `clean-excluded` when no IPTV stream is playing to remove previously learned excluded IPs. This is a targeted fix, not a complete Google-IP exclusion.
 

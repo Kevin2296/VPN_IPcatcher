@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## 2.9.13 provider-owned ranges
+
+`tests/provider-range-checks.sh` uses mocked HTTPS/RIPE responses and kernel-IPSet commands; confirms selected providers, daily refresh interval, fallback after failure, refusal of corrupt/overbroad prefixes, batch import, and no block for unrelated unknown IPTV destinations. GitHub CI cannot establish live ASN API availability, ASUS ipset compatibility or playback stability; validate on router before general rollout.
+
+
 ## 2.9.12 Google/YouTube false-positive protection
 
 `tests/known-service-guard-checks.sh` ensures `136.22.151.14` is rejected before learning, range boundaries are respected, and a different unknown IPTV destination still can be learned. CI validates both registries; on-router validation is still required. Be careful: existing previously learned final-IPSet members stay active until cleanup/timeout.
