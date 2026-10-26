@@ -14,6 +14,9 @@ preset_domains(){
     social_whatsapp) echo "whatsapp.com web.whatsapp.com static.whatsapp.net mmg.whatsapp.net media.whatsapp.net" ;;
     social_instagram) echo "instagram.com www.instagram.com cdninstagram.com i.instagram.com" ;;
     social_snapchat) echo "snapchat.com app.snapchat.com sc-analytics.appspot.com feelinsonice.appspot.com" ;;
+    social_reddit) echo "reddit.com www.reddit.com redd.it redditstatic.com redditmedia.com v.redd.it" ;;
+    ai_claude) echo "claude.ai anthropic.com api.anthropic.com" ;;
+    ai_openai) echo "chatgpt.com chat.openai.com openai.com api.openai.com oaistatic.com oaiusercontent.com" ;;
     cam_eufy) echo "eufylife.com security-app.eufylife.com eufy.com anker.com anker-in.com" ;;
     cam_dahua_imou) echo "imoulife.com easy4ip.com lechange.com dahuasecurity.com dahuatech.com dahua2w.com dahuap2p.com" ;;
     dev_github) echo "github.com api.github.com githubusercontent.com githubassets.com github.io raw.githubusercontent.com objects.githubusercontent.com" ;;
@@ -72,6 +75,9 @@ preset_label(){
     social_whatsapp) echo "WhatsApp" ;;
     social_instagram) echo "Instagram" ;;
     social_snapchat) echo "Snapchat" ;;
+    social_reddit) echo "Reddit" ;;
+    ai_claude) echo "Claude / Anthropic" ;;
+    ai_openai) echo "ChatGPT / OpenAI" ;;
     cam_eufy) echo "Eufy / Anker Security" ;;
     cam_dahua_imou) echo "Dahua / Imou / Easy4IP" ;;
     dev_github) echo "GitHub" ;;
@@ -104,7 +110,8 @@ preset_label(){
 preset_keys_for_category(){
   case "$1" in
     "DNS providers") echo "dns_cloudflare dns_quad9 dns_google dns_opendns" ;;
-    "Social / messaging") echo "social_meta social_whatsapp social_instagram social_snapchat" ;;
+    "Social / messaging") echo "social_meta social_whatsapp social_instagram social_snapchat social_reddit" ;;
+    "AI assistants") echo "ai_claude ai_openai" ;;
     "Security cameras / IoT cloud") echo "cam_eufy cam_dahua_imou" ;;
     "GitHub / dev CDN") echo "dev_github" ;;
     "Games / downloads") echo "game_steam game_epic game_xbox game_playstation game_nintendo game_battlenet" ;;
@@ -119,6 +126,7 @@ preset_categories(){
   cat <<'EOF_CATS'
 DNS providers
 Social / messaging
+AI assistants
 Security cameras / IoT cloud
 GitHub / dev CDN
 Games / downloads
@@ -131,7 +139,8 @@ EOF_CATS
 preset_category_note(){
   case "$1" in
     "DNS providers") echo "Meestal uitsluiten zodat DNS-resolvers nooit via VPN Director worden geleerd." ;;
-    "Social / messaging") echo "Voorkomt Meta, WhatsApp, Instagram en Snapchat als bijvangst." ;;
+    "Social / messaging") echo "Voorkomt bekende sociale platforms inclusief Reddit als IPTV-bijvangst." ;;
+    "AI assistants") echo "AI-sites en downloads horen niet automatisch in een IPTV-VPN-IPSet." ;;
     "Security cameras / IoT cloud") echo "Camera- en IoT-cloudverkeer uitsluiten." ;;
     "GitHub / dev CDN") echo "Voorkomt dat GitHub/CDN-verkeer als stream wordt geleerd." ;;
     "Games / downloads") echo "Grote game-downloads niet als stream leren." ;;

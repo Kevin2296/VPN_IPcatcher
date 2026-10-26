@@ -1,3 +1,11 @@
+# VPN IP Catcher 2.9.12 — Google/YouTube false-positive guard
+
+**NL:** Beschermt de geverifieerde YouTube/Google-IPv4-range `136.22.128.0/19` tegen nieuwe IPTV-IP-learning. Inclusief `136.22.151.14`, dat eerder onbedoeld door de catcher naar NordVPN werd gerouteerd. Nieuwe optionele presets voor Reddit, Claude en ChatGPT. De DNS-resolver behoudt een eerder geldige cache bij een tijdelijke totale DNS-uitval. Bestaande routeringspolicies, IPTV-IPSet en SOURCE_IPS worden niet automatisch vervangen. Om oude foutieve entries op te schonen: wacht tot er geen streams zijn en gebruik `vpn_ipcatcher.sh clean-excluded`.
+
+**EN:** Prevent accidental IPTV learning of the documented Google/YouTube range 136.22.128.0/19. Adds optional Reddit/Claude/ChatGPT presets and preserves the last valid DNS exclusion cache on total DNS outage. Existing VPN rules and learned IPTV entries are not silently erased. This does not cover all Google IPs; source-specific IPTV attribution requires further work.
+
+---
+
 # VPN IP Catcher v2.9.11 · Gedeeltelijke presetopslag
 
 **Nederlands:** De WebGUI stuurt bij het selecteren van een preset alleen gewijzigde instellingen naar de router en verifieert de opgeslagen uitsluitingen. De nieuwe status verschijnt op basis van de werkelijk opgeslagen configuratie. Dit vermindert het aantal Merlin-service-events aanzienlijk en behoudt alle andere VPN- en apparaatinstellingen. Tevens is een fout in de tijdelijke ontvangstbevestiging gecorrigeerd.

@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## 2.9.12 Google/YouTube false-positive protection
+
+`tests/known-service-guard-checks.sh` ensures `136.22.151.14` is rejected before learning, range boundaries are respected, and a different unknown IPTV destination still can be learned. CI validates both registries; on-router validation is still required. Be careful: existing previously learned final-IPSet members stay active until cleanup/timeout.
+
+
 ## 2.9.11 Partial preset persistence
 
 Frontend regression verifies a partially selected Google Play preset becoming fully selected, a one-field upload and status remaining fully selected after reload. Backend regression verifies the persisted four-host list and unchanged streaming/source config values. Tests cannot guarantee a Google Play download works through the live network.
