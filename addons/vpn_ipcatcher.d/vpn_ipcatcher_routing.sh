@@ -85,6 +85,7 @@ normalize_force_vpn_host(){
       } else {
         if(host ~ /[\/?#@:]/){valid=0;exit}
       }
+      if(host ~ /^[0-9.]+$/){valid=0;exit}
       n=split(host,labels,".")
       if(n<2 || length(host)>253){valid=0;exit}
       for(i=1;i<=n;i++){
