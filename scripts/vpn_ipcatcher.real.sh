@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.11
+# Version: 2.9.12
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -248,6 +248,11 @@ load_config(){
   # Vaste safety-blocklist: deze mogen nooit in candidate/final ipset komen,
   # ook niet als EXCLUDE_IPS leeg is. Dit voorkomt dat DNS resolvers via VPN Director gaan.
   SYSTEM_EXCLUDE_IPS="1.1.1.1 1.0.0.1 9.9.9.9 149.112.112.112 8.8.8.8 8.8.4.4 208.67.222.222 208.67.220.220"
+  # YouTube/Google AS36040 edge network (136.22.128.0/19), including
+  # 136.22.151.14. Resolving youtube.com or googlevideo.com apex records
+  # does NOT cover CDN IPs learned from individual playback/download sessions.
+  # Provider-owned block, not a generic Google Cloud/AWS/Cloudflare ban.
+  SYSTEM_EXCLUDE_NETS="136.22.128.0/19"
   ALLOW_EXTERNAL_DNS="${ALLOW_EXTERNAL_DNS:-no}"
   EXTERNAL_DNS_SERVER="${EXTERNAL_DNS_SERVER:-}"
   CAPTURE_GENERIC_HOSTNAMES="${CAPTURE_GENERIC_HOSTNAMES:-no}"
@@ -691,7 +696,11 @@ ip_is_base_excluded(){
 
   # 172.16.0.0/12 en 100.64.0.0/10 uitsluiten.
   OLDIFS="$IFS"; IFS='.'; set -- $ip; IFS="$OLDIFS"
-  first="$1"; second="$2"
+  first="$1"; second="$2"; third="$3"
+  # Match the protected Google/YouTube edge before any dynamic ipset is ready.
+  # Invalid octets were already rejected by valid_ipv4 above.
+  if [ "$first" = 136 ] && [ "$second" = 22 ] &&
+     [ "$third" -ge 128 ] && [ "$third" -le 159 ]; then return 0; fi
   if [ "$first" = "172" ] && [ "$second" -ge 16 ] 2>/dev/null && [ "$second" -le 31 ] 2>/dev/null; then return 0; fi
   if [ "$first" = "100" ] && [ "$second" -ge 64 ] 2>/dev/null && [ "$second" -le 127 ] 2>/dev/null; then return 0; fi
 
@@ -734,7 +743,7 @@ rebuild_exclude_net_set(){
   exclude_comment=""
   $IPSET save "$EXCLUDE_NET_SET" 2>/dev/null | $GREP -q ' comment' && exclude_comment=comment
   $IPSET create "$exclude_build" hash:net family inet $exclude_comment >/dev/null 2>&1 || return 1
-  for net in $EXCLUDE_NETS; do
+  for net in $SYSTEM_EXCLUDE_NETS $EXCLUDE_NETS; do
     valid_cidr "$net" || { log "Skip invalid EXCLUDE_NETS entry: $net"; continue; }
     if ! $IPSET add "$exclude_build" "$net" -exist >/dev/null 2>&1; then
       $IPSET destroy "$exclude_build" >/dev/null 2>&1
@@ -856,6 +865,14 @@ refresh_exclusion_ip_cache(){
   if [ -s "$tmp" ]; then
     $AWK '!seen[$1 FS $2]++ {print}' "$tmp" > "${tmp}.uniq"
     mv "${tmp}.uniq" "$CACHE_EXCLUDE_IPS"
+  elif [ -n "$EXCLUDE_DOMAINS" ] && [ -s "$CACHE_EXCLUDE_IPS" ]; then
+    # Do not discard previously valid exclusions when the local resolver
+    # temporarily fails. Old names are still filtered against EXCLUDE_DOMAINS
+    # at lookup time, so removed presets do not regain protection.
+    rm -f "$tmp" "${tmp}.uniq" 2>/dev/null
+    log "Exclusion DNS refresh returned zero IPs; last valid cache retained"
+    exclude_cache_unlock
+    return 1
   else
     : > "$CACHE_EXCLUDE_IPS"
   fi
@@ -1957,6 +1974,9 @@ preset_domains(){
     social_whatsapp) echo "whatsapp.com web.whatsapp.com static.whatsapp.net mmg.whatsapp.net media.whatsapp.net" ;;
     social_instagram) echo "instagram.com www.instagram.com cdninstagram.com i.instagram.com" ;;
     social_snapchat) echo "snapchat.com app.snapchat.com sc-analytics.appspot.com feelinsonice.appspot.com" ;;
+    social_reddit) echo "reddit.com www.reddit.com redd.it redditstatic.com redditmedia.com v.redd.it" ;;
+    ai_claude) echo "claude.ai anthropic.com api.anthropic.com" ;;
+    ai_openai) echo "chatgpt.com chat.openai.com openai.com api.openai.com oaistatic.com oaiusercontent.com" ;;
 
     cam_eufy) echo "eufylife.com security-app.eufylife.com eufy.com anker.com anker-in.com" ;;
     cam_dahua_imou) echo "imoulife.com easy4ip.com lechange.com dahuasecurity.com dahuatech.com dahuap2p.com" ;;
@@ -2010,6 +2030,9 @@ preset_label(){
     social_whatsapp) echo "WhatsApp" ;;
     social_instagram) echo "Instagram" ;;
     social_snapchat) echo "Snapchat" ;;
+    social_reddit) echo "Reddit" ;;
+    ai_claude) echo "Claude / Anthropic" ;;
+    ai_openai) echo "ChatGPT / OpenAI" ;;
     cam_eufy) echo "Eufy / Anker Security" ;;
     cam_dahua_imou) echo "Dahua / Imou / Easy4IP" ;;
     game_steam) echo "Steam" ;;
@@ -2231,6 +2254,7 @@ show_all_exclusions(){
   say " Alle exclusions"
   say "============================================================"
   say "Vaste protected IPs  : $SYSTEM_EXCLUDE_IPS"
+  say "Vaste provider-ranges: $SYSTEM_EXCLUDE_NETS"
   say "Eigen exclude IPs    : ${EXCLUDE_IPS:-none}"
   say "Exclude domains      : ${EXCLUDE_DOMAINS:-none}"
   say "Exclude nets         : ${EXCLUDE_NETS:-none}"
@@ -2304,7 +2328,8 @@ preset_exclusion_menu(){
     say "Streamingdiensten alleen uitsluiten als die juist NIET via de VPN-regel mogen."
     say "------------------------------------------------------------"
     dns_keys="$(preset_keys_for_category "DNS providers")"; [ -n "$dns_keys" ] || dns_keys="dns_cloudflare dns_quad9 dns_google dns_opendns"
-    social_keys="$(preset_keys_for_category "Social / messaging")"; [ -n "$social_keys" ] || social_keys="social_meta social_whatsapp social_instagram social_snapchat"
+    social_keys="$(preset_keys_for_category "Social / messaging")"; [ -n "$social_keys" ] || social_keys="social_meta social_whatsapp social_instagram social_snapchat social_reddit"
+    ai_keys="$(preset_keys_for_category "AI assistants")"; [ -n "$ai_keys" ] || ai_keys="ai_claude ai_openai"
     cam_keys="$(preset_keys_for_category "Security cameras / IoT cloud")"; [ -n "$cam_keys" ] || cam_keys="cam_eufy cam_dahua_imou"
     dev_keys="$(preset_keys_for_category "GitHub / dev CDN")"; [ -n "$dev_keys" ] || dev_keys="dev_github"
     game_keys="$(preset_keys_for_category "Games / downloads")"; [ -n "$game_keys" ] || game_keys="game_steam game_epic game_xbox game_playstation game_nintendo game_battlenet"
@@ -2326,6 +2351,7 @@ preset_exclusion_menu(){
     say "13) Resolved exclude-cache bekijken/verversen"
     say "14) Verwijder uitgesloten IPs uit ipsets"
     say "15) Terug"
+    printf "16) AI assistants                 [%-4s]\n" "$(category_state "$ai_keys")"
     printf "Choose: "
     read -r choice
     case "$choice" in
@@ -2343,6 +2369,7 @@ preset_exclusion_menu(){
       12) manage_ip_exclusions ;;
       13) exclusion_resolver_settings ;;
       14) ipset_remove_excluded; press_enter ;;
+      16) preset_category_menu "AI assistants" "$ai_keys" "Voorkomt dat AI-chat, grote antwoorden en bestandsdownloads als IPTV worden geleerd." ;;
       15|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
@@ -2995,7 +3022,7 @@ case "$1" in
   live-sets) live_sets ;;
   safe-excludes) apply_recommended_safe_excludes ;;
   repair-excludes) repair_safe_excludes ;;
-  resolve-excludes) refresh_exclusion_ip_cache force; show_resolved_exclusion_cache ;;
+  resolve-excludes) refresh_exclusion_ip_cache force || exit $?; show_resolved_exclusion_cache ;;
   show-excludes) show_all_exclusions ;;
   clean-excluded) ipset_remove_excluded ;;
   webstatus) write_web_status ;;
