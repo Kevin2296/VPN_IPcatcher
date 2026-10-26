@@ -762,7 +762,7 @@ rebuild_exclude_net_set(){
   done
   # Merge provider-owned network prefixes into the private non-routing exclude IPSet.
   if [ "$PROVIDER_RANGE_AUTO" = yes ] && [ -r "$PROVIDER_CACHE" ]; then
-    provider_restore="$CACHE_DIR/provider-restore.$(current_epoch)"
+    provider_restore="$CACHE_DIR/provider-restore.$"
     : > "$provider_restore"
     while read -r pname cidr extra; do
       case "$pname" in ''|'#'*) continue ;; esac
@@ -849,7 +849,7 @@ refresh_provider_ranges(){
   mkdir "$PROVIDER_LOCK" 2>/dev/null || return 0
   echo "$now" > "$PROVIDER_ATTEMPT"
   mkdir -p "$(dirname "$PROVIDER_CACHE")" "$CACHE_DIR" 2>/dev/null
-  work="$CACHE_DIR/providers.$(current_epoch)"
+  work="$CACHE_DIR/providers.$"
   mkdir "$work" 2>/dev/null || { rmdir "$PROVIDER_LOCK" 2>/dev/null; return 1; }
   result=0
   : > "$work/combined"
