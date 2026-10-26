@@ -549,11 +549,11 @@ var VPNIPC_I18N={
   }
 };
 var VPNIPC_CATEGORY_KEYS={
-  'DNS providers':'cat_dns','Social / messaging':'cat_social','Security cameras / IoT cloud':'cat_cameras','GitHub / dev CDN':'cat_github',
+  'DNS providers':'cat_dns','Social / messaging':'cat_social','AI assistants':'cat_ai','Security cameras / IoT cloud':'cat_cameras','GitHub / dev CDN':'cat_github',
   'Games / downloads':'cat_games','OS / app updates':'cat_updates','Smart TV telemetry':'cat_tv','Streamingdiensten':'cat_streaming'
 };
 var VPNIPC_CATEGORY_NOTE_KEYS={
-  'DNS providers':'note_dns','Social / messaging':'note_social','Security cameras / IoT cloud':'note_cameras','GitHub / dev CDN':'note_github',
+  'DNS providers':'note_dns','Social / messaging':'note_social','AI assistants':'note_ai','Security cameras / IoT cloud':'note_cameras','GitHub / dev CDN':'note_github',
   'Games / downloads':'note_games','OS / app updates':'note_updates','Smart TV telemetry':'note_tv','Streamingdiensten':'note_streaming'
 };
 var VPNIPC_PRESET_LABEL_NL={
@@ -564,6 +564,8 @@ function vpnipcRouterLanguage(){
   return raw.indexOf('nl')===0?'nl':'en';
 }
 function vpnipcResolveLanguage(mode){return mode==='nl'||mode==='en'?mode:vpnipcRouterLanguage();}
+Object.assign(VPNIPC_I18N.nl,{cat_ai:'AI-assistenten',note_ai:'Voorkomt dat AI-chat en bestandsdownloads als IPTV worden geleerd.'});
+Object.assign(VPNIPC_I18N.en,{cat_ai:'AI assistants',note_ai:'Prevent AI chat and file downloads from being learned as IPTV.'});
 Object.assign(VPNIPC_I18N.nl,{title:'VPN IP Catcher',version:'Versie',devices:'Apparaten en verbinding',learning:'Verkeer leren',advanced:'Geavanceerde instellingen',maintenance:'Onderhoud',details:'Details',presetOn:'Uitgesloten',presetOff:'Niet uitgesloten',presetPart:'Gedeeltelijk',unsaved:'Niet-opgeslagen wijzigingen',footer:'VPN IP Catcher | ASUS Merlin'});
 Object.assign(VPNIPC_I18N.en,{title:'VPN IP Catcher',version:'Version',devices:'Devices and connection',learning:'Traffic learning',advanced:'Advanced settings',maintenance:'Maintenance',details:'Details',presetOn:'Excluded',presetOff:'Not excluded',presetPart:'Partial',unsaved:'Unsaved changes',footer:'VPN IP Catcher | ASUS Merlin'});
 Object.assign(VPNIPC_I18N.nl,{trafficVolume:'Verkeer',filterSearch:'Zoeken',filterAll:'Alles',filterSource:'Bronapparaat',filterPort:'Poort',filterState:'Lijststatus',filterFinal:'Definitieve lijst',filterCandidate:'Kandidaat',filterExcluded:'Uitgesloten',filterOther:'Overige',filterClear:'Filters wissen',filterRows:'regels'});
