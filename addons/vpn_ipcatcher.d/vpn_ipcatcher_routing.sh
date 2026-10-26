@@ -293,7 +293,7 @@ rule_check(){
 }
 firewall_check(){
   rules="$($IPTABLES -t mangle -S 2>/dev/null)" || return 1
-  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" -v mode="$MODE" '
+  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" -v mode="${MODE:-}" '
     {name=""; mark=""; guard=""; for(i=1;i<=NF;i++) {
        if($i=="--match-set") name=$(i+1)
        if($i=="--set-xmark" || $i=="--set-mark") mark=$(i+1)
