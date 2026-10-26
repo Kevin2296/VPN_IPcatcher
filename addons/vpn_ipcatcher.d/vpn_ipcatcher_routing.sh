@@ -104,9 +104,11 @@ force_domain_conflict(){
     valid_policy "$other_policy" || continue
     other_file="$(dirname "$POLICIES")/policy_$other_policy""_domainlist"
     [ -f "$other_file" ] && [ ! -L "$other_file" ] || continue
-    grep -Fxi "$host" "$other_file" >/dev/null 2>&1 &&
+    if grep -Fxi "$host" "$other_file" >/dev/null 2>&1; then
       printf '%s (%s)\n' "$other_policy" "$other_connection"
+    fi
   done
+  return 0
 }
 
 # Querying does not imply routing. Check DVR produced an active IPv4 route.
