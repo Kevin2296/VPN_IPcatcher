@@ -1,5 +1,16 @@
 # Wijzigingen
 
+## 2.9.13 — Provider-owned network exclusions
+
+- De uitsluitingen op domeinniveau worden aangevuld met **automatisch opgehaalde, door de provider aangekondigde IPv4-BGP-prefixen** voor geselecteerde eigen netwerken. De bron is RIPEstat (announced-prefixes), uitsluitend voor vooraf gecontroleerde ASNs: Google 15169/36040/19527, Netflix Open Connect 2906/40027, Meta 32934, GitHub 36459, Apple 714.
+- Een provider is actief als een corresponderend domein in EXCLUDE_DOMAINS staat. Geselecteerde netwerkprefixen worden toegevoegd aan de bestaande _exclude hash:net-IPSet, niet aan een VPN-route. EXCLUDE_NETS/IPs, SOURCE_IPS en de NordVPN/DVR-policies blijven onveranderd.
+- Eenmaal per dag controleren, zonder de IPTV-leerworker te blokkeren. Bij mislukte API-respons blijven de laatst gecontroleerde prefixen per provider behouden; atomisch vervangen van de exclusion-IPSet na opbouwen.
+- WebGUI: PROVIDER_RANGE_AUTO aan/uit. SSH: provider-ranges-refresh en provider-ranges-status. De cache wordt persistent bewaard onder /jffs/addons/vpn_ipcatcher.d/provider_ranges.cache.
+- Regressietests voor selectie, fallback, corrupte/gevaarlijk brede netwerken, batchgewijze IPSet-import en onbekende IPTV-adressen.
+- **Beperkingen:** een ASN is niet hetzelfde als alle servers van een merk. Dahua/Imou en Reddit gebruiken gedeelde cloud/CDN-netwerken. AWS, Azure, Alibaba, Fastly en Cloudflare worden daarom niet volledig uitgesloten; bestaande DNS-uitsluitingen blijven hiervoor nodig. Geen IPv6-provider-IPSet of garantie op alle Google/Netflix-frontends. Dit voorkomt onnodig blokkeren van onbekende IPTV-hosting.
+- Reeds geleerde conflicterende IPTV-IP's worden niet tijdens een stream gewist; gebruik clean-excluded wanneer geen stream actief is.
+
+
 ## 2.9.12
 
 - Bekende Google/YouTube-omgeving beschermen: de aan YouTube LLC toegewezen IPv4-range `136.22.128.0/19` wordt niet langer geleerd door de IPTV-catcher. Dit bevat het door de gebruiker aangetroffen `136.22.151.14`.
