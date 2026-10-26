@@ -814,21 +814,22 @@ provider_asns(){
 }
 
 provider_cache_validate(){
-  pinput="$1"
-  [ -s "$pinput" ] || return 1
-  pcount=0
-  while read -r pkey pcidr pextra; do
-    case "$pkey" in ''|'#'*) continue ;; esac
-    [ -z "$pextra" ] || return 1
-    provider_asns "$pkey" >/dev/null || return 1
-    valid_cidr "$pcidr" || return 1
-    pmask="$(printf '%s\n' "$pcidr" | $AWK -F/ '{print $2}')"
-    # Guard against /0, huge accidental ranges and feed corruption.
-    [ "$pmask" -ge 8 ] || return 1
-    pcount=$((pcount+1))
-    [ "$pcount" -le 30000 ] || return 1
-  done < "$pinput"
-  [ "$pcount" -gt 0 ]
+  input="$1"
+  [ -s "$input" ] || return 1
+  # Efficient bounded single process even for 1000s of BGP prefixes.
+  "$AWK" '
+    NF != 2 {bad=1;exit}
+    $1 !~ /^(google|netflix|meta|github|apple)$/ {bad=1;exit}
+    {
+      n=split($2,cidr,"/")
+      if(n!=2 || cidr[2]!~/^[0-9]+$/ || cidr[2]+0<8 || cidr[2]+0>32) {bad=1;exit}
+      n=split(cidr[1],octet,".")
+      if(n!=4) {bad=1;exit}
+      for(i=1;i<=4;i++) if(octet[i]!~/^[0-9]+$/ || octet[i]+0>255) {bad=1;exit}
+      if(++count>30000) {bad=1;exit}
+    }
+    END {if(bad || count<1) exit 1}
+  ' "$input"
 }
 
 refresh_provider_ranges(){
