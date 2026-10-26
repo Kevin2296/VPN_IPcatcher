@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 2.9.12
+
+- Bekende Google/YouTube-omgeving beschermen: de aan YouTube LLC toegewezen IPv4-range `136.22.128.0/19` wordt niet langer geleerd door de IPTV-catcher. Dit bevat het door de gebruiker aangetroffen `136.22.151.14`.
+- Dezelfde provider-exclusion wordt ook aan de runtime hash:net exclude-IPSet toegevoegd, zonder een nieuwe routeringspolicy aan te maken. Bestaande foutieve final-entries worden **niet automatisch tijdens actieve verbindingen** verwijderd; voer `clean-excluded` op een rustig moment uit.
+- Nieuwe optionele Reddit-, Claude- en ChatGPT-presets in zowel WebGUI als amtm-menu. Bestaande gebruikersinstellingen en SOURCE_IPS blijven intact.
+- Wanneer DNS-resolutie tijdelijk geen enkel IP oplevert, behoudt de resolver de vorige geldige cache en retourneert een fout. Het `resolve-excludes`-commando maskeert fouten niet langer.
+- Extra regressietest voor het problematische Google-IP, grensgevallen en onbekende IPTV-bestemmingen.
+- **Beperking:** deze gerichte YouTube/Google-range is niet de volledige Google-IP-ruimte. Een zuivere IPTV-classificatie is zonder protocol- of app-context onmogelijk op basis van alleen IP/bytes.
+
+
 ## 2.9.11
 
 - De WebGUI uploadt bij opslaan uitsluitend gewijzigde velden, zodat het aanvinken van een gedeeltelijke Google Play-preset geen volledige routerconfiguratie opnieuw hoeft te versturen.
