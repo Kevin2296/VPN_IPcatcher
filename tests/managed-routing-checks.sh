@@ -54,6 +54,15 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 [ "$(wc -l < "$work/firewall" | tr -d ' ')" = 2 ]
 selection_read && binding_check
 [ "$(wc -l < "$work/firewall" | tr -d ' ')" = 2 ]
+# The owned IPTV rule must not override existing explicit DVR policy marks.
+[ "$(grep -c -- '-m mark --mark 0x0/0xf000' "$work/firewall")" = 2 ]
+# Simulate an upgrade from old unguarded managed-v1 rules.
+sed 's/ -m mark --mark 0x0\/0xf000//' "$work/firewall" > "$work/old"
+mv "$work/old" "$work/firewall"
+if binding_check; then echo 'Old unguarded rule accepted' >&2; exit 1; fi
+managed_prepare && binding_check
+[ "$(grep -c -- '-m mark --mark 0x0/0xf000' "$work/firewall")" = 2 ]
+[ "$(wc -l < "$work/firewall" | tr -d ' ')" = 2 ]
 rm "$work/sets/$SET"
 : > "$work/firewall"
 if binding_check; then echo 'Missing owned routing accepted' >&2; exit 1; fi
