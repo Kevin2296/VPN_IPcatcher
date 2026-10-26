@@ -707,7 +707,7 @@ function normalizeConfigValue(value){
 }
 function buildConfigPayload(){
   // Send only changed values: preset changes must not overwrite unrelated settings.
-  var keys=['INTERFACES','IPSET_NAME','PORTS','PROMOTE_MODE','PROMOTE_EVERY','MIN_AGE','MIN_BYTES','CANDIDATE_TIMEOUT','FINAL_TIMEOUT','STREAM_FLOW_SCAN','SOURCE_IPS','STREAM_SCAN_EVERY','STREAM_MIN_BYTES','STREAM_MIN_DELTA','STREAM_REQUIRE_GROWTH','STREAM_FLOW_TARGET','EXCLUDE_DOMAINS','EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_RESOLVE_CACHE','EXCLUDE_RESOLVE_EVERY','REVERSE_DNS_CHECK','CAPTURE_GENERIC_HOSTNAMES','ALLOW_EXTERNAL_DNS','EXTERNAL_DNS_SERVER','RETRY_DELAY','MAX_RETRY_DELAY'];
+  var keys=['INTERFACES','IPSET_NAME','PORTS','PROMOTE_MODE','PROMOTE_EVERY','MIN_AGE','MIN_BYTES','CANDIDATE_TIMEOUT','FINAL_TIMEOUT','STREAM_FLOW_SCAN','SOURCE_IPS','STREAM_SCAN_EVERY','STREAM_MIN_BYTES','STREAM_MIN_DELTA','STREAM_REQUIRE_GROWTH','STREAM_FLOW_TARGET','EXCLUDE_DOMAINS','EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_RESOLVE_CACHE','EXCLUDE_RESOLVE_EVERY','PROVIDER_RANGE_AUTO','REVERSE_DNS_CHECK','CAPTURE_GENERIC_HOSTNAMES','ALLOW_EXTERNAL_DNS','EXTERNAL_DNS_SERVER','RETRY_DELAY','MAX_RETRY_DELAY'];
   var lines=[];
   keys.forEach(function(k){
     var el=byId('cfg_'+k);
@@ -1594,6 +1594,7 @@ window.addEventListener('load', function(){
                         <label data-i18n="requireGrowth">Require traffic growth</label><select id="cfg_STREAM_REQUIRE_GROWTH"><option value="yes" data-i18n="yes">ja</option><option value="no" data-i18n="no">nee</option></select>
                         <label data-i18n="streamTarget">Stream target</label><select id="cfg_STREAM_FLOW_TARGET"><option value="candidate" data-i18n="candidateValue">kandidaat</option><option value="final" data-i18n="finalValue">definitief</option></select>
                         <label data-i18n="excludeResolver">Exclude resolver</label><select id="cfg_EXCLUDE_RESOLVE_CACHE"><option value="yes" data-i18n="yes">ja</option><option value="no" data-i18n="no">nee</option></select>
+                        <label>Eigen provider-netwerken automatisch ophalen (RIPE, dagelijks)</label><select id="cfg_PROVIDER_RANGE_AUTO"><option value="yes" data-i18n="yes">ja</option><option value="no" data-i18n="no">nee</option></select>
                         <label data-i18n="resolverInterval">Resolver interval</label><input id="cfg_EXCLUDE_RESOLVE_EVERY" placeholder="3600">
                         <label data-i18n="reverseDnsCheck">Reverse DNS check</label><select id="cfg_REVERSE_DNS_CHECK"><option value="no" data-i18n="no">nee</option><option value="yes" data-i18n="yes">ja</option></select>
                         <label data-i18n="genericHostScan">Generic host scan</label><select id="cfg_CAPTURE_GENERIC_HOSTNAMES"><option value="no" data-i18n="no">nee</option><option value="yes" data-i18n="yes">ja</option></select>
