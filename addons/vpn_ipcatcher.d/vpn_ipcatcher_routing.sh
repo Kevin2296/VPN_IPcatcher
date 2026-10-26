@@ -246,6 +246,12 @@ remove_managed_rules(){
   printf '%s\n' "$old_mark" | grep -Eq '^0x[0-9a-fA-F]+/0x[0-9a-fA-F]+$' || return 1
   for old_chain in PREROUTING OUTPUT; do
     count=0
+    # Remove both historical unguarded marks and 2.9.14 guarded marks, but
+    # only for IP Catcher-owned rules, never external DVR policies.
+    while $IPTABLES -t mangle -C "$old_chain" -m set --match-set "$old_set" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" 2>/dev/null; do
+      $IPTABLES -t mangle -D "$old_chain" -m set --match-set "$old_set" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" || return 1
+      count=$((count+1)); [ "$count" -lt 20 ] || return 1
+    done
     while $IPTABLES -t mangle -C "$old_chain" -m set --match-set "$old_set" dst -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" 2>/dev/null; do
       $IPTABLES -t mangle -D "$old_chain" -m set --match-set "$old_set" dst -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" || return 1
       count=$((count+1)); [ "$count" -lt 20 ] || return 1
