@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.12
+# Version: 2.9.13
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -10,6 +10,10 @@ FLOW_STATE="$CACHE_DIR/flow_prev"
 LIVE_FLOW_STATE="$CACHE_DIR/live_flow_prev"
 CACHE_EXCLUDE_IPS="$CACHE_DIR/exclude_ips"
 CACHE_EXCLUDE_TS="$CACHE_DIR/exclude_ips.ts"
+PROVIDER_CACHE="/jffs/addons/vpn_ipcatcher.d/provider_ranges.cache"
+PROVIDER_CACHE_TS="/jffs/addons/vpn_ipcatcher.d/provider_ranges.ts"
+PROVIDER_ATTEMPT="/tmp/vpn_ipcatcher_provider_attempt"
+PROVIDER_LOCK="/tmp/vpn_ipcatcher_provider_lock"
 CACHE_PTR="$CACHE_DIR/ptr_cache"
 LOGFILE="/tmp/vpn_ipcatcher.log"
 LOCK="/tmp/vpn_ipcatcher.lock"
@@ -36,6 +40,8 @@ SED="$(find_bin /bin/sed /usr/bin/sed /opt/bin/sed)"
 GREP="$(find_bin /bin/grep /usr/bin/grep /opt/bin/grep)"
 AWK="$(find_bin /bin/awk /usr/bin/awk /opt/bin/awk)"
 NSLOOKUP="$(find_bin /usr/bin/nslookup /bin/nslookup /opt/bin/nslookup)"
+CURL="$(find_bin /opt/bin/curl /usr/bin/curl /bin/curl)"
+JQ="$(find_bin /opt/bin/jq /usr/bin/jq /bin/jq)"
 IPBIN="$(find_bin /sbin/ip /bin/ip /usr/sbin/ip /usr/bin/ip /opt/sbin/ip /opt/bin/ip)"
 CT="$(find_bin /opt/sbin/conntrack /opt/bin/conntrack /usr/sbin/conntrack /usr/bin/conntrack /sbin/conntrack)"
 TAIL="$(find_bin /usr/bin/tail /bin/tail /opt/bin/tail)"
@@ -186,6 +192,8 @@ STREAM_FLOW_TARGET="candidate"
 # Dit is belangrijk voor conntrack-first detectie, omdat conntrack meestal alleen dst-IP ziet.
 EXCLUDE_RESOLVE_CACHE="yes"
 EXCLUDE_RESOLVE_EVERY="3600"
+# Daily verified ASN prefix refresh for selected provider exclusions.
+PROVIDER_RANGE_AUTO="yes"
 
 # Reverse DNS check bij nieuwe stream-flow IPs. Minder betrouwbaar dan forward-resolve cache,
 # maar kan helpen als een dst-IP een bruikbare PTR/naam teruggeeft. Standaard uit voor stabiliteit.
@@ -203,7 +211,7 @@ ensure_config(){
   chmod 600 "$CONF" 2>/dev/null
 }
 
-CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
+CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY PROVIDER_RANGE_AUTO REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
 
 load_config(){
   ensure_config
@@ -214,7 +222,7 @@ load_config(){
     case "$config_line" in ''|\#*) continue ;; esac
     config_key="${config_line%%=*}"
     case "$config_key" in
-      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) ;;
+      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) ;;
       *) say "Ongeldige configuratieregel: $config_key" >&2; return 1 ;;
     esac
     config_value="${config_line#*=}"
@@ -265,6 +273,8 @@ load_config(){
   STREAM_FLOW_TARGET="${STREAM_FLOW_TARGET:-candidate}"
   EXCLUDE_RESOLVE_CACHE="${EXCLUDE_RESOLVE_CACHE:-yes}"
   EXCLUDE_RESOLVE_EVERY="${EXCLUDE_RESOLVE_EVERY:-3600}"
+  PROVIDER_RANGE_AUTO="${PROVIDER_RANGE_AUTO:-yes}"
+  case "$PROVIDER_RANGE_AUTO" in yes|no) ;; *) say "Ongeldige PROVIDER_RANGE_AUTO waarde" >&2; return 1 ;; esac
   REVERSE_DNS_CHECK="${REVERSE_DNS_CHECK:-no}"
 
   RETRY_DELAY="${RETRY_DELAY:-20}"
@@ -750,6 +760,17 @@ rebuild_exclude_net_set(){
       return 1
     fi
   done
+  # Merge provider-owned network prefixes into the private non-routing exclude IPSet.
+  if [ "$PROVIDER_RANGE_AUTO" = yes ] && [ -r "$PROVIDER_CACHE" ]; then
+    while read -r pname cidr extra; do
+      case "$pname" in ''|'#'*) continue ;; esac
+      [ -z "$extra" ] || { $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+      provider_is_selected "$pname" || continue
+      valid_cidr "$cidr" || { $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+      $IPSET add "$exclude_build" "$cidr" -exist >/dev/null 2>&1 ||
+        { $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+    done < "$PROVIDER_CACHE"
+  fi
   # Keep the previous exclusions active until the entire replacement is ready.
   $IPSET swap "$EXCLUDE_NET_SET" "$exclude_build" >/dev/null 2>&1
   exclude_result=$?
@@ -1172,6 +1193,7 @@ flow_scan_candidates(){
   [ -n "$CT" ] || return 0
   [ "$ACCT_OK" = "1" ] || return 0
   refresh_exclusion_ip_cache auto
+  refresh_provider_ranges auto || :
 
   mkdir -p "$CACHE_DIR" 2>/dev/null
   curfile="${FLOW_STATE}.cur"
@@ -1422,6 +1444,7 @@ run_engine(){
   # Exclusion cache verversen op de achtergrond.
   (
     refresh_exclusion_ip_cache auto
+    refresh_provider_ranges auto || :
   ) &
 
   while true; do
@@ -3023,6 +3046,8 @@ case "$1" in
   safe-excludes) apply_recommended_safe_excludes ;;
   repair-excludes) repair_safe_excludes ;;
   resolve-excludes) refresh_exclusion_ip_cache force || exit $?; show_resolved_exclusion_cache ;;
+  provider-ranges-refresh) refresh_provider_ranges force; show_provider_ranges ;;
+  provider-ranges-status) show_provider_ranges ;;
   show-excludes) show_all_exclusions ;;
   clean-excluded) ipset_remove_excluded ;;
   webstatus) write_web_status ;;
