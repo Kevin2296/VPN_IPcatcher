@@ -17,6 +17,7 @@ const context = vm.createContext({
   setTimeout,
   clearTimeout,
   TextEncoder,
+  URL,
   fetch: () => { throw new Error('Unexpected network request'); }
 });
 for (const script of scripts) new vm.Script(script).runInContext(context);
@@ -33,6 +34,12 @@ for (const language of ['nl', 'en']) {
   assert.equal(element('selectedVpn').textContent,'WireGuard 3');
   for (const key of Object.keys(context.VPNIPC_I18N.nl)) assert.ok(context.VPNIPC_I18N.en[key], `Missing English key: ${key}`);
 }
+assert.equal(context.forceVpnHostname('https://EPG.Example.ORG:8080/guide.xml.gz?token=private'),'epg.example.org');
+assert.equal(context.forceVpnHostname('EPG.Example.ORG'),'epg.example.org');
+assert.equal(context.forceVpnHostname('https://user:secret@epg.example.org/guide.xml'),'');
+assert.equal(context.forceVpnHostname('192.0.2.10'),'');
+assert.equal(context.forceVpnHostname('ftp://epg.example.org/guide.xml'),'');
+console.log('PASS: Always-VPN EPG URLs resolve to hostname without leaking credentials/tokens');
 assert.equal(context.escapeHtml('<script>'), '&lt;script&gt;');
 assert.doesNotMatch(element('liveOutput').innerHTML, /<script>/);
 console.log('PASS: WebUI JavaScript, NL/EN key parity, waiting-list rendering and HTML escaping');

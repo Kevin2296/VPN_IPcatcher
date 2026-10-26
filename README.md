@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.13](https://img.shields.io/badge/version-2.9.13-087F8C?style=for-the-badge)
+![Version 2.9.14](https://img.shields.io/badge/version-2.9.14-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,8 +39,12 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.13.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.14.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**Altijd via VPN voor EPG/XMLTV (2.9.14):** ga naar **Domeinroutes** in de WebGUI, plak een EPG-URL zoals `https://epg.example.org/guide.xml.gz` of alleen `epg.example.org`, kies de bestaande DVR-policy met de juiste VPN en klik **Altijd via VPN instellen**. Het script haalt alleen de hostname uit de URL en voegt die direct toe aan Domain VPN Routing v3.2.5; de IPTV-leerlogica is daarbij niet betrokken. De router controleert of er daadwerkelijk een IPv4-adres in de policy-IPSet staat. Een reeds toegewezen domein in een andere policy wordt geweigerd. Voor automatisch beheerde IPTV-sets overschrijft de nieuwe markregel geen eerder ingestelde VPN-markering.
+
+Let op: EPG-redirects naar een andere hostname moeten ook aan DVR worden toegevoegd; een gedeeld CDN-IP kan niet op basis van alleen het URL-pad een andere route krijgen. URL-tokens en inloggegevens worden niet bewaard.
 
 **Provider-netwerken 2.9.13:** naast de uitgesloten domeinen haalt IP Catcher dagelijks de eigen IPv4-ranges op van geselecteerde providers (Google/YouTube, Netflix Open Connect, Meta, GitHub en Apple). Controle: `/jffs/scripts/vpn_ipcatcher.sh provider-ranges-status`. Direct verversen: `provider-ranges-refresh`. De WebGUI heeft een aan/uit-instelling. Gedeelde cloudnetten van AWS/Azure/Alibaba/Fastly/Cloudflare worden **niet** blind uitgesloten; daarop kunnen ook IPTV-servers staan. Voor Dahua/Imou blijven de bestaande domein/DNS-uitsluitingen gelden. De functie garandeert dus niet dat iedere server van een merk bij voorbaat is uitgesloten.
 

@@ -66,7 +66,7 @@ cat > "$DVR" <<'EOF'
 # Version: v3.2.5
 case "$1" in
   adddomain) [ "$POLICY" = Streams ] || exit 1; printf '%s\n' "$2" >> "$DVR_TEST_ROOT/policy_Streams_domainlist" ;;
-  querypolicy) [ "$2" = Streams ] || exit 1; echo queried > "$DVR_TEST_ROOT/query" ;;
+  querypolicy) [ "$2" = Streams ] || exit 1; echo queried > "$DVR_TEST_ROOT/query"; printf '%s>>203.0.113.77\n' "$(head -n 1 "$DVR_TEST_ROOT/policy_Streams_domainlist")" > "$DVR_TEST_ROOT/policy_Streams_domaintoIP" ;;
   *) exit 1 ;;
 esac
 EOF
@@ -88,12 +88,14 @@ exec "$@"
 EOF
 chmod +x "$DVR" "$ADDON/vpn_ipcatcher_backup.sh" "$work/timeout" "$work/flock"
 find_bin(){ case "$1" in *timeout) echo "$work/timeout" ;; *flock) echo "$work/flock" ;; *) return 1 ;; esac; }
-printf 'ENABLE=1\n' > "$GLOBAL"
+printf 'ENABLE=1\nOVPNC2FWMARK=0x2000\nOVPNC2MASK=0xf000\n' > "$GLOBAL"
 : > "$work/policy_Streams_domainlist"
 domain_add Streams stream.example.invalid
 grep -Fxq stream.example.invalid "$work/policy_Streams_domainlist"
 [ -f "$work/backup" ] && [ -f "$work/query" ]
-for bad in 'https://secret.invalid/login' '203.0.113.1' 'bad;id.invalid'; do
+domain_add Streams 'https://stream.example.invalid/guide.xml.gz?token=private'
+grep -Fxq stream.example.invalid "$work/policy_Streams_domainlist"
+for bad in 'ftp://secret.invalid/login' 'https://user:secret@secret.invalid/login' '203.0.113.1' 'bad;id.invalid'; do
   if domain_add Streams "$bad"; then echo 'Unsafe domain accepted'; exit 1; fi
 done
 if domain_add Unknown stream.example.invalid; then exit 1; fi

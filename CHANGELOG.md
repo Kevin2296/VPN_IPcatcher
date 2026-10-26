@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 2.9.14 — Altijd-VPN voor EPG/XMLTV en handmatige domeinen
+
+- **Altijd via VPN** in de WebGUI: plak een volledige HTTP(S) EPG/XMLTV-URL of hostnaam en kies de bestaande Domain VPN Routing-policy (met de juiste OpenVPN/WireGuard-client). Alleen de gevalideerde hostname wordt opgeslagen: geen URL-pad, token of inloggegevens.
+- Directe `adddomain` + `querypolicy` van DVR v3.2.5, dus geen leerdrempel, wachtrij of automatische IPTV-herkenning. Controleer na verversen dat de host werkelijk als IPv4-bestemming in de gekozen DVR-IPSet staat; anders duidelijke foutmelding.
+- Weiger hetzelfde expliciete domein in twee verschillende DVR-policies. Controleer dat de VPN-markering en tunnel beschikbaar zijn alvorens de DVR-lijst te wijzigen.
+- **Automatisch beheerde IPTV-markregels** schrijven geen al ingestelde VPN-markering meer over (`-m mark --mark 0x0/0xf000`), inclusief herstel van eerdere onbeschermde markregels; bij VPN-wissel worden oude markregels met én zonder bescherming verwijderd. Bestaande handmatig beheerde DVR-markregels blijven onaangeraakt.
+- Nieuwe regressietests voor EPG-URL-verwerking, privacy, DNS/route-check, dubbele policies en markvolgorde.
+- **Begrenzing:** IP-routering kan bij gedeelde CDN-IP's niet per URL-pad differentiëren. Een HTTP-redirect naar een andere hostname is een afzonderlijke bestemming die apart via VPN gerouteerd moet worden. Cliënten moeten de DNS-antwoorden gebruiken die de DVR-policy heeft geleerd.
+
+
 ## 2.9.13 — Provider-owned network exclusions
 
 - De uitsluitingen op domeinniveau worden aangevuld met **automatisch opgehaalde, door de provider aangekondigde IPv4-BGP-prefixen** voor geselecteerde eigen netwerken. De bron is RIPEstat (announced-prefixes), uitsluitend voor vooraf gecontroleerde ASNs: Google 15169/36040/19527, Netflix Open Connect 2906/40027, Meta 32934, GitHub 36459, Apple 714.

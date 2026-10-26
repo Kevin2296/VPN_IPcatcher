@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.7
+# Version: 2.9.14
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -55,7 +55,7 @@ set_check(){
 }
 valid_policy(){
   case "$1" in ''|*[!A-Za-z0-9_-]*) return 1 ;; esac
-  [ "${#1}" -le 16 ]
+  [ "${#1}" -le 24 ]
 }
 valid_connection(){
   case "$1" in ovpnc[1-5]|wgc[1-5]) return 0 ;; esac
@@ -64,32 +64,110 @@ valid_connection(){
 policy_rows(){
   awk -F '|' 'NF>=4 && $1 !~ /^#/ && $4 ~ /^(ovpnc|wgc)[1-5]$/ {print $1 "|" $4}' "$POLICIES"
 }
+# Convert HTTP(S) XMLTV/EPG URLs to just their hostname. Never store
+# username, password, token, query, path or port as a DVR domain rule.
+normalize_force_vpn_host(){
+  input="$1"
+  [ -n "$input" ] && [ "$(printf '%s' "$input" | wc -c)" -le 2048 ] || return 1
+  printf '%s\n' "$input" | awk '
+    BEGIN {valid=1}
+    {
+      host=tolower($0)
+      if(host ~ /^https?:\/\//){
+        sub(/^https?:\/\//,"",host)
+        sub(/[\/?#].*$/,"",host)
+        if(host ~ /@/){valid=0;exit}
+        if(host ~ /:/){
+          n=split(host,parts,":")
+          if(n!=2 || parts[2]!~/^[0-9]+$/){valid=0;exit}
+          host=parts[1]
+        }
+      } else {
+        if(host ~ /[\/?#@:]/){valid=0;exit}
+      }
+      if(host ~ /^[0-9.]+$/){valid=0;exit}
+      n=split(host,labels,".")
+      if(n<2 || length(host)>253){valid=0;exit}
+      for(i=1;i<=n;i++){
+        if(length(labels[i])>63 || labels[i]!~/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/){valid=0;exit}
+      }
+      if(valid) print host
+    }
+    END {if(!valid)exit 1}
+  '
+}
+
+# Never leave the same force-VPN host simultaneously in multiple policies.
+force_domain_conflict(){
+  chosen="$1"; host="$2"
+  policy_rows | while IFS="|" read -r other_policy other_connection; do
+    [ "$other_policy" = "$chosen" ] && continue
+    valid_policy "$other_policy" || continue
+    other_file="$(dirname "$POLICIES")/policy_$other_policy""_domainlist"
+    [ -f "$other_file" ] && [ ! -L "$other_file" ] || continue
+    if grep -Fxi "$host" "$other_file" >/dev/null 2>&1; then
+      printf '%s (%s)\n' "$other_policy" "$other_connection"
+    fi
+  done
+  return 0
+}
+
+# Querying does not imply routing. Check DVR produced an active IPv4 route.
+verify_force_domain_route(){
+  chosen="$1"; host="$2"; vpn="$3"
+  ipfile="$(dirname "$POLICIES")/policy_$chosen""_domaintoIP"
+  setname="DVR-$chosen-v4"
+  [ -r "$ipfile" ] && $IPSET list "$setname" >/dev/null 2>&1 ||
+    { error "Geen DVR-IPSet/DNS-resultaat voor $host"; return 1; }
+  found=0
+  ips="$(awk -F '>>' -v host="$host" '$1==host && $2 ~ /^[0-9.]+$/ {print $2}' "$ipfile")"
+  for ip in $ips; do
+    if $IPSET test "$setname" "$ip" >/dev/null 2>&1; then
+      found=$((found+1))
+    fi
+  done
+  [ "$found" -gt 0 ] ||
+    { error "Domein opgeslagen, maar $host heeft geen actief IPv4-adres in de DVR-IPSet. Controleer DNS en querypolicy."; return 1; }
+  printf 'Altijd-VPN: %s -> policy %s -> %s (%s actieve IPv4-adressen)\n' "$host" "$chosen" "$vpn" "$found"
+}
+
 domain_add(){
-  requested_policy="${1:-}"; requested_domain="${2:-}"
+  requested_policy="$1"; requested_url="$2"
   case "$requested_policy" in ''|*[!A-Za-z0-9_-]*) error 'Ongeldige DVR-policy.'; return 1 ;; esac
-  [ "${#requested_policy}" -le 24 ] || return 1
-  case "$requested_domain" in *[!0-9.]*) ;; *) error 'Gebruik een domein, geen IP-adres.'; return 1 ;; esac
-  printf '%s\n' "$requested_domain" | awk -F. '
-    length($0)>253 || NF<2 {exit 1}
-    {for(i=1;i<=NF;i++)if(length($i)>63 || $i!~/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/)exit 1}
-    END{}' || { error 'Gebruik alleen een domeinnaam, zonder URL of login.'; return 1; }
-  # This adapter is verified against the supplied DVR version, not unknown APIs.
-  grep -q '^# Version: v3.2.5' "$DVR" || { error 'Browserkoppeling vereist DVR v3.2.5; gebruik anders het DVR-menu.'; return 1; }
+  [ "$(printf '%s' "$requested_policy" | wc -c)" -le 24 ] || return 1
+  requested_domain="$(normalize_force_vpn_host "$requested_url")" ||
+    { error 'Gebruik een hostnaam of volledige http(s) EPG-URL zonder gebruikersnaam/wachtwoord.'; return 1; }
+  # Explicit DVR rules are independent of excludes and of IPTV learning.
+  grep -q '^# Version: v3.2.5' "$DVR" ||
+    { error 'DVR-koppeling vereist Domain VPN Routing v3.2.5; gebruik anders DVR-menu.'; return 1; }
   row="$(policy_rows | awk -F '|' -v p="$requested_policy" '$1==p{print $2}')"
-  valid_connection "$row" || { error 'DVR-policy ontbreekt of is dubbel.'; return 1; }
+  valid_connection "$row" ||
+    { error 'DVR-policy ontbreekt of is dubbel.'; return 1; }
+  ( CONNECTION="$row"; mark_read && rule_check && route_check ) ||
+    { error "De VPN van policy $requested_policy ($row) is niet klaar; domein niet gewijzigd."; return 1; }
   list_dir="$(dirname "$POLICIES")"
-  domain_list="$list_dir/policy_${requested_policy}_domainlist"
-  [ -f "$domain_list" ] && [ ! -L "$domain_list" ] || { error 'DVR-domeinlijst ontbreekt of is een symlink.'; return 1; }
-  [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || { error 'DVR staat uit.'; return 1; }
+  domain_list="$list_dir/policy_$requested_policy""_domainlist"
+  [ -f "$domain_list" ] && [ ! -L "$domain_list" ] ||
+    { error 'DVR-domeinlijst ontbreekt of is een symlink.'; return 1; }
+  [ "$(setting "$GLOBAL" ENABLE)" = 1 ] ||
+    { error 'DVR staat uit.'; return 1; }
+  conflict="$(force_domain_conflict "$requested_policy" "$requested_domain")"
+  [ -z "$conflict" ] ||
+    { error "Domein $requested_domain staat al in policy: $conflict. Kies een unieke VPN-policy."; return 1; }
   timeout_bin="$(find_bin /usr/bin/timeout /bin/timeout /opt/bin/timeout)"
   flock_bin="$(find_bin /opt/bin/flock /usr/bin/flock /bin/flock)"
-  [ -n "$timeout_bin" ] && [ -n "$flock_bin" ] || { error 'timeout of flock ontbreekt voor veilige DVR-koppeling.'; return 1; }
+  [ -n "$timeout_bin" ] && [ -n "$flock_bin" ] ||
+    { error 'timeout of flock ontbreekt voor veilige DVR-koppeling.'; return 1; }
   "$ADDON/vpn_ipcatcher_backup.sh" full || return 1
   case "$("$timeout_bin" --help 2>&1)" in *'[-t '*|*'-t SECS'*) timeout_flag=-t ;; *) timeout_flag='' ;; esac
   POLICY="$requested_policy" "$timeout_bin" -s TERM $timeout_flag 60 "$flock_bin" -n /var/lock/domain_vpn_routing.lock "$DVR" adddomain "$requested_domain" </dev/null || return 1
-  grep -Fx "$requested_domain" "$domain_list" >/dev/null || { error 'DVR heeft het domein niet opgeslagen.'; return 1; }
-  "$timeout_bin" -s TERM $timeout_flag 90 "$DVR" querypolicy "$requested_policy" </dev/null || { error 'Domein opgeslagen, maar verversen van DVR is mislukt.'; return 1; }
+  grep -Fx "$requested_domain" "$domain_list" >/dev/null ||
+    { error 'DVR heeft het domein niet opgeslagen.'; return 1; }
+  "$timeout_bin" -s TERM $timeout_flag 90 "$DVR" querypolicy "$requested_policy" </dev/null ||
+    { error 'Domein opgeslagen, maar verversen van DVR is mislukt.'; return 1; }
+  verify_force_domain_route "$requested_policy" "$requested_domain" "$row"
 }
+
 selection_read(){
   [ -f "$SELECTION" ] || { error 'Nog geen VPN/lijst gekozen. Gebruik routing-setup of de installer.'; return 1; }
   POLICY="$(sed -n '1p' "$SELECTION")"
@@ -146,8 +224,16 @@ managed_prepare(){
     (umask 077; printf '%s\n%s\n' "$SET" "$MARK/$MASK" > "$owner.new") && mv "$owner.new" "$owner" || return 1
   fi
   for chain in PREROUTING OUTPUT; do
-    $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null && continue
-    $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
+    # Managed auto-IPTV routing must never overwrite a preceding explicit
+    # domain-policy VPN mark. Migrate the old unguarded rule in-place.
+    old_count=0
+    while $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null; do
+      $IPTABLES -t mangle -D "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
+      old_count=$((old_count+1))
+      [ "$old_count" -lt 20 ] || { error 'Te veel oude managed markregels; controleer handmatig.'; return 1; }
+    done
+    $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null && continue
+    $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
   done
 }
 remove_managed_rules(){
@@ -161,6 +247,12 @@ remove_managed_rules(){
   printf '%s\n' "$old_mark" | grep -Eq '^0x[0-9a-fA-F]+/0x[0-9a-fA-F]+$' || return 1
   for old_chain in PREROUTING OUTPUT; do
     count=0
+    # Remove both historical unguarded marks and 2.9.14 guarded marks, but
+    # only for IP Catcher-owned rules, never external DVR policies.
+    while $IPTABLES -t mangle -C "$old_chain" -m set --match-set "$old_set" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" 2>/dev/null; do
+      $IPTABLES -t mangle -D "$old_chain" -m set --match-set "$old_set" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" || return 1
+      count=$((count+1)); [ "$count" -lt 20 ] || return 1
+    done
     while $IPTABLES -t mangle -C "$old_chain" -m set --match-set "$old_set" dst -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" 2>/dev/null; do
       $IPTABLES -t mangle -D "$old_chain" -m set --match-set "$old_set" dst -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" || return 1
       count=$((count+1)); [ "$count" -lt 20 ] || return 1
@@ -202,9 +294,20 @@ rule_check(){
 }
 firewall_check(){
   rules="$($IPTABLES -t mangle -S 2>/dev/null)" || return 1
-  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" '
-    {name=""; mark=""; for(i=1;i<=NF;i++) {if($i=="--match-set") name=$(i+1); if($i=="--set-xmark" || $i=="--set-mark") mark=$(i+1)}
-     if(name==set && mark!="") {if(mark!=expected && mark!=plain) bad=1; else {if($2=="PREROUTING") pre=1; if($2=="OUTPUT") out=1}}
+  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" -v mode="${MODE:-}" '
+    {name=""; mark=""; guard=""; for(i=1;i<=NF;i++) {
+       if($i=="--match-set") name=$(i+1)
+       if($i=="--set-xmark" || $i=="--set-mark") mark=$(i+1)
+       if($i=="--mark") guard=$(i+1)
+     }
+     if(name==set && mark!="") {
+       if(mark!=expected && mark!=plain) bad=1
+       else {
+         if(mode=="managed-v1" && guard!="0x0/0xf000") bad=1
+         if($2=="PREROUTING") pre=1
+         if($2=="OUTPUT") out=1
+       }
+     }
      if((name==set "_cand" || name==set "_exclude" || name==set "_wait") && mark!="") bad=1}
     END{exit (bad || !pre || !out)?1:0}' || { error 'Lijstmarkeringen ontbreken of conflicteren. Herstel de gekozen DVR-policy en verwijder conflicterende oude regels gericht.'; return 1; }
 }

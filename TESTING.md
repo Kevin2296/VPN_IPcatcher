@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## 2.9.14 explicit VPN priority
+
+`tests/force-vpn-routing-checks.sh` verifies EPG URL-to-host conversion, never stores tokens, refuses invalid/personal-credential URLs, requires the selected VPN and a resolved DVR policy IPSet, and detects conflicting cross-policy assignments. `tests/routing-checks.sh` covers the existing DVR adapter; `tests/managed-routing-checks.sh` validates that automatic managed MARK rules only mark unmarked traffic and that both old and new managed rules are removed when changing VPN. This is a mocked CI test, not proof of live VPN tunnel routing; verify on ASUS after update.
+
+
 ## 2.9.13 provider-owned ranges
 
 `tests/provider-range-checks.sh` uses mocked HTTPS/RIPE responses and kernel-IPSet commands; confirms selected providers, daily refresh interval, fallback after failure, refusal of corrupt/overbroad prefixes, batch import, and no block for unrelated unknown IPTV destinations. GitHub CI cannot establish live ASN API availability, ASUS ipset compatibility or playback stability; validate on router before general rollout.

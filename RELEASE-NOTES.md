@@ -1,3 +1,15 @@
+# VPN IP Catcher v2.9.14 — Altijd via VPN voor EPG/XMLTV
+
+**NL:** Plak voortaan direct een volledige EPG/XMLTV-link onder **Domeinroutes / Altijd via VPN** en kies de VPN-policy die je wilt gebruiken. Alleen de hostname wordt naar Domain VPN Routing v3.2.5 gestuurd; pad, eventuele tokens en credentials worden niet opgeslagen. IP Catcher wacht niet op automatische IPTV-detectie: `adddomain` en `querypolicy` worden onmiddellijk uitgevoerd, waarna het IP-adres in de gekozen policy-IPSet wordt geverifieerd. De geselecteerde VPN moet actief zijn; dubbele hostname-toewijzingen aan een andere DVR-policy worden geweigerd.
+
+Bij door IP Catcher beheerde `managed-v1`-markregels respecteert de automatische IPTV-route voortaan bestaande VPN-markeringen. Bestaande markregels worden gericht gemigreerd; handmatig door DVR beheerde regels worden niet aangepast. De Google/Netflix-provideruitsluitingen blijven onafhankelijk van expliciete DVR-domeinroutes.
+
+**Let op:** de juiste hostname en DNS-resolutie zijn vereist; een URL-pad of andere host na redirect valt niet onder dezelfde IP-routeringsregel. Een gedeeld CDN-IP kan niet tegelijkertijd per URL naar twee verschillende VPNs worden gestuurd. Controleer de gekozen policy op je ASUS na de update.
+
+**EN:** Users can paste full HTTP(S) EPG/XMLTV URLs and assign their hostname immediately to an explicit existing Domain VPN Routing policy. Never send or save URL paths/tokens/credentials. Check active VPN and resolved IPSet, reject duplicate conflicting policies, preserve pre-existing VPN fwmarks when the owned automatic IPTV rule matches. Shared-CDN IP and redirect limitations apply.
+
+---
+
 # VPN IP Catcher v2.9.13 — Netwerkbereiken van bekende diensten
 
 **NL:** Als een bekende dienst in je uitsluitingsdomeinen staat, kan VPN IP Catcher voortaan automatisch de IPv4-prefixen van de aantoonbaar eigen provider-ASNs ophalen via RIPEstat en in de bestaande uitsluitings-IPSet opnemen. Nu voor Google/YouTube, Netflix Open Connect, Meta, Apple en GitHub. De update draait buiten de IPTV-scan, met dagelijkse controle en behoud van laatst werkende data bij lookup-fouten. Handmatige uitsluitingen en NordVPN/DVR-routes worden niet aangepast.

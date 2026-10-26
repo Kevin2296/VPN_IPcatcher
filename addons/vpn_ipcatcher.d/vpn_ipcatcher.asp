@@ -625,8 +625,10 @@ function splitCompactLines(txt){txt=decodeText(txt); if(txt.indexOf('\n')!==-1) 
 
 Object.assign(VPNIPC_I18N.nl,{autoUpdateConfirm:'amtm toestaan om nieuwere versies te installeren met verplichte lokale back-up? Dit registreert de addon niet automatisch in de centrale AU-lijst en maakt geen eigen tijdschema.',autoUpdateEnable:'amtm-updates toestaan',autoUpdateDisable:'amtm-updates uitschakelen',autoUpdateOn:'amtmupdate toegestaan; centrale AU-registratie vereist',autoUpdateOff:'amtmupdate uitgeschakeld'});
 Object.assign(VPNIPC_I18N.en,{autoUpdateConfirm:'Allow amtm to install newer versions with a mandatory local backup? This does not register the addon in the central AU catalog and does not create a separate schedule.',autoUpdateEnable:'Allow amtm updates',autoUpdateDisable:'Disable amtm updates',autoUpdateOn:'amtmupdate allowed; central AU registration required',autoUpdateOff:'amtmupdate disabled'});
+Object.assign(VPNIPC_I18N.nl,{forceVpnHelp:'Plak desgewenst een EPG/XMLTV-link: alleen de hostname wordt aan de gekozen VPN-policy gekoppeld. De handmatige regel heeft voorrang op automatisch IPTV-leren. Op gedeelde CDN-IP’s en bij privé-DNS is per URL-pad routeren niet mogelijk.'});
+Object.assign(VPNIPC_I18N.en,{forceVpnHelp:'Paste an EPG/XMLTV URL: only its hostname is assigned to the selected VPN policy. The manual rule takes priority over automatic IPTV learning. Shared CDN addresses and private DNS cannot be routed per URL path.'});
 Object.assign(VPNIPC_I18N.nl,{
-  help:'Uitleg',routing:'Domeinroutes',dvrChoose:'Kies DVR-policy',dvrDomain:'Domeinnaam',dvrAdd:'Domein toevoegen',dvrInvalid:'Kies een policy en een geldige domeinnaam zonder URL of login.',dvrConfirm:'Domein permanent toevoegen aan deze DVR-policy? Eerst wordt een lokale uitgebreide back-up gemaakt. Bestaande verbindingen kunnen een andere route krijgen.',
+  help:'Uitleg',routing:'Domeinroutes',dvrChoose:'Kies DVR-policy',dvrDomain:'EPG-URL of hostnaam',dvrAdd:'Altijd via VPN instellen',dvrInvalid:'Kies een DVR-policy en vul een hostnaam of HTTP(S)-EPG-URL zonder gebruikersnaam/wachtwoord in.',dvrConfirm:'Deze host altijd direct via de geselecteerde VPN-policy routeren, zonder IPTV-learning? Alleen de hostnaam wordt opgeslagen. Er wordt eerst een lokale back-up gemaakt.',
   checkUpdate:'Update controleren',installUpdate:'Update installeren',forceUpdate:'Opnieuw installeren',updateConfirm:'Update installeren? Voor wijzigingen wordt automatisch een verplichte lokale back-up gemaakt. Je instellingen blijven behouden.',forceUpdateConfirm:'De gepubliceerde versie opnieuw installeren, ook als het versienummer gelijk is? Voor wijzigingen wordt een verplichte lokale back-up gemaakt.',saveBeforeUpdate:'Sla eerst je gewijzigde instellingen op of verwerp ze.',
   helpLists:'Kandidaat: tijdelijk ontdekt IP, nog niet voldoende beoordeeld. Wachtlijst: IP klaar voor routering, maar een bestaande verbinding moet eerst eindigen om geen actieve stream van uitgangs-IP te laten wisselen. Definitief: IP in de VPN-lijst, met een vervaltijd; niet permanent.',
   helpRouting:'IP Catcher hergebruikt een passende bestaande DVR-IPSet of maakt eigen tijdelijke IPSet-lijsten en markregels. Die eigen lijsten zijn geen nieuwe permanente DVR-domeinpolicy. Domeinroutes voeg je apart toe aan een bestaande DVR-policy. Alleen IPv4 wordt geleerd.',
@@ -636,7 +638,7 @@ Object.assign(VPNIPC_I18N.nl,{
   dnsState_idle:'DNS: geen meting',dnsState_starting:'DNS: capture wordt gestart',dnsState_capturing:'DNS: capture actief (TCP/UDP 53)',dnsState_finished:'DNS: capture afgerond',dnsState_tools_missing:'DNS: tcpdump of timeout ontbreekt',dnsState_capture_error:'DNS: capture mislukt; controleer tcpdump/timeout',dnsState_capture_busy:'DNS: vorige capture nog bezig',dnsState_unavailable:'DNS: capturestatus niet beschikbaar'
 });
 Object.assign(VPNIPC_I18N.en,{
-  help:'Help',routing:'Domain routes',dvrChoose:'Choose DVR policy',dvrDomain:'Domain name',dvrAdd:'Add domain',dvrInvalid:'Choose a policy and a valid domain without URL or credentials.',dvrConfirm:'Permanently add this domain to the DVR policy? A local full backup is created first. Existing connections may change route.',
+  help:'Help',routing:'Domain routes',dvrChoose:'Choose DVR policy',dvrDomain:'EPG URL or hostname',dvrAdd:'Always route via VPN',dvrInvalid:'Choose a DVR policy and supply a hostname or HTTP(S) EPG URL without embedded credentials.',dvrConfirm:'Always send this host through the selected VPN policy without IPTV learning? Only the hostname is saved. A local backup is created first.',
   checkUpdate:'Check update',installUpdate:'Install update',forceUpdate:'Reinstall',updateConfirm:'Install update? A mandatory local backup is made before changes. Your settings are preserved.',forceUpdateConfirm:'Reinstall the published version even if its version number is unchanged? A mandatory local backup is made before changes.',saveBeforeUpdate:'Save or discard your modified settings first.',
   helpLists:'Candidate: temporarily discovered IP, still being assessed. Waiting: ready for routing but an existing connection must end first, to avoid changing the exit IP of an active stream. Final: IP in the VPN list with an expiry time; not permanent.',
   helpRouting:'IP Catcher reuses a suitable existing DVR IPSet or creates its own temporary IPSets and marking rules. These managed sets are not new permanent DVR domain policies. Add domain routes separately to an existing DVR policy. Learning supports IPv4 only.',
@@ -819,10 +821,29 @@ function applyAction(action){
     });
   var progress=byId('maintenanceProgress');if(progress)progress.hidden=action.indexOf('update')<0;
 }
+// EPG URLs may contain private tokens in their path/query. Only send their
+// validated hostname to the router; the DVR policy works at IP level.
+function forceVpnHostname(input){
+  var value=String(input||'').trim();
+  if(!value||value.length>2048)return '';
+  if(/^https?:\/\//i.test(value)){
+    try{
+      var url=new URL(value);
+      if(url.username||url.password||!/^https?:$/.test(url.protocol))return '';
+      value=url.hostname.toLowerCase();
+    }catch(e){return '';}
+  }else if(/[:\/?#@]/.test(value))return '';
+  value=value.toLowerCase();
+  if(/^[0-9.]+$/.test(value))return '';
+  if(value.length>253||value.split('.').length<2||!value.split('.').every(function(part){
+    return part.length<=63&&/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(part);
+  }))return '';
+  return value;
+}
 function addDvrDomain(){
   if(actionBusy)return;
-  var domain=byId('dvrDomain').value.trim().toLowerCase(),policy=byId('dvrPolicy').value;
-  if(domain.length>253||domain.split('.').length<2||!domain.split('.').every(function(s){return s.length<=63&&/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(s);})||!/^[A-Za-z0-9_-]{1,24}$/.test(policy)){showToast(t('dvrInvalid'));return;}
+  var domain=forceVpnHostname(byId('dvrDomain').value),policy=byId('dvrPolicy').value;
+  if(!domain||!/^[A-Za-z0-9_-]{1,24}$/.test(policy)){showToast(t('dvrInvalid'));return;}
   if(!window.confirm(t('dvrConfirm')+'\n'+domain+' → '+policy))return;
   actionBusy=true;
   var nonce='v'+Date.now().toString(36);
@@ -1669,12 +1690,12 @@ window.addEventListener('load', function(){
                   <div class="panel-title" data-i18n="routing">Domeinroutes</div>
                   <div class="panel-body">
                     <div class="liveFilters">
-                      <label><span data-i18n="dvrDomain">Domeinnaam</span><input id="dvrDomain" maxlength="253" placeholder="example.org" autocapitalize="none" spellcheck="false"></label>
+                      <label><span data-i18n="dvrDomain">EPG URL / hostnaam</span><input id="dvrDomain" maxlength="2048" placeholder="https://epg.example.com/guide.xml.gz" autocapitalize="none" spellcheck="false"></label>
                       <label><span data-i18n="dvrChoose">Kies bestaande DVR-policy</span><select id="dvrPolicy"></select></label>
-                      <button type="button" class="btn blue" onclick="addDvrDomain()" data-i18n="dvrAdd">Domein toevoegen</button>
+                      <button type="button" class="btn blue" onclick="addDvrDomain()" data-i18n="dvrAdd">Altijd via VPN instellen</button>
                     </div>
                     <p id="dvrResult" role="status"></p>
-                    <p class="muted" data-i18n="helpRouting"></p>
+                    <p class="muted" data-i18n="forceVpnHelp">Een volledige EPG-URL mag: alleen de hostnaam wordt via de gekozen VPN gerouteerd. Deze handmatige policy gaat vóór de automatische IPTV-lijst; gedeelde CDN-IP's en DoH kunnen niet per URL-pad worden onderscheiden.</p><p class="muted" data-i18n="helpRouting"></p>
                   </div>
                 </div>
                 <div class="page" id="page_help">
