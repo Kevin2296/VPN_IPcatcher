@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eux
+set -eu
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 TMP="/tmp/vpnipc-provider-test-$$"
 mkdir "$TMP"
