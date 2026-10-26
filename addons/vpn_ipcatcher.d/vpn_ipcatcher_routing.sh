@@ -55,7 +55,7 @@ set_check(){
 }
 valid_policy(){
   case "$1" in ''|*[!A-Za-z0-9_-]*) return 1 ;; esac
-  [ "${#1}" -le 16 ]
+  [ "${#1}" -le 24 ]
 }
 valid_connection(){
   case "$1" in ovpnc[1-5]|wgc[1-5]) return 0 ;; esac
