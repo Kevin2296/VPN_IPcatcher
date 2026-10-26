@@ -221,8 +221,16 @@ managed_prepare(){
     (umask 077; printf '%s\n%s\n' "$SET" "$MARK/$MASK" > "$owner.new") && mv "$owner.new" "$owner" || return 1
   fi
   for chain in PREROUTING OUTPUT; do
-    $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null && continue
-    $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
+    # Managed auto-IPTV routing must never overwrite a preceding explicit
+    # domain-policy VPN mark. Migrate the old unguarded rule in-place.
+    old_count=0
+    while $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null; do
+      $IPTABLES -t mangle -D "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
+      old_count=$((old_count+1))
+      [ "$old_count" -lt 20 ] || { error 'Te veel oude managed markregels; controleer handmatig.'; return 1; }
+    done
+    $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null && continue
+    $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
   done
 }
 remove_managed_rules(){
@@ -277,9 +285,20 @@ rule_check(){
 }
 firewall_check(){
   rules="$($IPTABLES -t mangle -S 2>/dev/null)" || return 1
-  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" '
-    {name=""; mark=""; for(i=1;i<=NF;i++) {if($i=="--match-set") name=$(i+1); if($i=="--set-xmark" || $i=="--set-mark") mark=$(i+1)}
-     if(name==set && mark!="") {if(mark!=expected && mark!=plain) bad=1; else {if($2=="PREROUTING") pre=1; if($2=="OUTPUT") out=1}}
+  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" -v mode="$MODE" '
+    {name=""; mark=""; guard=""; for(i=1;i<=NF;i++) {
+       if($i=="--match-set") name=$(i+1)
+       if($i=="--set-xmark" || $i=="--set-mark") mark=$(i+1)
+       if($i=="--mark") guard=$(i+1)
+     }
+     if(name==set && mark!="") {
+       if(mark!=expected && mark!=plain) bad=1
+       else {
+         if(mode=="managed-v1" && guard!="0x0/0xf000") bad=1
+         if($2=="PREROUTING") pre=1
+         if($2=="OUTPUT") out=1
+       }
+     }
      if((name==set "_cand" || name==set "_exclude" || name==set "_wait") && mark!="") bad=1}
     END{exit (bad || !pre || !out)?1:0}' || { error 'Lijstmarkeringen ontbreken of conflicteren. Herstel de gekozen DVR-policy en verwijder conflicterende oude regels gericht.'; return 1; }
 }
