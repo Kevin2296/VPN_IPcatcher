@@ -838,8 +838,8 @@ refresh_provider_ranges(){
   [ "$PROVIDER_RANGE_AUTO" = yes ] || return 0
   now="$(current_epoch)"
   case "$now" in ''|*[!0-9]*) return 1 ;; esac
-  old="$(cat "$PROVIDER_CACHE_TS" 2>/dev/null)"
-  lasttry="$(cat "$PROVIDER_ATTEMPT" 2>/dev/null)"
+  old="$(cat "$PROVIDER_CACHE_TS" 2>/dev/null || true)"
+  lasttry="$(cat "$PROVIDER_ATTEMPT" 2>/dev/null || true)"
   case "$old" in ''|*[!0-9]*) old=0 ;; esac
   case "$lasttry" in ''|*[!0-9]*) lasttry=0 ;; esac
   if [ "$mode" != force ] && [ -s "$PROVIDER_CACHE" ] &&
