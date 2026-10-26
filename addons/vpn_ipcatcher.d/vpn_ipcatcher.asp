@@ -834,6 +834,7 @@ function forceVpnHostname(input){
     }catch(e){return '';}
   }else if(/[:\/?#@]/.test(value))return '';
   value=value.toLowerCase();
+  if(/^[0-9.]+$/.test(value))return '';
   if(value.length>253||value.split('.').length<2||!value.split('.').every(function(part){
     return part.length<=63&&/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(part);
   }))return '';
