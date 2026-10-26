@@ -762,14 +762,19 @@ rebuild_exclude_net_set(){
   done
   # Merge provider-owned network prefixes into the private non-routing exclude IPSet.
   if [ "$PROVIDER_RANGE_AUTO" = yes ] && [ -r "$PROVIDER_CACHE" ]; then
+    provider_restore="$CACHE_DIR/provider-restore.$(current_epoch)"
+    : > "$provider_restore"
     while read -r pname cidr extra; do
       case "$pname" in ''|'#'*) continue ;; esac
-      [ -z "$extra" ] || { $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+      [ -z "$extra" ] || { rm -f "$provider_restore"; $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
       provider_is_selected "$pname" || continue
-      valid_cidr "$cidr" || { $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
-      $IPSET add "$exclude_build" "$cidr" -exist >/dev/null 2>&1 ||
-        { $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+      printf 'add %s %s -exist\n' "$exclude_build" "$cidr" >> "$provider_restore"
     done < "$PROVIDER_CACHE"
+    if [ -s "$provider_restore" ]; then
+      $IPSET restore -exist < "$provider_restore" >/dev/null 2>&1 ||
+        { rm -f "$provider_restore"; $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
+    fi
+    rm -f "$provider_restore"
   fi
   # Keep the previous exclusions active until the entire replacement is ready.
   $IPSET swap "$EXCLUDE_NET_SET" "$exclude_build" >/dev/null 2>&1
@@ -1322,7 +1327,6 @@ flow_scan_candidates(){
   [ -n "$CT" ] || return 0
   [ "$ACCT_OK" = "1" ] || return 0
   refresh_exclusion_ip_cache auto
-  refresh_provider_ranges auto || :
 
   mkdir -p "$CACHE_DIR" 2>/dev/null
   curfile="${FLOW_STATE}.cur"
@@ -1576,11 +1580,17 @@ run_engine(){
     refresh_provider_ranges auto || :
   ) &
 
+  provider_last_check="$(current_epoch)"
   while true; do
-    echo $$ > "$LOCK"
-    echo $$ > "$ENGINE_PIDFILE"
+    echo $ > "$LOCK"
+    echo $ > "$ENGINE_PIDFILE"
     ensure_workers_alive
     write_web_status
+    check_time="$(current_epoch)"
+    if [ $((check_time-provider_last_check)) -ge 3600 ]; then
+      provider_last_check="$check_time"
+      (refresh_provider_ranges auto || :) &
+    fi
     sleep 10
   done
 }
