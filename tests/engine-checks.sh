@@ -135,11 +135,15 @@ add_candidate_once 8.8.4.5 test
 echo 'PASS: candidate timeout is not refreshed for existing members'
 
 CT=conntrack_mock
+ROUTING_HELPER="$TMP/source-probe"
+printf '#!/bin/sh\n[ "$1" = source-unprotected ]\n' > "$ROUTING_HELPER"
+chmod +x "$ROUTING_HELPER"
 conntrack_mock(){
   printf '%s\n' 'tcp 6 300 ESTABLISHED src=192.168.1.20 dst=8.8.4.5 sport=50000 dport=443 packets=2 bytes=100 src=8.8.4.5 dst=192.168.1.20 sport=443 dport=50000 packets=20 bytes=4000000'
 }
 ipset_mock(){
   case "$1" in
+    test) [ "$2" = VPNIPC-SOURCE ] && [ "${protect_tv:-no}" = yes ] && [ "$3" = 192.168.1.20 ] ;;
     list) printf 'Members:\n8.8.4.5 timeout 500 packets 0 bytes 0\n' ;;
     del) echo del >> "$TMP/promoted" ;;
   esac
@@ -157,6 +161,14 @@ SOURCE_IPS="192.168.1.99"
 promote_candidates
 [ ! -f "$TMP/promoted" ]
 echo 'PASS: promotion includes download bytes and respects source filter'
+SOURCE_IPS=''; protect_tv=yes
+promote_candidates
+[ ! -f "$TMP/promoted" ]
+protect_tv=no; BYPASS_SOURCE_IPS=192.168.1.20
+promote_candidates
+[ ! -f "$TMP/promoted" ]
+BYPASS_SOURCE_IPS=''
+echo 'PASS: automatic and manual bypass sources never contribute promotion bytes'
 sed "s|^CONF=.*|CONF=\"$TMP/cli-config\"|" "$ROOT/scripts/vpn_ipcatcher.real.sh" > "$TMP/validator"
 default_config > "$TMP/cli-config"
 sh "$TMP/validator" validate-config

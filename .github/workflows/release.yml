@@ -25,6 +25,7 @@ jobs:
       - name: Shell checks
         run: |
           set -eu
+          sha256sum -c SHA256SUMS
           for script in install.sh backup.sh scripts/vpn_ipcatcher*.sh addons/vpn_ipcatcher.d/*.sh tests/*-checks.sh; do
             sh -n "$script"
           done
@@ -46,6 +47,13 @@ jobs:
           done
       - name: WebUI checks
         run: node tests/webui-checks.js
+      - name: BusyBox precedence validation
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y busybox
+          busybox ash -n addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh
+          busybox ash -n scripts/vpn_ipcatcher.real.sh
+          busybox ash tests/precedence-checks.sh
 
   release:
     needs: test

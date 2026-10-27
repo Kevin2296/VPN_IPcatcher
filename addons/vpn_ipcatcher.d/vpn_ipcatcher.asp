@@ -489,7 +489,7 @@ var VPNIPC_I18N={
     liveFlows:'Liveflows', log:'Log', status:'Status', candidate:'Kandidaat', final:'Definitief', resolvedIps:'Opgeloste IP’s',
     configuration:'Configuratie', configNote:'Wijzigingen worden opgeslagen in /jffs/scripts/vpn_ipcatcher.conf. Presetvinkjes wijzigen direct de velden hieronder, maar worden pas definitief na Config opslaan of Opslaan + herstarten.',
     interfaces:'Interfaces', ipsetName:'IPSet-naam', ports:'Poorten', promoteMode:'Promotiemodus', promoteInterval:'Promotie-interval', minAge:'Minimale leeftijd', minBytes:'Minimale bytes',
-    candidateTimeout:'Kandidaat-time-out', finalTimeout:'Definitieve time-out', streamFlowScan:'Streamflow-scan', sourceIpsLabel:'Bron-IP’s', streamScanInterval:'Streamscan-interval',
+    candidateTimeout:'Kandidaat-time-out', finalTimeout:'Definitieve time-out', streamFlowScan:'Streamflow-scan', sourceIpsLabel:'Bron-IP’s', bypassSourceLabel:'Extra vaste VPN-bronnen (IPv4, spaties)', precedenceLabel:'Automatische VPN-voorrang', precedenceUnknown:'Nog niet gevalideerd; controleer VPN/routing', bypassDetected:'Beschermde bronnen (inclusief VPN Director)', streamScanInterval:'Streamscan-interval',
     streamMinBytes:'Minimale streambytes', streamMinDelta:'Minimale streamtoename', requireGrowth:'Verkeerstoename vereist', streamTarget:'Streamdoel', excludeResolver:'Uitsluitresolver',
     resolverInterval:'Resolverinterval', reverseDnsCheck:'Omgekeerde DNS-controle', genericHostScan:'Generieke hostscan', externalDns:'Externe DNS', externalDnsServer:'Externe DNS-server',
     retryDelay:'Wachttijd opnieuw proberen', maxRetryDelay:'Maximale wachttijd', excludeIps:'Uitgesloten IP’s', excludeNets:'Uitgesloten netwerken/bereiken', excludeDomains:'Uitgesloten domeinen',
@@ -525,7 +525,7 @@ var VPNIPC_I18N={
     liveFlows:'Live flows', log:'Log', status:'Status', candidate:'Candidate', final:'Final', resolvedIps:'Resolved IPs',
     configuration:'Configuration', configNote:'Changes are stored in /jffs/scripts/vpn_ipcatcher.conf. Preset checkboxes update the fields below immediately, but become permanent only after Save configuration or Save + restart.',
     interfaces:'Interfaces', ipsetName:'IPSet name', ports:'Ports', promoteMode:'Promote mode', promoteInterval:'Promote interval', minAge:'Minimum age', minBytes:'Minimum bytes',
-    candidateTimeout:'Candidate timeout', finalTimeout:'Final timeout', streamFlowScan:'Stream flow scan', sourceIpsLabel:'Source IPs', streamScanInterval:'Stream scan interval',
+    candidateTimeout:'Candidate timeout', finalTimeout:'Final timeout', streamFlowScan:'Stream flow scan', sourceIpsLabel:'Source IPs', bypassSourceLabel:'Additional fixed VPN sources (IPv4, spaces)', precedenceLabel:'Automatic VPN precedence', precedenceUnknown:'Not validated yet; check VPN/routing', bypassDetected:'Protected sources (including VPN Director)', streamScanInterval:'Stream scan interval',
     streamMinBytes:'Stream minimum bytes', streamMinDelta:'Stream minimum delta', requireGrowth:'Require traffic growth', streamTarget:'Stream target', excludeResolver:'Exclusion resolver',
     resolverInterval:'Resolver interval', reverseDnsCheck:'Reverse DNS check', genericHostScan:'Generic host scan', externalDns:'External DNS', externalDnsServer:'External DNS server',
     retryDelay:'Retry delay', maxRetryDelay:'Maximum retry delay', excludeIps:'Exclude IPs', excludeNets:'Exclude networks/ranges', excludeDomains:'Exclude domains',
@@ -709,7 +709,7 @@ function normalizeConfigValue(value){
 }
 function buildConfigPayload(){
   // Send only changed values: preset changes must not overwrite unrelated settings.
-  var keys=['INTERFACES','IPSET_NAME','PORTS','PROMOTE_MODE','PROMOTE_EVERY','MIN_AGE','MIN_BYTES','CANDIDATE_TIMEOUT','FINAL_TIMEOUT','STREAM_FLOW_SCAN','SOURCE_IPS','STREAM_SCAN_EVERY','STREAM_MIN_BYTES','STREAM_MIN_DELTA','STREAM_REQUIRE_GROWTH','STREAM_FLOW_TARGET','EXCLUDE_DOMAINS','EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_RESOLVE_CACHE','EXCLUDE_RESOLVE_EVERY','PROVIDER_RANGE_AUTO','REVERSE_DNS_CHECK','CAPTURE_GENERIC_HOSTNAMES','ALLOW_EXTERNAL_DNS','EXTERNAL_DNS_SERVER','RETRY_DELAY','MAX_RETRY_DELAY'];
+  var keys=['INTERFACES','IPSET_NAME','PORTS','PROMOTE_MODE','PROMOTE_EVERY','MIN_AGE','MIN_BYTES','CANDIDATE_TIMEOUT','FINAL_TIMEOUT','STREAM_FLOW_SCAN','SOURCE_IPS','BYPASS_SOURCE_IPS','STREAM_SCAN_EVERY','STREAM_MIN_BYTES','STREAM_MIN_DELTA','STREAM_REQUIRE_GROWTH','STREAM_FLOW_TARGET','EXCLUDE_DOMAINS','EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_RESOLVE_CACHE','EXCLUDE_RESOLVE_EVERY','PROVIDER_RANGE_AUTO','REVERSE_DNS_CHECK','CAPTURE_GENERIC_HOSTNAMES','ALLOW_EXTERNAL_DNS','EXTERNAL_DNS_SERVER','RETRY_DELAY','MAX_RETRY_DELAY'];
   var lines=[];
   keys.forEach(function(k){
     var el=byId('cfg_'+k);
@@ -1240,6 +1240,8 @@ function updateOverview(d){
   setText('overviewEngineState', d.engine==='running' ? t('serviceRunning') : t('serviceStopped'));
     setText('overviewCapture', 'tcpdump: '+(d.tcpdump_count||'-')+' - '+t('updated')+': '+(d.last_update||'-'));
   setText('overviewSourceIps', (d.config && d.config.SOURCE_IPS) ? d.config.SOURCE_IPS : t('allDevices'));
+  setText('overviewPrecedence', d.precedence_status || t('precedenceUnknown'));
+  setText('overviewBypass', d.automatic_sources || '-');
   var select=byId('dvrPolicy');
   if(select){
     var value=select.value,options='<option value="">'+escapeHtml(t('dvrChoose'))+'</option>';
@@ -1389,7 +1391,7 @@ function updateExclusionPreview(){
 function organizeSettings(){
   var grid=document.querySelector('#page_config .formgrid');
   if(!grid) return;
-  var groups=[['devices',['INTERFACES','IPSET_NAME','SOURCE_IPS','PORTS']],['learning',['PROMOTE_MODE','STREAM_FLOW_SCAN','STREAM_FLOW_TARGET']],['advanced',[]],['exclusions',['EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_DOMAINS']]];
+  var groups=[['devices',['INTERFACES','IPSET_NAME','SOURCE_IPS','BYPASS_SOURCE_IPS','PORTS']],['learning',['PROMOTE_MODE','STREAM_FLOW_SCAN','STREAM_FLOW_TARGET']],['advanced',[]],['exclusions',['EXCLUDE_IPS','EXCLUDE_NETS','EXCLUDE_DOMAINS']]];
   var fields={};
   Array.prototype.slice.call(grid.children).forEach(function(el){if(el.id&&el.id.indexOf('cfg_')===0)fields[el.id.slice(4)]=[el.previousElementSibling,el];});
   groups[2][1]=Object.keys(fields).filter(function(k){return !groups.some(function(g){return g[1].indexOf(k)>=0;});});
@@ -1524,7 +1526,7 @@ window.addEventListener('load', function(){
                         <table class="data"><tbody>
                           <tr><th data-i18n="engine">Engine</th><td id="overviewEngineState">-</td></tr>
                           <tr><th data-i18n="capture">Verkeer vastleggen</th><td id="overviewCapture">-</td></tr>
-                          <tr><th data-i18n="sourceIps">Bron-IP’s</th><td id="overviewSourceIps">-</td></tr>
+                          <tr><th data-i18n="precedenceLabel">VPN precedence</th><td id="overviewPrecedence">-</td></tr><tr><th data-i18n="bypassDetected">Protected sources</th><td id="overviewBypass">-</td></tr><tr><th data-i18n="sourceIps">Bron-IP’s</th><td id="overviewSourceIps">-</td></tr>
                           <tr><th data-i18n="tip">Tip</th><td data-i18n-html="overviewTip"></td></tr>
                         </tbody></table>
                       </div>
@@ -1609,7 +1611,7 @@ window.addEventListener('load', function(){
                         <label data-i18n="finalTimeout">Final timeout</label><input id="cfg_FINAL_TIMEOUT" placeholder="7200">
                         <label data-i18n="streamFlowScan">Stream flow scan</label><select id="cfg_STREAM_FLOW_SCAN"><option value="yes" data-i18n="yes">ja</option><option value="no" data-i18n="no">nee</option></select>
                         <label data-i18n="sourceIpsLabel">Source IPs</label><input id="cfg_SOURCE_IPS" data-i18n-placeholder="emptyAllDevices" placeholder="leeg = alle apparaten">
-                        <label data-i18n="streamScanInterval">Stream scan interval</label><input id="cfg_STREAM_SCAN_EVERY" placeholder="5">
+                        <label data-i18n="bypassSourceLabel">Additional fixed VPN sources</label><input id="cfg_BYPASS_SOURCE_IPS" placeholder="192.168.178.82"><label data-i18n="streamScanInterval">Stream scan interval</label><input id="cfg_STREAM_SCAN_EVERY" placeholder="5">
                         <label data-i18n="streamMinBytes">Stream min bytes</label><input id="cfg_STREAM_MIN_BYTES" placeholder="3000000">
                         <label data-i18n="streamMinDelta">Stream min delta</label><input id="cfg_STREAM_MIN_DELTA" placeholder="750000">
                         <label data-i18n="requireGrowth">Require traffic growth</label><select id="cfg_STREAM_REQUIRE_GROWTH"><option value="yes" data-i18n="yes">ja</option><option value="no" data-i18n="no">nee</option></select>

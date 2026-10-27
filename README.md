@@ -598,8 +598,14 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.12.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.15.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**2.9.15 Watchdog/PID hotfix:** v2.9.14 overwrote the valid engine PID every ten seconds with a literal dollar character; the watchdog subsequently restarted the service each minute. v2.9.15 keeps the original numeric PID and prevents stale engines from deleting replacement worker/PID state. Existing EPG/DVR, IPTV and provider-exclusion configuration is preserved. Verify the engine PID remains stable across multiple cron watchdog checks.
+
+**2.9.14 Always-VPN EPG/XMLTV hostnames:** Open **Domain routes** in the WebGUI; paste `https://epg.example.org/guide.xml.gz`, select the specific DVR policy/VPN and click **Always route via VPN**. Only the hostname is submitted (no path or token); DVR immediately resolves and routes it, bypassing IPTV auto-learning. The router verifies an active IPv4 destination in the chosen policy, refuses cross-policy duplicate names, and protects existing VPN marks in its managed-v1 IP routing mode. Redirect hostnames must be assigned separately; shared CDN IPs are not routable per URL path.
+
+**2.9.13 Provider-owned network exclusions:** Daily RIPEstat IPv4 prefix lookup for Google, Netflix Open Connect, Meta, GitHub and Apple when corresponding domains are excluded. Settings: PROVIDER_RANGE_AUTO and `provider-ranges-refresh`/`provider-ranges-status`. Not all endpoints hosted on shared cloud/CDNs can be safely excluded, particularly Dahua/Imou.
 
 **2.9.12 IPTV known-service guard:** Excludes the documented YouTube/Google 136.22.128.0/19 edge range from learned IPTV routes and adds opt-in Reddit, Claude and ChatGPT presets. Existing routing and SOURCE_IPS remain unchanged. Use `clean-excluded` when no IPTV stream is playing to remove previously learned excluded IPs. This is a targeted fix, not a complete Google-IP exclusion.
 

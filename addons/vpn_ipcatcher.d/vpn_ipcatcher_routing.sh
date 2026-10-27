@@ -10,6 +10,201 @@ POLICIES="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 GLOBAL="/jffs/configs/domain_vpn_routing/global.conf"
 TABLES="/etc/iproute2/rt_tables"
 CONFIG_LOCK="/tmp/vpn_ipcatcher_config.lock"
+DIRECTOR="/jffs/openvpn/vpndirector_rulelist"
+SOURCE_SET=VPNIPC-SOURCE
+REMOTE_SET=VPNIPC-REMOTE
+DOMAIN_SET=VPNIPC-DOMAINS
+PRECEDENCE_CACHE=/tmp/vpn_ipcatcher_precedence.cache
+PRECEDENCE_STATUS=/tmp/vpn_ipcatcher_precedence.status
+# Separate from DVR's 0xf000 and Merlin source rules. The late RPDB lookup is
+# essential: a newly applied Director rule wins even before guard refresh.
+DYNAMIC_MARK=0x1000000/0x1000000
+dynamic_rule_prepare(){
+  dynamic_rules="$($IP rule show)" || return 1
+  old_connection="$(sed -n '2p' "$SELECTION" 2>/dev/null)"
+  if [ "${ALLOW_REBIND:-no}" = yes ] && valid_connection "$old_connection" && [ "$old_connection" != "$CONNECTION" ] &&
+     [ "$(sed -n '2p' "$ADDON/managed-VIPC-$old_connection" 2>/dev/null)" = "$DYNAMIC_MARK" ]; then
+    hold_routing || return 1
+    $IP rule del from all fwmark "$DYNAMIC_MARK" lookup "$old_connection" priority 31000 || return 1
+    dynamic_rules="$($IP rule show)" || return 1
+  fi
+  printf '%s\n' "$dynamic_rules" | awk '{for(i=1;i<=NF;i++)if($i=="fwmark")print $(i+1)}' |
+    while IFS= read -r other_mark; do
+      [ "$other_mark" = "$DYNAMIC_MARK" ] && continue
+      printf '%s\n' "$other_mark" | grep -Eq '^0x[0-9a-fA-F]{1,8}(/0x[0-9a-fA-F]{1,8})?$' || exit 1
+      case "$other_mark" in */*) other_mask="${other_mark#*/}" ;; *) other_mask=0xffffffff ;; esac
+      [ "$((other_mask & 0x1000000))" = 0 ] || exit 1
+    done || { error 'Dynamisch mark-bit conflicteert met bestaande RPDB-maskers.'; return 1; }
+  printf '%s\n' "$dynamic_rules" | awk -v mark="$DYNAMIC_MARK" -v connection="$CONNECTION" '
+    {p=$1+0; if((p==31000 || p==31001) && $0 !~ /fwmark/) bad=1
+     if(p>=31000 && ($3!="all" || $4=="to")) bad=1}
+    /fwmark/ {for(i=1;i<=NF;i++)if($i=="fwmark")m=$(i+1)
+      p=$1+0
+      if(m==mark && p==31000 && $NF==connection) next
+      if(m==mark && p==31001 && $NF=="unreachable") next
+      if(p>=31000 || m==mark) bad=1}
+    END{exit bad?1:0}' || { error 'Dynamische RPDB-prioriteit/mark is al in gebruik.'; return 1; }
+  # Terminal failure rule is installed first and remains if the VPN table empties.
+  printf '%s\n' "$dynamic_rules" | grep -F "fwmark $DYNAMIC_MARK" | grep -q 'unreachable' ||
+    $IP rule add unreachable from all fwmark "$DYNAMIC_MARK" priority 31001 || return 1
+  printf '%s\n' "$dynamic_rules" | grep -F "fwmark $DYNAMIC_MARK" | grep -q "lookup $CONNECTION\$" ||
+    $IP rule add from all fwmark "$DYNAMIC_MARK" lookup "$CONNECTION" priority 31000 || return 1
+}
+# These sets belong exclusively to Catcher. External rule files/sets are read-only.
+valid_network(){
+  printf '%s\n' "$1" | awk '
+    NF!=1 {exit 1}
+    {n=split($0,a,"/"); if(n>2 || (n==2 && (a[2]!~/^[0-9]+$/ || a[2]>32))) exit 1
+     if(split(a[1],b,".")!=4) exit 1
+     for(i=1;i<=4;i++) if(b[i]!~/^[0-9]+$/ || b[i]>255 || (length(b[i])>1 && substr(b[i],1,1)=="0")) exit 1}
+    END{if(NR!=1) exit 1}'
+}
+director_rows(){
+  # Merlin stores five > separated fields, with < between records (not nvram).
+  [ -f "$DIRECTOR" ] && [ -r "$DIRECTOR" ] && [ ! -L "$DIRECTOR" ] || {
+    error 'VPN Director-regelbestand ontbreekt/onleesbaar; automatische voorrang niet bewezen.'; return 1;
+  }
+  awk -v RS='<' -F '>' '
+    {sub(/[\r\n]+$/, "", $0)}
+    NF==0 {next}
+    NF!=5 {bad=1; next}
+    $1=="0" {next}
+    $1!="1" || $5!~/^(WAN|OVPN[1-5]|WGC[1-5])$/ {bad=1; next}
+    {print $3 "|" $4 "|" $5}
+    END{exit bad?1:0}' "$DIRECTOR"
+}
+protected_sources(){
+  rows="$(director_rows)" || return 1
+  manual="$(setting "$CONF" BYPASS_SOURCE_IPS)"
+  for source in $manual; do valid_network "$source" || return 1; printf '%s\n' "$source"; done
+  printf '%s\n' "$rows" | while IFS='|' read -r source remote target; do
+    [ -n "$source" ] && [ "$source" != 0.0.0.0 ] || continue
+    valid_network "$source" || exit 1
+    # Conservatively protect the entire source even for source+destination rules.
+    printf '%s\n' "$source"
+  done
+}
+source_unprotected(){
+  valid_network "$1" || return 1
+  source_networks="$(protected_sources)" || return 1
+  printf '%s\n' "$source_networks" | awk -v source="$1" '
+    function number(ip, a){split(ip,a,"."); return ((a[1]*256+a[2])*256+a[3])*256+a[4]}
+    NF {n=split($1,a,"/"); prefix=n==2?a[2]:32; block=1
+      for(bit=prefix;bit<32;bit++) block*=2
+      if(int(number(source)/block)==int(number(a[1])/block)) protected=1}
+    END{exit protected?1:0}'
+}
+guard_add(){
+  # hash:net cannot store /0. Cover it with two /1 networks instead.
+  case "$2" in */0)
+    $IPSET add "$1" 0.0.0.0/1 -exist && $IPSET add "$1" 128.0.0.0/1 -exist ;;
+    *) $IPSET add "$1" "$2" -exist ;;
+  esac
+}
+precedence_prepare(){
+  # Stage, validate and atomically swap membership. Never flush a live guard.
+  sources="$(protected_sources)" || return 1
+  rows="$(director_rows)" || return 1
+  [ -r "$POLICIES" ] || return 1
+  explicit="$(awk -F '|' 'NF && $1 !~ /^#/ {if(NF<4)exit 1; print $1}' "$POLICIES")" || return 1
+  for policy in $explicit; do
+    valid_policy "$policy" || return 1
+    $IPSET list "DVR-$policy-v4" >/dev/null 2>&1 || { error "Expliciete DVR-lijst ontbreekt: $policy"; return 1; }
+  done
+  signature="$(printf '%s\n%s\n%s\n' "$sources" "$rows" "$explicit" | cksum)"
+  if [ "$(cat "$PRECEDENCE_CACHE" 2>/dev/null)" = "$signature" ] &&
+     $IPSET list "$SOURCE_SET" >/dev/null 2>&1 && $IPSET list "$REMOTE_SET" >/dev/null 2>&1 && $IPSET list "$DOMAIN_SET" >/dev/null 2>&1; then return 0; fi
+  for guard in "$SOURCE_SET" "$REMOTE_SET"; do
+    $IPSET create "$guard" hash:net family inet -exist || return 1
+    $IPSET create "$guard-new" hash:net family inet -exist || return 1
+    $IPSET flush "$guard-new" || return 1
+  done
+  for source in $sources; do guard_add "$SOURCE_SET-new" "$source" || return 1; done
+  printf '%s\n' "$rows" | while IFS='|' read -r source remote target; do
+    [ -n "$remote" ] && [ "$remote" != 0.0.0.0 ] || continue
+    valid_network "$remote" || exit 1
+    guard_add "$REMOTE_SET-new" "$remote" || exit 1
+  done || return 1
+  $IPSET create "$DOMAIN_SET" list:set size 256 -exist || return 1
+  $IPSET create "$DOMAIN_SET-new" list:set size 256 -exist || return 1
+  $IPSET flush "$DOMAIN_SET-new" || return 1
+  $IPSET add "$DOMAIN_SET-new" "$REMOTE_SET" -exist || return 1
+  # Include every explicit policy, including WAN, and even the old bound list.
+  # Missing sets are ambiguous (e.g. offline VPN); retain old guards and fail closed.
+  for policy in $explicit; do
+    valid_policy "$policy" || return 1
+    $IPSET list "DVR-$policy-v4" >/dev/null 2>&1 || { error "Expliciete DVR-lijst ontbreekt: $policy"; return 1; }
+    $IPSET add "$DOMAIN_SET-new" "DVR-$policy-v4" -exist || return 1
+  done
+  hold_routing || return 1
+  $IPSET swap "$SOURCE_SET-new" "$SOURCE_SET" &&
+    $IPSET swap "$REMOTE_SET-new" "$REMOTE_SET" &&
+    $IPSET swap "$DOMAIN_SET-new" "$DOMAIN_SET" || return 1
+  # Drop obsolete external set references, so removed DVR policies can be deleted.
+  $IPSET flush "$DOMAIN_SET-new" || return 1
+  printf '%s\n' "$signature" > "$PRECEDENCE_CACHE"
+}
+hold_routing(){
+  # Conservative failure state. Never remove the last VPN mark and expose WAN.
+  for hold_chain in FORWARD OUTPUT; do
+    $IPTABLES -t filter -C "$hold_chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-HOLD-$POLICY" -j REJECT 2>/dev/null ||
+      $IPTABLES -t filter -I "$hold_chain" 1 -m set --match-set "$SET" dst -m comment --comment "VPNIPC-HOLD-$POLICY" -j REJECT || return 1
+  done
+}
+release_hold(){
+  for hold_chain in FORWARD OUTPUT; do
+    hold_count=0
+    while $IPTABLES -t filter -C "$hold_chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-HOLD-$POLICY" -j REJECT 2>/dev/null; do
+      $IPTABLES -t filter -D "$hold_chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-HOLD-$POLICY" -j REJECT || return 1
+      hold_count=$((hold_count+1)); [ "$hold_count" -lt 20 ] || return 1
+    done
+  done
+}
+migrate_binding(){
+  [ "${MODE:-}" != managed-v1 ] || return 0
+  # A shared DVR set cannot distinguish old learned IPs from explicit domains.
+  # Leave it intact; start with an empty owned set, and protect the original set.
+  binding_read && rule_check && route_check || return 1
+  [ ! -e "$ADDON/precedence-migration" ] || { error 'Onvoltooide migratie; herstel de bewaarde configuratie/selectie.'; return 1; }
+  mkdir "$ADDON/precedence-migration" || return 1
+  chmod 700 "$ADDON/precedence-migration" || return 1
+  cp -p "$CONF" "$ADDON/precedence-migration/config" &&
+    cp -p "$SELECTION" "$ADDON/precedence-migration/selection" || return 1
+  printf '%s\n' pending > "$ADDON/precedence-migration/state" || return 1
+  POLICY="VIPC-$CONNECTION"; MODE=managed-v1; SET="DVR-$POLICY-v4"
+  if managed_prepare && firewall_check; then
+    awk -v set="$SET" '/^IPSET_NAME=/{if(!seen++) print "IPSET_NAME=\"" set "\""; next} {print} END{if(!seen)print "IPSET_NAME=\"" set "\""}' "$CONF" > "$CONF.routing-new" &&
+      chmod 600 "$CONF.routing-new" && mv "$CONF.routing-new" "$CONF" &&
+      printf '%s\n%s\nmanaged-v1\n' "$POLICY" "$CONNECTION" > "$SELECTION.new" &&
+      chmod 600 "$SELECTION.new" && mv "$SELECTION.new" "$SELECTION" && binding_check &&
+      printf '%s\n' committed > "$ADDON/precedence-migration/state" && return 0
+  fi
+  cp -p "$ADDON/precedence-migration/config" "$CONF"
+  cp -p "$ADDON/precedence-migration/selection" "$SELECTION"
+  error 'Migratie afgebroken; oorspronkelijke binding hersteld. Geen gedeelde DVR-lijst gewijzigd.'
+  return 1
+}
+recover_migration(){
+  [ "$(cat "$ADDON/precedence-migration/state" 2>/dev/null)" = pending ] || return 0
+  cp -p "$ADDON/precedence-migration/config" "$CONF" &&
+    cp -p "$ADDON/precedence-migration/selection" "$SELECTION" &&
+    mv "$ADDON/precedence-migration" "$ADDON/precedence-migration-failed-$(date +%s)-$$" || return 1
+}
+rollback_migration(){
+  [ ! -e /tmp/vpn_ipcatcher.lock ] || { error 'Stop IP Catcher voordat je de binding herstelt.'; return 1; }
+  [ "$(cat "$ADDON/precedence-migration/state" 2>/dev/null)" = committed ] || return 1
+  selection_read && [ "$MODE" = managed-v1 ] || return 1
+  rollback_policy="$POLICY"; rollback_set="$SET"
+  rollback_connection="$CONNECTION"
+  hold_routing && remove_managed_rules "$POLICY" || return 1
+  cp -p "$ADDON/precedence-migration/config" "$CONF" &&
+    cp -p "$ADDON/precedence-migration/selection" "$SELECTION" &&
+    selection_read && binding_check || return 1
+  $IP rule del from all fwmark "$DYNAMIC_MARK" lookup "$rollback_connection" priority 31000 &&
+    $IP rule del unreachable from all fwmark "$DYNAMIC_MARK" priority 31001 || return 1
+  (POLICY="$rollback_policy"; SET="$rollback_set"; release_hold) || return 1
+  printf '%s\n' rolled-back > "$ADDON/precedence-migration/state"
+}
 find_bin(){ for file in "$@"; do [ -f "$file" ] && [ -x "$file" ] && { printf '%s\n' "$file"; return 0; }; done; return 1; }
 IP="$(find_bin /usr/sbin/ip /sbin/ip /bin/ip /opt/sbin/ip /opt/bin/ip)"
 IPTABLES="$(find_bin /usr/sbin/iptables /sbin/iptables /opt/sbin/iptables)"
@@ -203,12 +398,17 @@ managed_prepare(){
   [ "${MODE:-}" = managed-v1 ] || return 0
   [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || { error 'De VPN-routing addon staat uit.'; return 1; }
   binding_read && rule_check && route_check || return 1
+  # All supported DVR v3.2.5 policies reserve these bits. Reject unknown layouts.
+  [ "$MASK" = 0xf000 ] || { error 'Onbekend VPN-masker; geen dynamische routing.'; return 1; }
+  legacy_mark="$MARK/$MASK"
+  MARK=0x1000000; MASK=0x1000000
   owner="$ADDON/managed-$POLICY"
   [ -z "$(awk -F '|' -v policy="$POLICY" '$1==policy {print $1}' "$POLICIES")" ] || { error 'De automatische lijstnaam is al door DVR gebruikt; niets gewijzigd.'; return 1; }
   if [ -f "$owner" ]; then
     [ "$(sed -n '1p' "$owner")" = "$SET" ] || { error 'Onbekende eigenaar van de automatische lijst.'; return 1; }
     if [ "$(sed -n '2p' "$owner")" != "$MARK/$MASK" ]; then
-      [ "${ALLOW_REBIND:-no}" = yes ] || { error 'VPN-instelling gewijzigd; kies opnieuw via routing-setup.'; return 1; }
+      [ "${ALLOW_REBIND:-no}" = yes ] || [ "$(sed -n '2p' "$owner")" = "$legacy_mark" ] || { error 'VPN-instelling gewijzigd; kies opnieuw via routing-setup.'; return 1; }
+      hold_routing || return 1
       remove_managed_rules "$POLICY" || return 1
       (umask 077; printf '%s\n%s\n' "$SET" "$MARK/$MASK" > "$owner.new") && mv "$owner.new" "$owner" || return 1
     fi
@@ -223,17 +423,41 @@ managed_prepare(){
     mkdir -p "$ADDON" || return 1
     (umask 077; printf '%s\n%s\n' "$SET" "$MARK/$MASK" > "$owner.new") && mv "$owner.new" "$owner" || return 1
   fi
+  precedence_prepare || return 1
+  dynamic_rule_prepare || return 1
+  # Install the egress kill switch BEFORE introducing a dynamic mark. It survives
+  # tunnel removal and prevents RPDB fall-through to main/WAN between hook runs.
+  for chain in FORWARD OUTPUT; do
+    $IPTABLES -t filter -C "$chain" -m set --match-set "$SET" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 ! -o "$TUNNEL" -m comment --comment "VPNIPC-$POLICY" -j REJECT 2>/dev/null ||
+      $IPTABLES -t filter -I "$chain" 1 -m set --match-set "$SET" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 ! -o "$TUNNEL" -m comment --comment "VPNIPC-$POLICY" -j REJECT || return 1
+  done
+  previous_tunnel="$(sed -n '3p' "$owner")"
+  case "$previous_tunnel" in tun[0-9]*|tap[0-9]*|wgc[0-9]*)
+    if [ "$previous_tunnel" != "$TUNNEL" ]; then
+      for chain in FORWARD OUTPUT; do
+        $IPTABLES -t filter -D "$chain" -m set --match-set "$SET" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 ! -o "$previous_tunnel" -m comment --comment "VPNIPC-$POLICY" -j REJECT 2>/dev/null || return 1
+      done
+    fi ;;
+  esac
+  if [ "$previous_tunnel" != "$TUNNEL" ]; then
+    (umask 077; printf '%s\n%s\n%s\n' "$SET" "$MARK/$MASK" "$TUNNEL" > "$owner.new") && mv "$owner.new" "$owner" || return 1
+  fi
   for chain in PREROUTING OUTPUT; do
     # Managed auto-IPTV routing must never overwrite a preceding explicit
     # domain-policy VPN mark. Migrate the old unguarded rule in-place.
+    # Guarded rules exclude explicit policies regardless of mangle rule order.
+    $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null ||
+      $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
     old_count=0
     while $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null; do
       $IPTABLES -t mangle -D "$chain" -m set --match-set "$SET" dst -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
       old_count=$((old_count+1))
       [ "$old_count" -lt 20 ] || { error 'Te veel oude managed markregels; controleer handmatig.'; return 1; }
     done
-    $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null && continue
-    $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
+    while $IPTABLES -t mangle -C "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null; do
+      $IPTABLES -t mangle -D "$chain" -m set --match-set "$SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$POLICY" -j MARK --set-xmark "$MARK/$MASK" || return 1
+      old_count=$((old_count+1)); [ "$old_count" -lt 20 ] || return 1
+    done
   done
 }
 remove_managed_rules(){
@@ -247,6 +471,10 @@ remove_managed_rules(){
   printf '%s\n' "$old_mark" | grep -Eq '^0x[0-9a-fA-F]+/0x[0-9a-fA-F]+$' || return 1
   for old_chain in PREROUTING OUTPUT; do
     count=0
+    while $IPTABLES -t mangle -C "$old_chain" -m set --match-set "$old_set" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" 2>/dev/null; do
+      $IPTABLES -t mangle -D "$old_chain" -m set --match-set "$old_set" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" || return 1
+      count=$((count+1)); [ "$count" -lt 20 ] || return 1
+    done
     # Remove both historical unguarded marks and 2.9.14 guarded marks, but
     # only for IP Catcher-owned rules, never external DVR policies.
     while $IPTABLES -t mangle -C "$old_chain" -m set --match-set "$old_set" dst -m mark --mark 0x0/0xf000 -m comment --comment "VPNIPC-$old_policy" -j MARK --set-xmark "$old_mark" 2>/dev/null; do
@@ -258,6 +486,12 @@ remove_managed_rules(){
       count=$((count+1)); [ "$count" -lt 20 ] || return 1
     done
   done
+  old_tunnel="$(sed -n '3p' "$old_owner")"
+  case "$old_tunnel" in tun[0-9]*|tap[0-9]*|wgc[0-9]*)
+    for old_chain in FORWARD OUTPUT; do
+      $IPTABLES -t filter -D "$old_chain" -m set --match-set "$old_set" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 ! -o "$old_tunnel" -m comment --comment "VPNIPC-$old_policy" -j REJECT 2>/dev/null || return 1
+    done ;;
+  esac
 }
 available_connections(){
   for connection in ovpnc1 ovpnc2 ovpnc3 ovpnc4 ovpnc5 wgc1 wgc2 wgc3 wgc4 wgc5; do
@@ -294,9 +528,11 @@ rule_check(){
 }
 firewall_check(){
   rules="$($IPTABLES -t mangle -S 2>/dev/null)" || return 1
-  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$MARK/$MASK" -v plain="$MARK" -v mode="${MODE:-}" '
+  firewall_mark="$MARK/$MASK"
+  [ "${MODE:-}" != managed-v1 ] || firewall_mark="$DYNAMIC_MARK"
+  printf '%s\n' "$rules" | awk -v set="$SET" -v expected="$firewall_mark" -v plain="${firewall_mark%/*}" -v mode="${MODE:-}" '
     {name=""; mark=""; guard=""; for(i=1;i<=NF;i++) {
-       if($i=="--match-set") name=$(i+1)
+       if($i=="--match-set" && name=="") name=$(i+1)
        if($i=="--set-xmark" || $i=="--set-mark") mark=$(i+1)
        if($i=="--mark") guard=$(i+1)
      }
@@ -304,6 +540,7 @@ firewall_check(){
        if(mark!=expected && mark!=plain) bad=1
        else {
          if(mode=="managed-v1" && guard!="0x0/0xf000") bad=1
+         if(mode=="managed-v1" && (index($0,"-m set ! --match-set VPNIPC-SOURCE src")==0 || index($0,"-m set ! --match-set VPNIPC-DOMAINS dst")==0)) bad=1
          if($2=="PREROUTING") pre=1
          if($2=="OUTPUT") out=1
        }
@@ -313,6 +550,7 @@ firewall_check(){
 }
 route_check(){
   routes="$($IP route show table "$CONNECTION" 2>/dev/null)" || return 1
+  printf '%s\n' "$routes" | awk '$1=="default"{d=1} $1=="0.0.0.0/1"{a=1} $1=="128.0.0.0/1"{b=1} END{exit (d || (a && b))?0:1}' || { error 'VPN heeft geen volledige IPv4-default route.'; return 1; }
   TUNNEL="$(printf '%s\n' "$routes" | awk '$1=="default" || $1=="0.0.0.0/1" || $1=="128.0.0.0/1" {for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | sort -u)"
   case "$TUNNEL" in ''|*[!A-Za-z0-9_.:-]*) error 'Geen eenduidige actieve VPN-uitgang gevonden.'; return 1 ;; esac
   case "$CONNECTION:$TUNNEL" in ovpnc*:tun*|ovpnc*:tap*|wgc*:wgc*) ;; *) error 'De gekozen routingtabel wijst niet naar een herkenbare VPN-tunnel.'; return 1 ;; esac
@@ -322,11 +560,21 @@ route_check(){
 binding_check(){
   [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || { error 'De VPN-routing addon staat uit.'; return 1; }
   binding_read && rule_check && firewall_check && route_check || return 1
+  if [ "${MODE:-}" = managed-v1 ]; then
+    dynamic_rules="$($IP rule show)" || return 1
+    printf '%s\n' "$dynamic_rules" | awk -v mark="$DYNAMIC_MARK" -v connection="$CONNECTION" -v number="$table_number" '
+      $1=="31000:" && $4=="fwmark" && $5==mark && ($NF==connection || (number!="" && $NF==number)) {route=1}
+      $1=="31001:" && $4=="fwmark" && $5==mark && $NF=="unreachable" {stop=1}
+      END{exit (route && stop)?0:1}' || { error 'Late VPN-route of terminale blokkade ontbreekt.'; return 1; }
+    for check_chain in FORWARD OUTPUT; do
+      $IPTABLES -t filter -C "$check_chain" -m set --match-set "$SET" dst -m set ! --match-set "$SOURCE_SET" src -m set ! --match-set "$DOMAIN_SET" dst -m mark --mark 0x0/0xf000 ! -o "$TUNNEL" -m comment --comment "VPNIPC-$POLICY" -j REJECT || { error 'WAN-lekbeveiliging ontbreekt.'; return 1; }
+    done
+  fi
   $IPSET list "$SET" >/dev/null 2>&1 || { error 'De finale DVR-IPSet ontbreekt.'; return 1; }
   set_check || return 1
   configured_set="$(setting "$CONF" IPSET_NAME)"
   [ "$configured_set" = "$SET" ] || { error 'IP Catcher schrijft naar een andere lijst dan de geselecteerde DVR-policy.'; return 1; }
-  printf 'OK: %s -> %s -> %s (mark %s/%s)\n' "$SET" "$CONNECTION" "$TUNNEL" "$MARK" "$MASK"
+  printf 'OK: %s -> %s -> %s (mark %s)\n' "$SET" "$CONNECTION" "$TUNNEL" "$firewall_mark"
 }
 list_choices(){
   [ -r "$POLICIES" ] || return 1
@@ -354,10 +602,6 @@ configure(){
   CONNECTION="$(printf '%s\n' "$choices" | sed -n "${answer}p")"
   MODE=managed-v1
   POLICY="VIPC-$CONNECTION"
-  # Reuse a compatible configured list without asking users for technical names.
-  previous_set="$(setting "$CONF" IPSET_NAME)"
-  reuse="$(policy_rows | awk -F '|' -v set="$previous_set" -v connection="$CONNECTION" '$2==connection && "DVR-"$1"-v4"==set {print $1}')"
-  if valid_policy "$reuse" && (POLICY="$reuse"; MODE=''; binding_read && firewall_check && set_check) >/dev/null 2>&1; then POLICY="$reuse"; MODE=''; fi
   binding_read && rule_check && route_check && automatic_lan || return 1
   ALLOW_REBIND=yes
   managed_prepare || return 1
@@ -386,7 +630,7 @@ configure(){
   if [ "$rc" != 0 ]; then cp -p "$backup" "$CONF"; fi
   rm -f "${CONF}.routing-new" "$SELECTION.new" "$CONFIG_LOCK/pid"
   rmdir "$CONFIG_LOCK"
-  [ "$rc" = 0 ] && binding_check || return 1
+  [ "$rc" = 0 ] && binding_check && release_hold || return 1
   if [ "$previous_mode" = managed-v1 ] && [ "$previous_policy" != "$POLICY" ]; then remove_managed_rules "$previous_policy" || return 1; fi
   echo 'Klaar: VPN gekozen, lijsten en LAN automatisch ingesteld.'
 }
@@ -400,11 +644,29 @@ case "${1:-check}" in
       echo $$ > "$CONFIG_LOCK/pid"
       trap 'rm -f "$CONFIG_LOCK/pid"; rmdir "$CONFIG_LOCK" 2>/dev/null' EXIT
       trap 'exit 1' HUP INT TERM
-      selection_read && managed_prepare && binding_check
+      recover_migration && selection_read || exit 1
+      if migrate_binding && managed_prepare && binding_check && release_hold; then
+        printf '%s\n' 'VPN Director + DVR protected; WAN fallback blocked' > "$PRECEDENCE_STATUS.new"
+        mv "$PRECEDENCE_STATUS.new" "$PRECEDENCE_STATUS"
+      else
+        hold_routing || error 'KRITIEK: blokkeerregel kon niet worden geplaatst.'
+        printf '%s\n' 'BLOCKED: precedence/tunnel validation failed' > "$PRECEDENCE_STATUS"
+        exit 1
+      fi
     )
     ;;
   domain-add) shift; domain_add "$@" ;;
   policies) policy_rows ;;
+  sources) protected_sources ;;
+  source-unprotected) source_unprotected "${2:-}" ;;
+  rollback-migration)
+    (
+      mkdir "$CONFIG_LOCK" 2>/dev/null || exit 1
+      echo $$ > "$CONFIG_LOCK/pid"
+      trap 'rm -f "$CONFIG_LOCK/pid"; rmdir "$CONFIG_LOCK" 2>/dev/null' EXIT
+      trap 'exit 1' HUP INT TERM
+      rollback_migration
+    ) ;;
   list) list_choices ;;
   dependencies) dependencies ;;
   install-dependencies) install_dependencies && dependencies ;;

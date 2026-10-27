@@ -1,5 +1,11 @@
 # Release Verification / Releasecontrole
 
+## Draft PR #9: automatic explicit-policy precedence
+
+See [PRECEDENCE.md](PRECEDENCE.md) for the ownership model, migration/rollback,
+packet/RPDB regressions, BusyBox CI coverage, limitations and isolated ASUS gate.
+No production deployment or merge is authorized by synthetic test success.
+
 ## 2.9.15 watchdog PID regression
 
 `tests/watchdog-pid-checks.sh` loads the production engine loop and runs it through three mocked iterations, checking `engine.pid` and lock never change to invalid text. It also checks that cleanup from a non-owner process preserves newer PID/worker files, and that watchdog rejects malformed, dead and unrelated PID references. Live ASUS validation remains necessary, ideally observe at least two watchdog cron invocations before declaring stability.

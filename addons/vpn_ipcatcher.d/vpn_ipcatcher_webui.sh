@@ -81,7 +81,7 @@ cfg_get(){
 
 valid_key(){
   case "$1" in
-    INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) return 0 ;;
+    INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|BYPASS_SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) return 0 ;;
   esac
   return 1
 }
@@ -107,6 +107,12 @@ config_write_lock(){
 config_write_unlock(){ rm -rf "$CONFIG_WRITE_LOCK" 2>/dev/null; }
 
 set_cfg(){
+  if [ "$1" = BYPASS_SOURCE_IPS ]; then
+    printf '%s\n' "$2" | ${AWK:-awk} '{for(j=1;j<=NF;j++){
+      if(split($j,a,".")!=4)exit 1
+      for(i=1;i<=4;i++)if(a[i]!~/^[0-9]+$/ || a[i]>255 || (length(a[i])>1 && substr(a[i],1,1)=="0"))exit 1
+    }}' || { log 'Invalid BYPASS_SOURCE_IPS'; return 1; }
+  fi
   key="$1"; value="$(sanitize_value "$2")"
   valid_key "$key" || return 1
   [ -f "$CONF" ] || "$ENGINE" show-config >/dev/null 2>&1
@@ -451,6 +457,8 @@ publish_status(){
 {
   "version":"2.9.15",
   "vpn_connection":"$vpn_connection",
+  "precedence_status":"$(cat "/tmp/vpn_ipcatcher_precedence.status" 2>/dev/null | json_escape)",
+  "automatic_sources":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" sources 2>/dev/null | json_escape)",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
   "last_update":"$last_update",
@@ -484,6 +492,7 @@ publish_status(){
     "FINAL_TIMEOUT":"$(cfg_get FINAL_TIMEOUT | json_escape)",
     "STREAM_FLOW_SCAN":"$(cfg_get STREAM_FLOW_SCAN | json_escape)",
     "SOURCE_IPS":"$(cfg_get SOURCE_IPS | json_escape)",
+    "BYPASS_SOURCE_IPS":"$(cfg_get BYPASS_SOURCE_IPS | json_escape)",
     "STREAM_SCAN_EVERY":"$(cfg_get STREAM_SCAN_EVERY | json_escape)",
     "STREAM_MIN_BYTES":"$(cfg_get STREAM_MIN_BYTES | json_escape)",
     "STREAM_MIN_DELTA":"$(cfg_get STREAM_MIN_DELTA | json_escape)",
@@ -743,7 +752,7 @@ write_setting(){
 
 save_config_from_settings(){
   rc=0
-  for k in INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY; do
+  for k in INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS BYPASS_SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY; do
     v="$(read_setting_combined "vpnipc_cfg_$k")"
     set_cfg "$k" "$v" || rc=1
   done
