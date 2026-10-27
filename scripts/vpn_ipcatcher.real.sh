@@ -698,6 +698,7 @@ valid_ipv4(){
   echo "$ip" | $GREP -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' || return 1
   OLDIFS="$IFS"; IFS='.'; set -- $ip; IFS="$OLDIFS"
   for o in "$@"; do
+    [ "${#o}" -le 1 ] || [ "${o#0}" = "$o" ] || return 1
     [ "$o" -ge 0 ] 2>/dev/null || return 1
     [ "$o" -le 255 ] 2>/dev/null || return 1
   done
@@ -1320,13 +1321,23 @@ enable_conntrack_acct(){
 
 
 source_ip_allowed(){
-  ip="$1"
-  for bypass in $BYPASS_SOURCE_IPS; do [ "$ip" = "$bypass" ] && return 1; done
+  # Subshell: never overwrite the caller's destination IP (BusyBox has no local
+  # scope by default). The live guard is refreshed by routing prepare.
+  (
+  source_ip="$1"
+  valid_ipv4 "$source_ip" || exit 1
+  $IPSET list VPNIPC-SOURCE >/dev/null 2>&1 || exit 1
+  $IPSET test VPNIPC-SOURCE "$source_ip" >/dev/null 2>&1 && exit 1
+  # Read current Director policy as well: learning must not wait for the next
+  # periodic kernel guard refresh after a Director edit.
+  [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" source-unprotected "$source_ip" >/dev/null 2>&1 || exit 1
+  for bypass in ${BYPASS_SOURCE_IPS:-}; do [ "$source_ip" = "$bypass" ] && exit 1; done
   [ -z "$SOURCE_IPS" ] && return 0
   for s in $SOURCE_IPS; do
-    [ "$ip" = "$s" ] && return 0
+    [ "$source_ip" = "$s" ] && exit 0
   done
-  return 1
+  exit 1
+  )
 }
 
 port_allowed(){
@@ -1379,6 +1390,7 @@ flow_scan_candidates(){
 
   while IFS=' ' read -r src ip dport bytes; do
     [ -z "$ip" ] && continue
+    source_ip_allowed "$src" || continue
     key="${src}|${ip}|${dport}"
     prev=""
     [ -f "$FLOW_STATE" ] && prev="$($AWK -v k="$key" '$1==k {print $2; exit}' "$FLOW_STATE" 2>/dev/null)"
@@ -1439,7 +1451,7 @@ promote_candidates(){
         ;;
       bytes)
         [ "$age" -lt "$MIN_AGE" ] && continue
-        total_bytes="$($CT -L 2>/dev/null | $AWK -v target="$ip" -v sources="$SOURCE_IPS" -v ports="$PORTS" '
+        total_bytes="$($CT -L 2>/dev/null | $AWK -v target="$ip" -v sources="$SOURCE_IPS" -v bypasses="$BYPASS_SOURCE_IPS" -v ports="$PORTS" '
           BEGIN { n=split(bypasses,x," "); for(i=1;i<=n;i++) skipped[x[i]]=1; n=split(sources,s," "); for(i=1;i<=n;i++) allowed[s[i]]=1;
                   n=split(ports,p,","); for(i=1;i<=n;i++) portok[p[i]]=1 }
           /^(tcp|udp)/ {
@@ -1450,9 +1462,12 @@ promote_candidates(){
               if($i ~ /^dport=/ && port=="") {port=$i; sub(/^dport=/,"",port)}
               if($i ~ /^bytes=/) {b=$i; sub(/^bytes=/,"",b); bytes+=b}
             }
-            if(dst==target && !(src in skipped) && (sources=="" || src in allowed) && port in portok) sum+=bytes
+            if(dst==target && !(src in skipped) && (sources=="" || src in allowed) && port in portok) sum[src]+=bytes
           }
-          END {printf "%.0f\n",sum+0}')"
+          END {for(src in sum) printf "%s %.0f\n",src,sum[src]}' |
+          while read -r byte_source source_bytes; do
+            source_ip_allowed "$byte_source" && printf '%s\n' "$source_bytes"
+          done | $AWK '{sum+=$1} END{printf "%.0f\n",sum+0}')"
         [ -z "$total_bytes" ] && total_bytes=0
         if [ "$total_bytes" -ge "$MIN_BYTES" ]; then
           add_final_immediate "$ip" "promoted-bytes" && $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
@@ -1483,7 +1498,7 @@ build_bpf(){
   fi
   for src in $BYPASS_SOURCE_IPS; do
     valid_ipv4 "$src" || return 1
-    BPF="$BPF and not src host $src"
+    BPF="$BPF and not host $src"
   done
 }
 
@@ -1501,6 +1516,20 @@ capture_iface(){
     log "[$iface] Start tcpdump filter '($BPF)'"
     "$TCPDUMP" -i "$iface" -A -n -s 1024 -l "$BPF" 2>>"$LOGFILE" | \
     while IFS= read -r line; do
+      # -A emits a timestamped IPv4 packet header followed by payload lines.
+      # Recheck each packet against live policy, even when BPF predates a policy
+      # change. Never learn orphan payload or IPv6 text.
+      case "$line" in
+        [0-9][0-9]:[0-9][0-9]:[0-9][0-9].*' IP '*)
+          packet_source="$(printf '%s\n' "$line" | $SED -n 's/^[0-9:.]* IP \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\.[0-9]* > .*/\1/p')"
+          packet_destination="$(printf '%s\n' "$line" | $SED -n 's/.* > \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\.[0-9]*:.*/\1/p')"
+          packet_allowed=no
+          if source_ip_allowed "$packet_source" &&
+             "$ROUTING_HELPER" source-unprotected "$packet_destination" >/dev/null 2>&1 &&
+             ! $IPSET test VPNIPC-SOURCE "$packet_destination" >/dev/null 2>&1; then packet_allowed=yes; fi ;;
+        [0-9][0-9]:[0-9][0-9]:[0-9][0-9].*' IP6 '*) packet_allowed=no ;;
+      esac
+      [ "${packet_allowed:-no}" = yes ] || continue
       # HTTP Location met direct IP
       echo "$line" | $SED -n 's/.*[Ll]ocation: http[s]*:\/\/\([0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\).*/\1/p' | \
       while IFS= read -r ip; do
@@ -1552,6 +1581,8 @@ run_engine(){
   load_config || exit 1
   validate_prereqs || exit 1
   [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" prepare || { log "De gekozen VPN is niet klaar. Zet deze aan of kies opnieuw via routing-setup."; exit 1; }
+  # prepare may migrate a legacy shared DVR binding to its own empty list.
+  load_config || exit 1
 
   mkdir -p "$CACHE_DIR" "$PIDDIR"
   [ -f "$CACHE_DOM2IP" ] || : > "$CACHE_DOM2IP"

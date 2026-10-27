@@ -46,6 +46,15 @@ echo 'PASS: selected VPN metadata is published without private credentials'
 node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));if(d.config.PROMOTE_MODE!=="auto"||d.config.STREAM_MIN_BYTES!=="15000000")process.exit(1)' "$STATUS_JSON"
 [ -z "${EFFECTIVE_CONFIG:-}" ]
 echo 'PASS: minimal new-install config publishes effective engine defaults without retaining stale snapshots'
+set_cfg BYPASS_SOURCE_IPS '192.168.178.82 192.168.178.83'
+[ "$(cfg_get BYPASS_SOURCE_IPS)" = '192.168.178.82 192.168.178.83' ]
+for invalid in '999.1.1.1' '01.2.3.4' '192.168.1.1/24' '192.168.1.1;id'; do
+  if set_cfg BYPASS_SOURCE_IPS "$invalid"; then echo 'Invalid bypass saved'; exit 1; fi
+done
+[ "$(cfg_get BYPASS_SOURCE_IPS)" = '192.168.178.82 192.168.178.83' ]
+set_cfg BYPASS_SOURCE_IPS ''
+[ -z "$(cfg_get BYPASS_SOURCE_IPS)" ]
+echo 'PASS: bypass settings validate before mutation, persist, and allow clearing'
 
 CT=diagnostic_fixture
 diagnostic_fixture(){

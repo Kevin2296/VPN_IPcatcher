@@ -107,6 +107,12 @@ config_write_lock(){
 config_write_unlock(){ rm -rf "$CONFIG_WRITE_LOCK" 2>/dev/null; }
 
 set_cfg(){
+  if [ "$1" = BYPASS_SOURCE_IPS ]; then
+    printf '%s\n' "$2" | ${AWK:-awk} '{for(j=1;j<=NF;j++){
+      if(split($j,a,".")!=4)exit 1
+      for(i=1;i<=4;i++)if(a[i]!~/^[0-9]+$/ || a[i]>255 || (length(a[i])>1 && substr(a[i],1,1)=="0"))exit 1
+    }}' || { log 'Invalid BYPASS_SOURCE_IPS'; return 1; }
+  fi
   key="$1"; value="$(sanitize_value "$2")"
   valid_key "$key" || return 1
   [ -f "$CONF" ] || "$ENGINE" show-config >/dev/null 2>&1
@@ -451,6 +457,8 @@ publish_status(){
 {
   "version":"2.9.15",
   "vpn_connection":"$vpn_connection",
+  "precedence_status":"$(cat "/tmp/vpn_ipcatcher_precedence.status" 2>/dev/null | json_escape)",
+  "automatic_sources":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" sources 2>/dev/null | json_escape)",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
   "last_update":"$last_update",

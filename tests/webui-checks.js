@@ -161,3 +161,11 @@ context.fillConfig({...partialConfig,EXCLUDE_DOMAINS:element('cfg_EXCLUDE_DOMAIN
 assert.equal(context.presetState(playPreset),'ON');
 assert.equal(context.buildConfigPayload(),'');
 console.log('PASS: partial Google Play preset => fully saved, only one changed config field');
+context.fillConfig({...partialConfig,BYPASS_SOURCE_IPS:'192.168.178.82'},'precedence');
+assert.equal(element('cfg_BYPASS_SOURCE_IPS').value,'192.168.178.82');
+element('cfg_BYPASS_SOURCE_IPS').value='192.168.178.83';
+assert.match(context.buildConfigPayload(),/^BYPASS_SOURCE_IPS=192\.168\.178\.83$/m);
+context.updateOverview({config:{},precedence_status:'BLOCKED',automatic_sources:'192.168.178.82\n192.168.20.0/24'});
+assert.equal(element('overviewPrecedence').textContent,'BLOCKED');
+assert.match(element('overviewBypass').textContent,/192\.168\.20\.0\/24/);
+console.log('PASS: bypass setting round-trip and visible automatic precedence/block status');
