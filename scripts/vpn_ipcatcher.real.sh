@@ -1593,8 +1593,11 @@ run_engine(){
   ) &
 
   provider_last_check="$(current_epoch)"
-  # LOCK and ENGINE_PIDFILE already contain our numeric $ from startup.
-  # Never write literal '
+  # Startup writes the numeric engine PID. Do not overwrite it inside this loop.
+  while true; do
+    ensure_workers_alive
+    write_web_status
+    check_time="$(current_epoch)"
     if [ $((check_time-provider_last_check)) -ge 3600 ]; then
       provider_last_check="$check_time"
       (refresh_provider_ranges auto || :) &
