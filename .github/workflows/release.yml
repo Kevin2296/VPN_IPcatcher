@@ -25,6 +25,7 @@ jobs:
       - name: Shell checks
         run: |
           set -eu
+          sha256sum -c SHA256SUMS
           for script in install.sh backup.sh scripts/vpn_ipcatcher*.sh addons/vpn_ipcatcher.d/*.sh tests/*-checks.sh; do
             sh -n "$script"
           done

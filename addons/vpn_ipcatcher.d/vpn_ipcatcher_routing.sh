@@ -89,7 +89,8 @@ source_unprotected(){
   source_networks="$(protected_sources)" || return 1
   printf '%s\n' "$source_networks" | awk -v source="$1" '
     function number(ip, a){split(ip,a,"."); return ((a[1]*256+a[2])*256+a[3])*256+a[4]}
-    NF {n=split($1,a,"/"); prefix=n==2?a[2]:32; block=2^(32-prefix)
+    NF {n=split($1,a,"/"); prefix=n==2?a[2]:32; block=1
+      for(bit=prefix;bit<32;bit++) block*=2
       if(int(number(source)/block)==int(number(a[1])/block)) protected=1}
     END{exit protected?1:0}'
 }
