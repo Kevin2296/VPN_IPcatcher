@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 2.9.15 — Watchdog/PID herstel
+
+- **Kritieke stabiliteitsfix:** 2.9.14 overschreef iedere 10 seconden het geldige proces-ID in `/tmp/vpn_ipcatcher.lock` en `/tmp/vpn_ipcatcher_pids/engine.pid` met een letterlijk dollarteken. De watchdog zag daardoor bij iedere cron-run een ongeldig engine-PID en herstartte de service telkens opnieuw (zoals in de gebruikerslog van 2026-10-27 tussen 02:09 en 02:12).
+- De hoofdloop overschrijft het start-PID niet meer. Start schrijft de juiste numerieke PID eenmaal; de watchdog verifieert behalve een geldig nummer ook dat het PID bij de werkelijke `vpn_ipcatcher.real.sh run` hoort.
+- Cleanup van een vorige engine mag de gedeelde PID-bestanden en capture/promote-workers van een nieuw gestart proces niet meer verwijderen.
+- Nieuwe regressietest draait drie echte engine-hoofdloop-iteraties met mockworkers; test de PID/lock-integriteit, cleanup-eigenaarschap en weigering van ongeldige/dode/vreemde PID's.
+- VPN- en EPG-routing, Google/Netflix-netwerken, provider-uitsluitingen en persoonlijke configuratie zijn inhoudelijk ongewijzigd.
+- Na update is een gecontroleerde herstart aanbevolen om een eerder opgebouwde worker-herstartlus op te ruimen.
+
+
 ## 2.9.14 — Altijd-VPN voor EPG/XMLTV en handmatige domeinen
 
 - **Altijd via VPN** in de WebGUI: plak een volledige HTTP(S) EPG/XMLTV-URL of hostnaam en kies de bestaande Domain VPN Routing-policy (met de juiste OpenVPN/WireGuard-client). Alleen de gevalideerde hostname wordt opgeslagen: geen URL-pad, token of inloggegevens.

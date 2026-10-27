@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.14
+# Version: 2.9.15
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -656,6 +656,15 @@ cleanup(){
   STOPPING=1
 
   log "cleanup aangeroepen STOPPING=$STOPPING pid=$$ parent=$PPID"
+
+  # A retired engine must not remove PID files and workers of its replacement.
+  current_owner="$(cat "$ENGINE_PIDFILE" 2>/dev/null)"
+  if [ "$current_owner" != "$$" ]; then
+    log "cleanup non-owner pid=$$ owner=${current_owner:-none}; only stopping local workers"
+    [ -n "$PROMOTE_PID" ] && kill "$PROMOTE_PID" 2>/dev/null
+    for p in $CAP_PIDS; do kill "$p" 2>/dev/null; done
+    exit 0
+  fi
 
   [ -n "$PROMOTE_PID" ] && kill "$PROMOTE_PID" 2>/dev/null
   for p in $CAP_PIDS; do
@@ -1582,9 +1591,8 @@ run_engine(){
   ) &
 
   provider_last_check="$(current_epoch)"
+  # The PID is written once during initialization. Do not rewrite it.
   while true; do
-    echo $ > "$LOCK"
-    echo $ > "$ENGINE_PIDFILE"
     ensure_workers_alive
     write_web_status
     check_time="$(current_epoch)"

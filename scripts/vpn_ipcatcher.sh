@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.14
+# Version: 2.9.15
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
@@ -36,6 +36,20 @@ lifecycle_note(){
     printf '%s %s\n' "$(date '+%F %T')" "$trace_message" >> "$LOGFILE"
     logger -t vpn_ipcatcher "$trace_message" 2>/dev/null || true
   )
+}
+
+# A numeric PID may be reused by an unrelated process. Verify that it is
+# the real run engine before suppressing watchdog recovery.
+watchdog_engine_alive(){
+  checked_pid="$1"
+  case "$checked_pid" in ''|*[!0-9]*|0|1) return 1 ;; esac
+  kill -0 "$checked_pid" 2>/dev/null || return 1
+  [ -r "/proc/$checked_pid/cmdline" ] || return 1
+  checked_cmd="$(tr '\000' ' ' < "/proc/$checked_pid/cmdline" 2>/dev/null)"
+  case "$checked_cmd" in
+    *"/jffs/scripts/vpn_ipcatcher.real.sh run"*) return 0 ;;
+  esac
+  return 1
 }
 
 lock(){
@@ -89,9 +103,7 @@ case "$1" in
       watchdog)
         { [ -f "$DISABLED" ] || [ -f "$UPDATING" ]; } && exit 0
         watchdog_pid="$(cat /tmp/vpn_ipcatcher_pids/engine.pid 2>/dev/null)"
-        case "$watchdog_pid" in ''|*[!0-9]*) lifecycle_note watchdog-recovery ;; *)
-          kill -0 "$watchdog_pid" 2>/dev/null || lifecycle_note watchdog-recovery ;;
-        esac
+        watchdog_engine_alive "$watchdog_pid" || lifecycle_note watchdog-recovery
         ;;
       start|restart)
         [ -f "$UPDATING" ] && { echo "Update bezig; start overgeslagen."; exit 1; }

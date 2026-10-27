@@ -1,3 +1,13 @@
+# VPN IP Catcher 2.9.15 — Stabiliteitsfix voor herstartlus
+
+**NL:** Versie 2.9.14 had een fout in de hoofdloop waardoor een geldig numeriek engine-PID elke 10 seconden werd overschreven met een dollarteken. De watchdog kon de actieve service daardoor niet herkennen en startte hem om de minuut opnieuw. Dat leidde tot dubbele workers, tcpdump-onderbrekingen en SIGTERM-meldingen. In 2.9.15 blijft het PID correct, controleert de watchdog de procesidentiteit en verwijdert een oude engine de PID/workerstatus van een nieuw proces niet meer.
+
+Geen wijzigingen aan de EPG/Domain VPN Routing-toewijzingen, IPTV-leerlijsten of provider-uitsluitingen. Bestaande configuratie blijft bewaard. Start de service na update gecontroleerd opnieuw en controleer het numerieke PID en de status gedurende meer dan één watchdog-interval.
+
+**EN:** Fix repeated watchdog recovery in v2.9.14: the engine loop overwrote the actual process PID with a literal dollar sign, resulting in cron-triggered restarts, duplicate capture/promote workers, tcpdump interruptions and SIGTERM. The numeric PID is now stable; watchdog validates the real engine process identity; superseded engines cannot delete replacement state. No routing/DNS/provider exclusion configuration changes. Regression fixture and CI pass; confirm on ASUS hardware after updating.
+
+---
+
 # VPN IP Catcher v2.9.14 — Altijd via VPN voor EPG/XMLTV
 
 **NL:** Plak voortaan direct een volledige EPG/XMLTV-link onder **Domeinroutes / Altijd via VPN** en kies de VPN-policy die je wilt gebruiken. Alleen de hostname wordt naar Domain VPN Routing v3.2.5 gestuurd; pad, eventuele tokens en credentials worden niet opgeslagen. IP Catcher wacht niet op automatische IPTV-detectie: `adddomain` en `querypolicy` worden onmiddellijk uitgevoerd, waarna het IP-adres in de gekozen policy-IPSet wordt geverifieerd. De geselecteerde VPN moet actief zijn; dubbele hostname-toewijzingen aan een andere DVR-policy worden geweigerd.

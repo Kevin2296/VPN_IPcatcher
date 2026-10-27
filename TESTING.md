@@ -1,5 +1,10 @@
 # Release Verification / Releasecontrole
 
+## 2.9.15 watchdog PID regression
+
+`tests/watchdog-pid-checks.sh` loads the production engine loop and runs it through three mocked iterations, checking `engine.pid` and lock never change to invalid text. It also checks that cleanup from a non-owner process preserves newer PID/worker files, and that watchdog rejects malformed, dead and unrelated PID references. Live ASUS validation remains necessary, ideally observe at least two watchdog cron invocations before declaring stability.
+
+
 ## 2.9.14 explicit VPN priority
 
 `tests/force-vpn-routing-checks.sh` verifies EPG URL-to-host conversion, never stores tokens, refuses invalid/personal-credential URLs, requires the selected VPN and a resolved DVR policy IPSet, and detects conflicting cross-policy assignments. `tests/routing-checks.sh` covers the existing DVR adapter; `tests/managed-routing-checks.sh` validates that automatic managed MARK rules only mark unmarked traffic and that both old and new managed rules are removed when changing VPN. This is a mocked CI test, not proof of live VPN tunnel routing; verify on ASUS after update.
