@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.14](https://img.shields.io/badge/version-2.9.14-087F8C?style=for-the-badge)
+![Version 2.9.15](https://img.shields.io/badge/version-2.9.15-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,8 +39,18 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.14.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.15.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**Watchdog-stabiliteit (2.9.15):** de v2.9.14-hoofdloop schreef per ongeluk een letterlijk dollarteken naar het engine-PID-bestand. Daardoor herstartte de watchdog de catcher iedere minuut. 2.9.15 bewaart de echte proces-ID, verifieert procesidentiteit en voorkomt dat oude processen gedeelde PID-bestanden van een nieuwe engine verwijderen. EPG-routing en provider-uitsluitingen blijven behouden. Controleer na update:
+
+```sh
+cat /tmp/vpn_ipcatcher_pids/engine.pid
+cat /tmp/vpn_ipcatcher.lock
+/jffs/scripts/vpn_ipcatcher.sh guard-status
+```
+
+Beide PID-bestanden horen hetzelfde numerieke proces-ID te bevatten, dat na de volgende watchdog-run niet verandert.
 
 **Altijd via VPN voor EPG/XMLTV (2.9.14):** ga naar **Domeinroutes** in de WebGUI, plak een EPG-URL zoals `https://epg.example.org/guide.xml.gz` of alleen `epg.example.org`, kies de bestaande DVR-policy met de juiste VPN en klik **Altijd via VPN instellen**. Het script haalt alleen de hostname uit de URL en voegt die direct toe aan Domain VPN Routing v3.2.5; de IPTV-leerlogica is daarbij niet betrokken. De router controleert of er daadwerkelijk een IPv4-adres in de policy-IPSet staat. Een reeds toegewezen domein in een andere policy wordt geweigerd. Voor automatisch beheerde IPTV-sets overschrijft de nieuwe markregel geen eerder ingestelde VPN-markering.
 
