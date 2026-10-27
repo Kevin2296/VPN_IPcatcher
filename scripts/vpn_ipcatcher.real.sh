@@ -180,6 +180,8 @@ CAPTURE_GENERIC_HOSTNAMES="no"
 # Vul SOURCE_IPS met je TV/mediabox IP's om ruis van telefoons/laptops te voorkomen.
 STREAM_FLOW_SCAN="yes"
 SOURCE_IPS=""
+# Bronapparaten met vaste VPN Director-route nooit leren.
+BYPASS_SOURCE_IPS=""
 STREAM_SCAN_EVERY="5"
 STREAM_MIN_BYTES="15000000"
 # Minimum groei tussen twee scans voordat een flow als actief telt.
@@ -211,7 +213,7 @@ ensure_config(){
   chmod 600 "$CONF" 2>/dev/null
 }
 
-CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY PROVIDER_RANGE_AUTO REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
+CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS BYPASS_SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY PROVIDER_RANGE_AUTO REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
 
 load_config(){
   ensure_config
@@ -222,7 +224,7 @@ load_config(){
     case "$config_line" in ''|\#*) continue ;; esac
     config_key="${config_line%%=*}"
     case "$config_key" in
-      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) ;;
+      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|BYPASS_SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) ;;
       *) say "Ongeldige configuratieregel: $config_key" >&2; return 1 ;;
     esac
     config_value="${config_line#*=}"
@@ -266,6 +268,8 @@ load_config(){
   CAPTURE_GENERIC_HOSTNAMES="${CAPTURE_GENERIC_HOSTNAMES:-no}"
   STREAM_FLOW_SCAN="${STREAM_FLOW_SCAN:-yes}"
   SOURCE_IPS="${SOURCE_IPS:-}"
+  BYPASS_SOURCE_IPS="${BYPASS_SOURCE_IPS:-}"
+  for bypass_src in $BYPASS_SOURCE_IPS; do valid_ipv4 "$bypass_src" || { say "Invalid BYPASS_SOURCE_IPS: $bypass_src" >&2; return 1; }; done
   STREAM_SCAN_EVERY="${STREAM_SCAN_EVERY:-5}"
   STREAM_MIN_BYTES="${STREAM_MIN_BYTES:-15000000}"
   STREAM_MIN_DELTA="${STREAM_MIN_DELTA:-750000}"
@@ -463,6 +467,7 @@ write_web_status(){
     printf '    "FINAL_TIMEOUT":"%s",\n' "$(json_safe "$FINAL_TIMEOUT")"
     printf '    "STREAM_FLOW_SCAN":"%s",\n' "$(json_safe "$STREAM_FLOW_SCAN")"
     printf '    "SOURCE_IPS":"%s",\n' "$(json_safe "$SOURCE_IPS")"
+    printf '    "BYPASS_SOURCE_IPS":"%s",\n' "$(json_safe "$BYPASS_SOURCE_IPS")"
     printf '    "STREAM_MIN_BYTES":"%s",\n' "$(json_safe "$STREAM_MIN_BYTES")"
     printf '    "STREAM_MIN_DELTA":"%s",\n' "$(json_safe "$STREAM_MIN_DELTA")"
     printf '    "STREAM_FLOW_TARGET":"%s",\n' "$(json_safe "$STREAM_FLOW_TARGET")"
@@ -1316,6 +1321,7 @@ enable_conntrack_acct(){
 
 source_ip_allowed(){
   ip="$1"
+  for bypass in $BYPASS_SOURCE_IPS; do [ "$ip" = "$bypass" ] && return 1; done
   [ -z "$SOURCE_IPS" ] && return 0
   for s in $SOURCE_IPS; do
     [ "$ip" = "$s" ] && return 0
@@ -1346,8 +1352,9 @@ flow_scan_candidates(){
 
   # Aggregateer per source+destination+port. Daarna vergelijken we met de vorige scan.
   # Belangrijk: conntrack bytes zijn cumulatief zolang de verbinding bestaat. Daarom kijken we naar DELTA.
-  $CT -L 2>/dev/null | $AWK -v sources="$SOURCE_IPS" -v ports="$PORTS" '
+  $CT -L 2>/dev/null | $AWK -v sources="$SOURCE_IPS" -v bypasses="$BYPASS_SOURCE_IPS" -v ports="$PORTS" '
     BEGIN {
+      n=split(bypasses,ba," "); for(i=1;i<=n;i++) if(ba[i] != "") bypass[ba[i]]=1
       n=split(sources,sa," "); for(i=1;i<=n;i++) if(sa[i] != "") srcok[sa[i]]=1
       use_src_filter=(n>0 && sources!="")
       m=split(ports,pa,","); for(i=1;i<=m;i++) if(pa[i] != "") portok[pa[i]]=1
@@ -1361,7 +1368,8 @@ flow_scan_candidates(){
         if($i ~ /^bytes=/) { b=$i; sub(/^bytes=/,"",b); bytes+=b }
       }
       if(src=="" || dst=="" || dport=="") next
-      if(use_src_filter && !(src in srcok)) next
+      if(src in bypass) next
+       if(use_src_filter && !(src in srcok)) next
       if(!(dport in portok)) next
       key=src"|"dst"|"dport
       total[key]+=bytes
@@ -1432,7 +1440,7 @@ promote_candidates(){
       bytes)
         [ "$age" -lt "$MIN_AGE" ] && continue
         total_bytes="$($CT -L 2>/dev/null | $AWK -v target="$ip" -v sources="$SOURCE_IPS" -v ports="$PORTS" '
-          BEGIN { n=split(sources,s," "); for(i=1;i<=n;i++) allowed[s[i]]=1;
+          BEGIN { n=split(bypasses,x," "); for(i=1;i<=n;i++) skipped[x[i]]=1; n=split(sources,s," "); for(i=1;i<=n;i++) allowed[s[i]]=1;
                   n=split(ports,p,","); for(i=1;i<=n;i++) portok[p[i]]=1 }
           /^(tcp|udp)/ {
             src=""; dst=""; port=""; bytes=0
@@ -1442,7 +1450,7 @@ promote_candidates(){
               if($i ~ /^dport=/ && port=="") {port=$i; sub(/^dport=/,"",port)}
               if($i ~ /^bytes=/) {b=$i; sub(/^bytes=/,"",b); bytes+=b}
             }
-            if(dst==target && (sources=="" || src in allowed) && port in portok) sum+=bytes
+            if(dst==target && !(src in skipped) && (sources=="" || src in allowed) && port in portok) sum+=bytes
           }
           END {printf "%.0f\n",sum+0}')"
         [ -z "$total_bytes" ] && total_bytes=0
@@ -1473,6 +1481,10 @@ build_bpf(){
     done
     BPF="$BPF and ($sexp)"
   fi
+  for src in $BYPASS_SOURCE_IPS; do
+    valid_ipv4 "$src" || return 1
+    BPF="$BPF and not src host $src"
+  done
 }
 
 capture_iface(){
