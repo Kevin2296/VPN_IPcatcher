@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.0
+# Version: 2.10.1
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -1342,10 +1342,12 @@ reverse_lookup_ip(){
       return 0
     }
   fi
-  name="$($NSLOOKUP "$ip" 127.0.0.1 2>/dev/null | $AWK '
-    /name =/ {gsub(/\.$/,"",$NF); print $NF; exit}
-    /^Name:/ {print $2; exit}
-  ' | $TR '[:upper:]' '[:lower:]' | $TR -cd 'A-Za-z0-9.-')"
+  # Both BusyBox styles: "x.in-addr.arpa name = host." and
+  # "Address 1: <ip> <host>". The "Name:" line only repeats the IP.
+  name="$($NSLOOKUP "$ip" 127.0.0.1 2>/dev/null | $AWK -v ip="$ip" '
+    /name = / {n=$NF; sub(/\.$/,"",n); print n; exit}
+    $1=="Address" && $3==ip && NF>=4 {print $4; exit}
+  ' | lower_clean 'a-z0-9.-')"
   mkdir -p "$CACHE_DIR" 2>/dev/null
   printf '%s %s %s\n' "$ip" "$ptr_now" "${name:--}" >> "$CACHE_PTR"
   [ -n "$name" ] && echo "$name"
@@ -1398,6 +1400,14 @@ should_skip_service_ip(){
   fi
 
   return 1
+}
+
+# Lowercase and keep only the given characters. BusyBox tr on Asuswrt-Merlin
+# does not know POSIX classes: tr '[:upper:]' '[:lower:]' maps the literal
+# letters (u->l, p->w), which turned "promoted" into "wromoted" and broke
+# reverse-DNS names. awk/sed are safe.
+lower_clean(){
+  $AWK '{print tolower($0)}' | $SED "s/[^$1]//g"
 }
 
 safe_domain(){
@@ -1523,7 +1533,7 @@ make_ipset_comment(){
   src="$1"
   ts="$(date '+%Y%m%d-%H%M%S' 2>/dev/null)"
   [ -z "$ts" ] && ts="unknown"
-  src="$(printf '%s' "$src" | $TR '[:upper:]' '[:lower:]' | $TR -cd 'a-z0-9._:-')"
+  src="$(printf '%s' "$src" | lower_clean 'a-z0-9._:-')"
   [ -z "$src" ] && src="unknown"
   # Geen spaties gebruiken in ipset-comments; dat houdt parsing op BusyBox betrouwbaar.
   printf 'src=%s;seen=%s' "$src" "$ts"
@@ -1621,13 +1631,14 @@ promote_deferred(){
   trap 'rm -f "$probe/connections" "$probe/set" "$probe/waiting"; rmdir "$probe" 2>/dev/null' EXIT
   trap 'exit 1' HUP INT TERM
   $IPSET save "$WAIT_SET" > "$probe/set" 2>/dev/null || exit 1
-  $AWK '$1=="add" {print $3}' "$probe/set" > "$probe/waiting"
+  # "ip origin": keep how the IP was found (device, port, bytes) after idle.
+  $AWK '$1=="add" {src=""; if (match($0, /comment "src=[^;"]*/)) src=substr($0, RSTART+13, RLENGTH-13); print $3, src}' "$probe/set" > "$probe/waiting"
   [ -s "$probe/waiting" ] || exit 0
   $CT -L -f ipv4 > "$probe/connections" 2>/dev/null || exit 1
   PROMOTION_SNAPSHOT="$probe/connections"
-  while IFS= read -r deferred_ip; do
+  while read -r deferred_ip deferred_origin; do
     valid_ipv4 "$deferred_ip" || continue
-    if add_final_immediate "$deferred_ip" 'promoted-after-idle'; then
+    if add_final_immediate "$deferred_ip" "after-idle:${deferred_origin:-unknown}"; then
       $IPSET del "$WAIT_SET" "$deferred_ip" >/dev/null 2>&1
       $IPSET del "$CAND_SET" "$deferred_ip" >/dev/null 2>&1
     fi
@@ -2756,7 +2767,7 @@ apply_recommended_safe_excludes(){
 
   # Basis die je meestal NIET via de streaming-VPN-ipset wilt laten leren.
   set_config_value "EXCLUDE_NETS" "$DEFAULT_EXCLUDE_NETS"
-  for key in dns_cloudflare dns_quad9 dns_google dns_opendns dev_github social_meta social_whatsapp social_instagram social_snapchat cam_eufy cam_dahua_imou; do
+  for key in dns_cloudflare dns_quad9 dns_google dns_opendns dev_github social_meta social_whatsapp social_instagram social_snapchat cam_eufy cam_dahua_imou upd_connectivity; do
     apply_preset "$key" add
   done
 

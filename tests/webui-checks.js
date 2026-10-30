@@ -161,3 +161,21 @@ context.fillConfig({...partialConfig,EXCLUDE_DOMAINS:element('cfg_EXCLUDE_DOMAIN
 assert.equal(context.presetState(playPreset),'ON');
 assert.equal(context.buildConfigPayload(),'');
 console.log('PASS: partial Google Play preset => fully saved, only one changed config field');
+
+// 2.10.1: readable "how learned" and destination names.
+context.vpnipcCurrentLanguage='nl';
+context.sourceDevices=[{ip:'192.168.178.20',name:'Woonkamer IPTV-box'}];
+assert.equal(context.describeOrigin('wromoted-after-idle'),'Na einde stream (wachtlijst)');
+assert.match(context.describeOrigin('after-idle:flow-delta1640292b-total1670573876b-192.168.178.20-80'),/Woonkamer IPTV-box · poort 80 · 1,7 GB/);
+assert.equal(context.describeOrigin('epg.example.org'),'Hostnaam: epg.example.org');
+assert.equal(context.describeOrigin('http-location'),'HTTP-doorverwijzing naar IP');
+context.dataCache={destination_names:{'151.101.193.140':{n:'fastly-edge.example.net',k:'ptr'}}};
+assert.equal(context.destinationName('151.101.193.140'),'fastly-edge.example.net');
+assert.match(context.destinationCell('151.101.193.140'),/fastly-edge\.example\.net/);
+assert.equal(context.destinationCell('198.51.100.1'),'<td class="mono">198.51.100.1</td>');
+element('liveSearch').value='';
+context.dataCache.waiting_text='Name: x\nMembers:\n151.101.193.140 timeout 60 packets 0 bytes 0 comment "src=after-idle:unknown;seen=20261031-120000"';
+context.setTab('waiting');
+assert.match(element('liveOutput').innerHTML,/fastly-edge\.example\.net/);
+assert.match(element('liveOutput').innerHTML,/Na einde stream/);
+console.log('PASS: destination names and readable learning origin (incl. legacy "wromoted" comments)');

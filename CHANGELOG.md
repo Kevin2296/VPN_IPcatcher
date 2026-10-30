@@ -1,5 +1,14 @@
 # Wijzigingen
 
+## 2.10.1 — Namen bij IP-adressen, "Hoe geleerd" en de "wromoted"-fout
+
+- **Bugfix:** BusyBox `tr` op Asuswrt-Merlin kent geen `[:upper:]`/`[:lower:]` en vertaalt de letters één voor één (`u→l`, `p→w`). Daardoor werd "promoted" opgeslagen als "wromoted" en raakten hostnamen bij de omgekeerde DNS-controle verminkt, zodat uitsluitingen daar niet op aansloegen. Nu via awk/sed.
+- Omgekeerde DNS herkent beide BusyBox-uitvoerstijlen (`name = host.` en `Address 1: <ip> <host>`); voorheen werd soms het IP zelf als naam gezien.
+- Een IP dat na het einde van een stream vanaf de wachtlijst naar de VPN gaat, houdt nu zijn herkomst (apparaat, poort, hoeveelheid data).
+- **WebUI: naam bij elk IP** in Liveflows en in de lijsten Kandidaat, Wachtlijst en Definitief. Volgorde: de DNS-naam die een apparaat opvroeg, de hostnaam waarmee het IP is geleerd, anders omgekeerde DNS (PTR, gemarkeerd). Hooguit 6 nieuwe PTR-opzoekingen per verversing, 1 uur gecachet.
+- **WebUI: "Hoe geleerd"** in plaats van de technische bron, bijv. "Streamscan · Woonkamer IPTV-box · poort 80 · 1,7 GB" of "Na einde stream (wachtlijst)". Oude "wromoted"-regels worden ook netjes getoond.
+- Nieuwe presets: **Connectiviteitscontroles en certificaten** (msftconnecttest, Android/Apple/Firefox-checks, Home Assistant-check, Let's Encrypt, DigiCert, Sectigo, Google PKI, GlobalSign), **Microsoft** (Windows, Office 365, Teams, Bing, Outlook) en **Home Assistant / Nabu Casa**. Connectiviteitscontroles zitten ook in "Veilige basis".
+
 ## 2.10.0 — Nieuwe WebUI in ASUS-stijl, IPTV-apparaten kiezen, overzichtelijker amtm-menu
 
 **WebUI**

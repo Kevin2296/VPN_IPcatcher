@@ -75,3 +75,32 @@ else
   grep -q '"policies":"Bank"' "$work/fixed.json"
 fi
 echo 'PASS: status JSON fixed-route summary'
+
+# --- 2.10.1: destination names -------------------------------------------
+NSLOOKUP=ns_mock; TIMEOUT_BIN=""
+ns_mock(){
+  case "$1" in
+    151.101.193.140) printf 'Server:    127.0.0.1\nAddress 1: 127.0.0.1 localhost\n\nName:      151.101.193.140\nAddress 1: 151.101.193.140 fastly-edge.example.net\n' ;;
+    203.0.113.66) printf '66.113.0.203.in-addr.arpa\tname = Box.Example.ORG.\n' ;;
+    *) printf 'Server: 127.0.0.1\nName: %s\nAddress 1: %s\n' "$1" "$1" ;;
+  esac
+}
+[ "$(ptr_lookup 151.101.193.140)" = fastly-edge.example.net ]
+[ "$(ptr_lookup 203.0.113.66)" = box.example.org ]
+[ -z "$(ptr_lookup 198.51.100.1)" ]
+DIAGNOSTIC_DNS="$work/dns"; DOM2IP_CACHE="$work/dom2ip"; PTR_CACHE="$work/ptr"
+printf '1761868800.1 192.168.178.20 live.iptv.example 203.0.113.70\n' > "$DIAGNOSTIC_DNS"
+printf 'cdn.example.tv %s 203.0.113.71 203.0.113.72\n' "$(date +%s)" > "$DOM2IP_CACHE"
+: > "$PTR_CACHE"
+members='203.0.113.73 timeout 50 packets 0 bytes 0 comment "src=epg.example.org;seen=20261031-000000"
+203.0.113.70 timeout 50 packets 0 bytes 0 comment "src=flow-delta1b-total2b-192.168.178.20-443;seen=x"'
+destination_names_json "203.0.113.70 203.0.113.71 203.0.113.73 151.101.193.140 198.51.100.1" "$members" > "$work/names.json"
+if command -v jq >/dev/null 2>&1; then
+  jq -e '."203.0.113.70".n=="live.iptv.example" and ."203.0.113.70".k=="dns"
+    and ."203.0.113.71".n=="cdn.example.tv"
+    and ."203.0.113.73".n=="epg.example.org" and ."203.0.113.73".k=="host"
+    and ."151.101.193.140".n=="fastly-edge.example.net" and ."151.101.193.140".k=="ptr"
+    and (has("198.51.100.1")|not)' "$work/names.json" >/dev/null
+fi
+grep -q '^198.51.100.1 [0-9]* -$' "$PTR_CACHE"
+echo 'PASS: destination names from DNS answers, learned hostnames and PTR (both BusyBox styles), missing PTR cached'

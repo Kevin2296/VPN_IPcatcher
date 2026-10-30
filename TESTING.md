@@ -1,5 +1,9 @@
 # Release Verification / Releasecontrole
 
+## 2.10.1 names and comments
+
+`tests/fixed-routes-checks.sh` checks ipset comments without BusyBox `tr` classes and origin retention after the waiting list. `tests/webui-flow-status-checks.sh` checks PTR parsing for both BusyBox styles, name priority (DNS answer, learned hostname, PTR) and negative PTR caching. `tests/webui-checks.js` checks the readable origin text (including legacy "wromoted" comments) and name rendering.
+
 ## 2.10.0 WebUI and amtm
 
 `tests/webui-flow-status-checks.sh` verifies the per-flow status (final, candidate, waiting, fixed route/device, router, local, excluded), byte counters above 2^31 and the fixed-route JSON summary. `tests/menu-checks.sh` verifies the Dutch exclusion manager layout, E as back key and the IPTV device chooser. The WebUI was additionally rendered in headless Chromium with sample data (overview, live flows, configuration with device picker, presets, help) without script errors; final validation in the router WebUI is still required.

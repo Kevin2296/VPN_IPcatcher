@@ -234,3 +234,25 @@ if provider_lock_acquire; then echo 'Live provider lock taken twice'; exit 1; fi
 provider_lock_release
 [ ! -e "$PROVIDER_LOCK" ]
 echo 'PASS: an interrupted provider refresh no longer blocks later refreshes'
+
+# --- 2.10.1: comments without BusyBox tr classes, origin kept after idle ----
+current_epoch(){ echo 1000; }
+comment="$(make_ipset_comment 'promoted-after-idle')"
+case "$comment" in src=promoted-after-idle\;seen=*) ;; *) echo "Comment corrupted: $comment"; exit 1 ;; esac
+[ "$(printf 'Apple.UpDates.Example' | lower_clean 'a-z0-9.-')" = 'apple.updates.example' ]
+(
+  : > "$TMP/final-calls"
+  CT=ct_idle; ct_idle(){ :; }
+  ipset_wait(){
+    case "$1" in
+      save) printf '%s\n' 'create x hash:ip' 'add x 145.53.10.40 timeout 80000 comment "src=flow-delta900000b-total20000000b-192.168.178.20-443;seen=20261031-001000"' 'add x 145.53.10.41 timeout 80000' ;;
+      del) : ;;
+    esac
+  }
+  IPSET=ipset_wait
+  add_final_immediate(){ echo "$1 $2" >> "$TMP/final-calls"; return 0; }
+  promote_deferred
+  grep -qx '145.53.10.40 after-idle:flow-delta900000b-total20000000b-192.168.178.20-443' "$TMP/final-calls"
+  grep -qx '145.53.10.41 after-idle:unknown' "$TMP/final-calls"
+)
+echo 'PASS: ipset comments are not corrupted (no tr classes) and keep their origin after the waiting list'

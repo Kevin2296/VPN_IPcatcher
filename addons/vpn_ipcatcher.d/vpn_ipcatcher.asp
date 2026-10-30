@@ -939,7 +939,7 @@ function renderLiveTab(){
     var flows=parseFlows(txt);
     updateFlowOptions('flowSource',flows.map(function(r){return r.src;}));
     updateFlowOptions('flowPort',flows.map(function(r){return r.port;}));
-    var rows=filterLiveRows(flows).map(function(r){return r.raw?'<td colspan="7" class="mono">'+escapeHtml(r.raw)+'</td>':'<td class="mono" title="'+escapeHtml(r.bytes)+' B">'+escapeHtml(formatFlowBytes(r.bytes))+'</td>'+sourceCell(r.src)+td(r.dst,'mono')+td(r.port,'mono')+td(r.cand)+td(r.final)+flowStateCell(r);});
+    var rows=filterLiveRows(flows).map(function(r){return r.raw?'<td colspan="7" class="mono">'+escapeHtml(r.raw)+'</td>':'<td class="mono" title="'+escapeHtml(r.bytes)+' B">'+escapeHtml(formatFlowBytes(r.bytes))+'</td>'+sourceCell(r.src)+destinationCell(r.dst)+td(r.port,'mono')+td(r.cand)+td(r.final)+flowStateCell(r);});
     html=renderTable([t('trafficVolume'),t('source'),t('destination'),t('port'),t('cand'),t('final'),t('flowStatus')], rows);
   } else if(currentTab==='log'){
     var rows=filterLiveRows(parseLog(txt)).map(function(r){return td(r.ts,'mono')+td(r.msg);});
@@ -949,8 +949,8 @@ function renderLiveTab(){
     html=renderTable([t('field'),t('value')], rows);
   } else if(currentTab==='candidate' || currentTab==='waiting' || currentTab==='final'){
     var dump=parseIpsetDump(txt), meta=dump.meta.length?'<pre>'+escapeHtml(dump.meta.join('\n'))+'</pre>':'';
-    var rows=filterLiveRows(dump.rows).map(function(r){return r.raw?'<td colspan="6" class="mono">'+escapeHtml(r.raw)+'</td>':td(r.ip,'mono')+td(r.timeout,'mono')+td(r.packets,'mono')+td(r.bytes,'mono')+td(r.seen,'mono')+td(r.source);});
-    html='<div class="ipsetDump">'+meta+renderTable(['IP',t('timeout'),t('packets'),t('bytes'),t('seen'),t('source')], rows)+'</div>';
+    var rows=filterLiveRows(dump.rows.map(function(r){if(!r.raw){r.name=destinationName(r.ip);r.origin=describeOrigin(r.source);}return r;})).map(function(r){return r.raw?'<td colspan="6" class="mono">'+escapeHtml(r.raw)+'</td>':td(r.ip,'mono')+nameCell(r.ip)+td(r.timeout,'mono',Number(r.timeout))+td(formatFlowBytes(r.bytes),'mono',Number(r.bytes))+td(r.seen,'mono')+'<td title="'+escapeHtml(r.source)+'">'+escapeHtml(r.origin)+'</td>';});
+    html='<div class="ipsetDump">'+meta+renderTable(['IP',t('destName'),t('timeout'),t('bytes'),t('seen'),t('learnedHow')], rows)+'</div>';
   } else if(currentTab==='resolved'){
     var rows=filterLiveRows(parseResolved(txt)).map(function(r){return td(r.ip,'mono')+td(r.host);});
     html=renderTable(['IP',t('hostnameDomain')], rows);
@@ -993,6 +993,10 @@ Object.assign(VPNIPC_I18N.nl,{
   flow_excluded_range_help:'Valt onder je uitsluitingen; blijft via WAN.', flow_router_help:'Verkeer van de router zelf (updates, Skynet, AdGuardHome); wordt nooit geleerd.', flow_local_help:'Bestemming in je eigen netwerk.',
   presetPartHint:'Niet alle domeinen staan aan (bijv. nieuw toegevoegd na een update). Vink aan om alles uit te sluiten.',
   defaultValue:'Standaard', yourValue:'Jouw waarde',
+  destName:'Naam', learnedHow:'Hoe geleerd', nameUnknown:'onbekend',
+  nameKind_dns:'DNS-naam die een apparaat opvroeg', nameKind_host:'Hostnaam waarmee dit IP is geleerd', nameKind_ptr:'Omgekeerde DNS (PTR) - naam van de eigenaar van het IP, niet altijd de dienst',
+  originAfterIdle:'Na einde stream (wachtlijst)', originFlow:'Streamscan · {dev} · poort {port} · {total}', originPromoted:'Genoeg verkeer na beoordeling', originImmediate:'Direct toegevoegd',
+  originRedirect:'HTTP-doorverwijzing naar IP', originHost:'Hostnaam: {host}',
   helpFixed:'Alles wat je zelf al vast routeert, laat IP Catcher met rust: bestemmingen en apparaten uit VPN Director (VPN- én WAN-regels) en de domeinen en IP’s van je andere VPN Routing-policies. Die regels bepalen zelf al VPN of WAN. Ze worden elke minuut opnieuw ingelezen.'
 });
 Object.assign(VPNIPC_I18N.en,{
@@ -1013,6 +1017,10 @@ Object.assign(VPNIPC_I18N.en,{
   flow_excluded_range_help:'Matches your exclusions; stays on the WAN.', flow_router_help:'Traffic of the router itself (updates, Skynet, AdGuardHome); never learned.', flow_local_help:'Destination in your own network.',
   presetPartHint:'Not all domains are enabled (for example added by an update). Tick to exclude everything.',
   defaultValue:'Default', yourValue:'Your value',
+  destName:'Name', learnedHow:'How learned', nameUnknown:'unknown',
+  nameKind_dns:'DNS name a device looked up', nameKind_host:'Hostname this IP was learned with', nameKind_ptr:'Reverse DNS (PTR) - name of the IP owner, not always the service',
+  originAfterIdle:'After stream ended (waiting list)', originFlow:'Stream scan · {dev} · port {port} · {total}', originPromoted:'Enough traffic after review', originImmediate:'Added immediately',
+  originRedirect:'HTTP redirect to IP', originHost:'Hostname: {host}',
   helpFixed:'Anything you already route yourself is left alone: destinations and devices from VPN Director (VPN and WAN rules) and the domains and IPs of your other VPN Routing policies. Those rules already decide VPN or WAN. They are re-read every minute.'
 });
 var FLOW_STATE_CLASS={final:'final',waiting:'waiting',candidate:'candidate','fixed-route':'fixed','fixed-device':'fixed','excluded-range':'excluded',router:'router',local:'local',watch:''};
@@ -1020,6 +1028,43 @@ function flowStateCell(r){
   var hint=r.hint||'watch', cls=FLOW_STATE_CLASS.hasOwnProperty(hint)?FLOW_STATE_CLASS[hint]:'';
   var key='flow_'+hint.replace(/-/g,'_'), label=VPNIPC_I18N[vpnipcCurrentLanguage]&&VPNIPC_I18N[vpnipcCurrentLanguage][key]?t(key):hint;
   return '<td data-sort="'+escapeHtml(hint)+'"><span class="flowState '+cls+'" title="'+escapeHtml(t(key+'_help')===key+'_help'?'':t(key+'_help'))+'">'+escapeHtml(label)+'</span></td>';
+}
+/* Destination names: DNS name a device received, the hostname an IP was
+   learned with, or reverse DNS. Provided by the router as destination_names. */
+function destinationName(ip){
+  var names=(dataCache&&dataCache.destination_names)||{}, entry=names[ip];
+  return entry&&entry.n?entry.n:'';
+}
+function destinationKind(ip){
+  var names=(dataCache&&dataCache.destination_names)||{}, entry=names[ip];
+  return entry?entry.k:'';
+}
+function nameCell(ip){
+  var name=destinationName(ip), kind=destinationKind(ip);
+  if(!name) return '<td class="muted">'+escapeHtml(t('nameUnknown'))+'</td>';
+  return '<td title="'+escapeHtml(t('nameKind_'+kind))+'">'+escapeHtml(name)+(kind==='ptr'?' <span class="muted">(PTR)</span>':'')+'</td>';
+}
+function destinationCell(ip){
+  var name=destinationName(ip);
+  if(!name) return td(ip,'mono');
+  return '<td class="mono" data-sort="'+escapeHtml(ip)+'" title="'+escapeHtml(t('nameKind_'+destinationKind(ip)))+'"><span class="deviceTag">'+escapeHtml(name)+'</span>'+escapeHtml(ip)+'</td>';
+}
+function deviceName(ip){
+  var match=sourceDevices.filter(function(d){return d.ip===ip;})[0];
+  return match&&match.name!==ip?match.name:ip;
+}
+/* Turn an ipset comment ("how was this IP found") into readable text. */
+function describeOrigin(src){
+  src=String(src||'');
+  var m;
+  if((m=src.match(/^after-idle:(.*)$/))) return t('originAfterIdle')+(m[1]&&m[1]!=='unknown'?' · '+describeOrigin(m[1]):'');
+  if(/^[wp]romoted-after-idle$/.test(src)) return t('originAfterIdle');
+  if((m=src.match(/^flow-delta(\d+)b-total(\d+)b-(\d+\.\d+\.\d+\.\d+)-(\d+)$/))) return t('originFlow',{dev:deviceName(m[3]),port:m[4],total:formatFlowBytes(m[2])});
+  if(/^[wp]romoted-(bytes|age)$/.test(src)) return t('originPromoted');
+  if(/^[wp]romoted-immediate$/.test(src)) return t('originImmediate');
+  if(src==='http-location') return t('originRedirect');
+  if(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(src)&&/[a-z]/.test(src)) return t('originHost',{host:src});
+  return src||'-';
 }
 function sourceCell(ip){
   var match=sourceDevices.filter(function(d){return d.ip===ip&&d.name!==ip;})[0];

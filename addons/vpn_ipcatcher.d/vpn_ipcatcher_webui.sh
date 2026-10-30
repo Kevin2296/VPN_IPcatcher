@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.10.0
+# Version: 2.10.1
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -38,6 +38,12 @@ CT="$(find_bin /opt/sbin/conntrack /opt/bin/conntrack /usr/sbin/conntrack /usr/b
 CRU="$(find_bin /usr/sbin/cru /sbin/cru /usr/bin/cru /bin/cru)"
 IPBIN="$(find_bin /sbin/ip /bin/ip /usr/sbin/ip /usr/bin/ip /opt/sbin/ip /opt/bin/ip)"
 FIXED_SETS_FILE="/tmp/vpn_ipcatcher/fixed_sets"
+NSLOOKUP="$(find_bin /usr/bin/nslookup /bin/nslookup /opt/bin/nslookup)"
+TIMEOUT_BIN="$(find_bin /usr/bin/timeout /bin/timeout /opt/bin/timeout)"
+DOM2IP_CACHE="/tmp/vpn_ipcatcher/dom2ip"
+PTR_CACHE="/tmp/vpn_ipcatcher/ptr_cache"
+PTR_TTL=3600
+PTR_LOOKUPS_PER_PUBLISH=6
 FIXED_DOMAINS_FILE="/tmp/vpn_ipcatcher/fixed_domains"
 LOGGER="$(find_bin /usr/bin/logger /bin/logger)"; [ -z "$LOGGER" ] && LOGGER="logger"
 DATEBIN="$(find_bin /bin/date /usr/bin/date)"
@@ -325,6 +331,65 @@ live_flows_text(){
   done
 }
 
+# Reverse DNS (PTR) via the router's own resolver, at most 2 seconds.
+# Understands both BusyBox output styles ("name = host." and
+# "Address 1: <ip> <host>").
+ptr_lookup(){
+  [ -n "$NSLOOKUP" ] || return 0
+  if [ -n "$TIMEOUT_BIN" ]; then
+    case "$("$TIMEOUT_BIN" --help 2>&1)" in *'-t SECS'*|*'[-t '*) ptr_out="$("$TIMEOUT_BIN" -t 2 "$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)" ;;
+      *) ptr_out="$("$TIMEOUT_BIN" 2 "$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)" ;; esac
+  else
+    ptr_out="$("$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)"
+  fi
+  printf '%s\n' "$ptr_out" | ${AWK:-awk} -v ip="$1" '
+    /name = / {n=$NF; sub(/\.$/,"",n); print tolower(n); exit}
+    $1=="Address" && $3==ip && NF>=4 {print tolower($4); exit}' | ${SED:-sed} 's/[^a-z0-9.-]//g'
+}
+
+# JSON object {"ip":{"n":"name","k":"dns|host|ptr"}} for the given IPs.
+# Sources, best first: a DNS answer a LAN device actually received
+# (diagnostic capture), IP Catcher's own domain cache, the hostname the IP
+# was learned with (ipset comment) and finally cached or new PTR lookups
+# (a few per publish, so the WebUI stays fast).
+destination_names_json(){
+  names_ips="$1"; names_comments="$2"
+  mkdir -p /tmp/vpn_ipcatcher 2>/dev/null
+  names_work="$(mktemp -d "/tmp/vpn_ipcatcher/names.XXXXXX" 2>/dev/null)" || { printf '{}'; return 0; }
+  printf '%s\n' $names_ips | ${AWK:-awk} '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && !seen[$0]++' > "$names_work/ips"
+  : > "$names_work/known"
+  [ -r "$DIAGNOSTIC_DNS" ] && ${AWK:-awk} 'NF>=4 && $4 ~ /^[0-9.]+$/ {print $4, "dns", tolower($3)}' "$DIAGNOSTIC_DNS" >> "$names_work/known" 2>/dev/null
+  [ -r "$DOM2IP_CACHE" ] && ${AWK:-awk} '$2 ~ /^[0-9]+$/ {for(i=3;i<=NF;i++) print $i, "dns", $1}' "$DOM2IP_CACHE" >> "$names_work/known" 2>/dev/null
+  printf '%s\n' "$names_comments" | ${AWK:-awk} '
+    match($0, /^[0-9.]+ /) && match($0, /src=[a-z0-9.-]+\.[a-z][a-z0-9-]+[;"]/) {
+      split($0, f, " "); v=substr($0, RSTART+4, RLENGTH-5)
+      if (v !~ /^flow-/ && v !~ /^(after-idle|promoted|wromoted)/) print f[1], "host", v
+    }' >> "$names_work/known"
+  now="$(date +%s)"
+  [ -r "$PTR_CACHE" ] && ${AWK:-awk} -v now="$now" -v ttl="$PTR_TTL" '$2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl && NF>=3 {print $1, "ptr", $3}' "$PTR_CACHE" >> "$names_work/known" 2>/dev/null
+  lookups=0
+  while read -r name_ip; do
+    ${AWK:-awk} -v ip="$name_ip" '$1==ip {f=1; exit} END{exit f?0:1}' "$names_work/known" && continue
+    [ "$lookups" -lt "$PTR_LOOKUPS_PER_PUBLISH" ] || continue
+    lookups=$((lookups+1))
+    ptr_name="$(ptr_lookup "$name_ip")"
+    mkdir -p /tmp/vpn_ipcatcher 2>/dev/null
+    printf '%s %s %s\n' "$name_ip" "$now" "${ptr_name:--}" >> "$PTR_CACHE"
+    printf '%s ptr %s\n' "$name_ip" "${ptr_name:--}" >> "$names_work/known"
+  done < "$names_work/ips"
+  ${AWK:-awk} -v want="$names_work/ips" '
+    BEGIN { while ((getline line < want) > 0) wanted[line] = 1; rank["dns"]=1; rank["host"]=2; rank["ptr"]=3 }
+    ($1 in wanted) && $3 != "-" && $3 ~ /^[A-Za-z0-9.-]+$/ {
+      if (!($1 in best) || rank[$2] < rank[kind[$1]]) { best[$1] = $3; kind[$1] = $2 }
+    }
+    END {
+      printf "{"; n = 0
+      for (ip in best) { printf "%s\"%s\":{\"n\":\"%s\",\"k\":\"%s\"}", (n++ ? "," : ""), ip, best[ip], kind[ip] }
+      printf "}"
+    }' "$names_work/known"
+  rm -rf "$names_work"
+}
+
 # Summary of fixed routes as maintained by the engine (VPN Director and
 # other VPN Routing policies), for the WebUI overview.
 fixed_routes_json(){
@@ -461,10 +526,18 @@ publish_status(){
   else
     log_text="$(echo 'Nog geen logbestand.' | json_escape)"
   fi
-  cand_text="$(ipset_text "$CAND_SET" 120 | json_escape)"
-  wait_text="$(ipset_text "$WAIT_SET" 120 | json_escape)"
-  final_text="$(ipset_text "$IPSET_NAME" 120 | json_escape)"
-  flows_text="$(live_flows_text | json_escape)"
+  cand_raw="$(ipset_text "$CAND_SET" 120)"
+  wait_raw="$(ipset_text "$WAIT_SET" 120)"
+  final_raw="$(ipset_text "$IPSET_NAME" 120)"
+  flows_raw="$(live_flows_text)"
+  cand_text="$(printf '%s\n' "$cand_raw" | json_escape)"
+  wait_text="$(printf '%s\n' "$wait_raw" | json_escape)"
+  final_text="$(printf '%s\n' "$final_raw" | json_escape)"
+  flows_text="$(printf '%s\n' "$flows_raw" | json_escape)"
+  names_members="$(printf '%s\n%s\n%s\n' "$cand_raw" "$wait_raw" "$final_raw" | ${AWK:-awk} '$1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/')"
+  names_ips="$(printf '%s\n' "$flows_raw" | ${AWK:-awk} 'NR>1 {print $3}') $(printf '%s\n' "$names_members" | ${AWK:-awk} '{print $1}')"
+  destination_names="$(destination_names_json "$names_ips" "$names_members")" || destination_names='{}'
+  [ -n "$destination_names" ] || destination_names='{}'
   diagnostic_output="$(diagnostic_text | json_escape)"
   diagnostic_device=''; diagnostic_phase=idle
   if [ -r "$DIAGNOSTIC_TARGET" ]; then
@@ -504,7 +577,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.10.0",
+  "version":"2.10.1",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -528,6 +601,7 @@ publish_status(){
   "last_action_message":"$(printf '%s' "$last_action_message" | json_escape)",
   "protected_ips":$(json_array_words "$protected_ips"),
   "fixed_routes":$(fixed_routes_json),
+  "destination_names":$destination_names,
   "config":{
     "INTERFACES":"$(cfg_get INTERFACES | json_escape)",
     "IPSET_NAME":"$(cfg_get IPSET_NAME | json_escape)",

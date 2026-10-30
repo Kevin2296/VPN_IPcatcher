@@ -19,6 +19,7 @@ preset_domains(){
     ai_claude) echo "claude.ai anthropic.com api.anthropic.com" ;;
     ai_openai) echo "chatgpt.com chat.openai.com openai.com api.openai.com oaistatic.com oaiusercontent.com" ;;
     cam_eufy) echo "eufylife.com security-app.eufylife.com eufy.com anker.com anker-in.com" ;;
+    iot_homeassistant) echo "home-assistant.io nabucasa.com nabu.casa" ;;
     cam_dahua_imou) echo "imoulife.com easy4ip.com lechange.com dahuasecurity.com dahuatech.com dahua2w.com dahuap2p.com" ;;
     dev_github) echo "github.com api.github.com githubusercontent.com githubassets.com github.io raw.githubusercontent.com objects.githubusercontent.com" ;;
     game_steam) echo "steamcontent.com steampowered.com steamstatic.com steamserver.net" ;;
@@ -34,6 +35,8 @@ preset_domains(){
     upd_google) echo "googleapis.com gvt1.com gvt2.com android.clients.google.com play.googleapis.com" ;;
     upd_google_play) echo "dl.google.com play.googleapis.com android.clients.google.com redirector.gvt1.com" ;;
     upd_cloud) echo "dropbox.com dropboxusercontent.com onedrive.live.com 1drv.com sharepoint.com" ;;
+    upd_connectivity) echo "msftconnecttest.com msftncsi.com connectivitycheck.gstatic.com connectivitycheck.android.com captive.apple.com detectportal.firefox.com nmcheck.gnome.org checkonline.home-assistant.io lencr.org letsencrypt.org digicert.com sectigo.com pki.goog globalsign.com" ;;
+    upd_microsoft) echo "microsoft.com windows.com windows.net windowsupdate.com live.com msn.com bing.com microsoftonline.com msauth.net msftauth.net s-microsoft.com skype.com teams.microsoft.com msftconnecttest.com msftncsi.com" ;;
     upd_speedtest) echo "speedtest.net ookla.com nperf.com fast.com" ;;
     tv_samsung) echo "samsungcloudsolution.net samsungcloudsolution.com samsungacr.com samsung.com" ;;
     tv_philips) echo "philips.com tpv-tech.com philips-tvconsumercare.com" ;;
@@ -89,6 +92,7 @@ preset_label(){
     ai_openai) echo "ChatGPT / OpenAI" ;;
     cam_eufy) echo "Eufy / Anker Security" ;;
     cam_dahua_imou) echo "Dahua / Imou / Easy4IP" ;;
+    iot_homeassistant) echo "Home Assistant / Nabu Casa" ;;
     dev_github) echo "GitHub" ;;
     game_steam) echo "Steam" ;;
     game_epic) echo "Epic Games" ;;
@@ -103,6 +107,8 @@ preset_label(){
     upd_google) echo "Google / Android updates" ;;
     upd_google_play) echo "Google Play Store / app downloads" ;;
     upd_cloud) echo "Cloudopslag (Dropbox / OneDrive)" ;;
+    upd_connectivity) echo "Connectiviteitscontroles en certificaten (Windows, Android, Apple, Let's Encrypt)" ;;
+    upd_microsoft) echo "Microsoft (Windows, Office 365, Teams, Bing, Outlook)" ;;
     upd_speedtest) echo "Snelheidstests (Ookla / nPerf / Fast)" ;;
     tv_samsung) echo "Samsung Smart TV telemetry" ;;
     tv_philips) echo "Philips Smart TV telemetry" ;;
@@ -128,10 +134,10 @@ preset_keys_for_category(){
     "DNS providers") echo "dns_cloudflare dns_quad9 dns_google dns_opendns" ;;
     "Social / messaging") echo "social_meta social_whatsapp social_instagram social_snapchat social_reddit social_tiktok" ;;
     "AI assistants") echo "ai_claude ai_openai" ;;
-    "Security cameras / IoT cloud") echo "cam_eufy cam_dahua_imou" ;;
+    "Security cameras / IoT cloud") echo "cam_eufy cam_dahua_imou iot_homeassistant" ;;
     "GitHub / dev CDN") echo "dev_github" ;;
     "Games / downloads") echo "game_steam game_epic game_xbox game_playstation game_nintendo game_battlenet" ;;
-    "OS / app updates") echo "upd_windows upd_msstore upd_office upd_apple upd_google upd_google_play upd_cloud upd_speedtest" ;;
+    "OS / app updates") echo "upd_connectivity upd_windows upd_microsoft upd_msstore upd_office upd_apple upd_google upd_google_play upd_cloud upd_speedtest" ;;
     "Smart TV telemetry") echo "tv_samsung tv_philips tv_android tv_lg" ;;
     "Streamingdiensten") echo "stream_netflix stream_youtube stream_disney stream_prime stream_videoland stream_viaplay stream_hbomax stream_skyshowtime stream_npo stream_spotify stream_twitch" ;;
     *) echo "" ;;

@@ -1,3 +1,11 @@
+# VPN IP Catcher 2.10.1 — Namen bij IP-adressen
+
+**NL:** De WebUI toont nu bij elk IP een naam (de DNS-naam die een apparaat opvroeg, de hostnaam waarmee het is geleerd, of omgekeerde DNS) en een leesbare kolom **Hoe geleerd**. Hersteld: op Merlin werd "promoted" door een `tr`-beperking opgeslagen als "wromoted", en hostnamen bij de omgekeerde DNS-controle raakten verminkt. Nieuwe presets voor connectiviteitscontroles en certificaten (msftconnecttest, Let's Encrypt, …), Microsoft en Home Assistant.
+
+**EN:** WebUI shows a name per IP (DNS answer seen by a device, learned hostname, or reverse DNS) and a readable "How learned" column. Fixed BusyBox `tr` class handling that stored "promoted" as "wromoted" and corrupted reverse-DNS names. New presets for connectivity checks/certificates, Microsoft and Home Assistant.
+
+---
+
 # VPN IP Catcher 2.10.0 — Nieuwe WebUI in ASUS-stijl
 
 **NL:** De WebUI is opnieuw vormgegeven in de stijl van de ASUS/Merlin-pagina's en een stuk overzichtelijker. Nieuw: een tegel voor **vaste routes**, de **wachtlijst** in beeld, en **IPTV-apparaten kiezen** uit de ASUS-apparatenlijst met namen. Liveflows tonen per verbinding een duidelijke status (via VPN, wacht op einde stream, via WAN, vaste route, router zelf, …) en de naam van het apparaat. Het amtm-menu is volledig Nederlands en logischer ingedeeld, met een apparatenkiezer onder **Instellingen → 7**. Een nieuwe installatie vraagt direct naar je IPTV-apparaten.
