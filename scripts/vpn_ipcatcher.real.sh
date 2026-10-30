@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.16
+# Version: 2.9.17
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -1677,21 +1677,18 @@ port_allowed(){
   return 1
 }
 
-# LAN networks of the capture interfaces ("net/len") and the router's own
-# addresses. The flow scan only looks at LAN clients, so downloads by the
-# router itself (amtm updates, Skynet lists, AdGuardHome filters, spdMerlin
-# speed tests, Entware) are never learned as IPTV streams.
+# Private client networks ("net/len") and the router's own addresses. The
+# flow scan only looks at private clients (main LAN, guest networks, IoT
+# VLANs) and never at the router itself, so downloads by the router (amtm
+# updates, Skynet lists, AdGuardHome filters, spdMerlin speed tests,
+# Entware) are not learned as IPTV streams. All router addresses are
+# collected, including WAN and VPN tunnel addresses, which also covers a
+# double-NAT WAN in a private range.
 refresh_lan_networks(){
-  LAN_NETS=""; ROUTER_IPS=""
+  LAN_NETS="10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10"
+  ROUTER_IPS=""
   [ -n "$IPBIN" ] || return 0
-  for lan_iface in $INTERFACES; do
-    lan_info="$($IPBIN -4 -o addr show dev "$lan_iface" 2>/dev/null | $AWK '{for(i=1;i<=NF;i++) if($i=="inet") print $(i+1)}')"
-    for lan_cidr in $lan_info; do
-      valid_cidr "$lan_cidr" || continue
-      LAN_NETS="$LAN_NETS $lan_cidr"
-      ROUTER_IPS="$ROUTER_IPS ${lan_cidr%/*}"
-    done
-  done
+  ROUTER_IPS="$($IPBIN -4 -o addr show 2>/dev/null | $AWK '{for(i=1;i<=NF;i++) if($i=="inet") {split($(i+1),a,"/"); printf " %s", a[1]}}')"
 }
 
 flow_scan_candidates(){
@@ -2011,7 +2008,7 @@ run_engine(){
   log "Exclusion resolver: $EXCLUDE_RESOLVE_CACHE every=${EXCLUDE_RESOLVE_EVERY}s reverse_dns=$REVERSE_DNS_CHECK"
   log "Exclude net set: $EXCLUDE_NET_SET nets=$(echo "$EXCLUDE_NETS" | $AWK '{print NF+0}')"
   log "Vaste routes: $FIXED_DST_SET (VPN Director bestemmingen), $FIXED_SRC_SET (VPN Director apparaten), VPN Routing policies: $( [ -s "$CACHE_FIXED_SETS" ] && $TR '\n' ' ' < "$CACHE_FIXED_SETS" || echo geen)"
-  log "LAN-bronnen flow scan: ${LAN_NETS:-alle} (router zelf uitgesloten: ${ROUTER_IPS:-n.v.t.})"
+  log "Flow scan: alleen apparaten in privé-netwerken (LAN, gast, IoT); router zelf uitgesloten:${ROUTER_IPS:- n.v.t.}"
 
   # Start workers first; exclusion refresh mag startup niet blokkeren.
   start_promote_worker
@@ -3455,7 +3452,7 @@ menu_action_key(){
     main:4) echo view ;; main:5) echo settings ;; main:6) echo vpn ;; main:7) echo maintenance ;;
     view:1) echo 4 ;; view:2) echo 5 ;; view:3) echo 6 ;; view:4) echo 7 ;; view:5) echo 8 ;; view:6) echo 9 ;; view:7) echo 10 ;;
     settings:1) echo 11 ;; settings:2) echo 12 ;; settings:3) echo 13 ;; settings:4) echo 14 ;; settings:5) echo 15 ;; settings:6) echo 16 ;;
-    vpn:1) echo 22 ;; vpn:2) echo 23 ;;
+    vpn:1) echo 22 ;; vpn:2) echo 23 ;; vpn:3) echo 27 ;;
     maintenance:UC|maintenance:uc) echo UC ;; maintenance:U|maintenance:u) echo U ;; maintenance:FU|maintenance:fu) echo FU ;;
     maintenance:1) echo 20 ;; maintenance:2) echo 24 ;; maintenance:3) echo 26 ;; maintenance:4) echo 21 ;; maintenance:5) echo 25 ;;
     *:E|*:e|*:q|*:Q|*:exit) echo back ;;
@@ -3498,6 +3495,7 @@ menu_loop(){
       vpn)
         say "VPN en routing"
         say " 1) VPN kiezen            2) VPN / lijst controleren"
+        say " 3) Vaste routes tonen (VPN Director / VPN Routing, nooit geleerd)"
         say " E) Terug"
         ;;
       maintenance)
@@ -3551,6 +3549,7 @@ menu_loop(){
       21) /jffs/scripts/vpn_ipcatcher.sh rollback; exec /jffs/scripts/vpn_ipcatcher.sh menu ;;
       22) /jffs/scripts/vpn_ipcatcher.sh routing-setup; press_enter ;;
       23) /jffs/scripts/vpn_ipcatcher.sh routing-check; press_enter ;;
+      27) show_fixed_routes; press_enter ;;
       24)
         say "1) Kleine back-up: code, instellingen en hooks"
         say "2) Uitgebreid: ook DVR-configuratie en addonhistorie"

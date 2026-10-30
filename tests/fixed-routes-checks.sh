@@ -151,7 +151,9 @@ flow_rows(){
   cat <<EOF
 tcp 6 300 ESTABLISHED src=192.168.178.20 dst=145.53.10.30 sport=50000 dport=443 packets=9 bytes=$1 src=145.53.10.30 dst=192.168.178.20 sport=443 dport=50000 packets=9 bytes=0
 tcp 6 300 ESTABLISHED src=192.168.178.1 dst=145.53.10.31 sport=50001 dport=443 packets=9 bytes=$1 src=145.53.10.31 dst=192.168.178.1 sport=443 dport=50001 packets=9 bytes=0
-tcp 6 300 ESTABLISHED src=100.70.1.2 dst=145.53.10.32 sport=50002 dport=443 packets=9 bytes=$1 src=145.53.10.32 dst=100.70.1.2 sport=443 dport=50002 packets=9 bytes=0
+tcp 6 300 ESTABLISHED src=84.80.1.2 dst=145.53.10.32 sport=50002 dport=443 packets=9 bytes=$1 src=145.53.10.32 dst=84.80.1.2 sport=443 dport=50002 packets=9 bytes=0
+tcp 6 300 ESTABLISHED src=10.8.0.2 dst=145.53.10.35 sport=50005 dport=443 packets=9 bytes=$1 src=145.53.10.35 dst=10.8.0.2 sport=443 dport=50005 packets=9 bytes=0
+tcp 6 300 ESTABLISHED src=192.168.179.3 dst=145.53.10.34 sport=50004 dport=443 packets=9 bytes=$1 src=145.53.10.34 dst=192.168.179.3 sport=443 dport=50004 packets=9 bytes=0
 tcp 6 300 ESTABLISHED src=192.168.178.50 dst=145.53.10.33 sport=50003 dport=443 packets=9 bytes=$1 src=145.53.10.33 dst=192.168.178.50 sport=443 dport=50003 packets=9 bytes=0
 EOF
 }
@@ -160,7 +162,10 @@ conntrack_mock(){ echo call >> "$TMP/ct-calls"; flow_rows "$FLOW_BYTES"; }
 CT=conntrack_mock; ACCT_OK=1; STREAM_FLOW_SCAN=yes; SOURCE_IPS=""; PORTS="80,443"
 STREAM_MIN_BYTES=15000000; STREAM_MIN_DELTA=750000; STREAM_REQUIRE_GROWTH=yes; STREAM_FLOW_TARGET=candidate
 REVERSE_DNS_CHECK=no; EXCLUDE_RESOLVE_CACHE=no; EXCLUDE_IPS=""
-LAN_NETS=" 192.168.178.1/24"; ROUTER_IPS=" 192.168.178.1"
+IPBIN=ip_mock
+ip_mock(){ printf '%s\n' '1: lo    inet 127.0.0.1/8 scope host lo' '5: br0    inet 192.168.178.1/24 brd 192.168.178.255 scope global br0' '9: eth0    inet 84.80.1.2/22 scope global eth0' '12: tun11    inet 10.8.0.2/24 scope global tun11'; }
+refresh_lan_networks
+case "$ROUTER_IPS" in *' 192.168.178.1'*' 84.80.1.2'*' 10.8.0.2'*) ;; *) echo "Router addresses missing: $ROUTER_IPS"; exit 1 ;; esac
 refresh_exclusion_ip_cache(){ :; }
 candidates=""
 add_candidate_once(){ candidates="$candidates $1"; }
@@ -169,9 +174,9 @@ flow_scan_candidates
 [ -z "$candidates" ] || { echo "First scan without growth learned:$candidates"; exit 1; }
 FLOW_BYTES=40000000
 flow_scan_candidates
-[ "$candidates" = ' 145.53.10.30' ] || { echo "Flow scan learned:$candidates"; exit 1; }
+[ "$(printf '%s\n' $candidates | sort | tr '\n' ' ')" = '145.53.10.30 145.53.10.34 ' ] || { echo "Flow scan learned:$candidates"; exit 1; }
 grep -q '^192.168.178.20|145.53.10.30|443 40000000$' "$FLOW_STATE"
-echo 'PASS: flow scan uses deltas, LAN clients only, never the router itself or VPN Director devices'
+echo 'PASS: flow scan uses deltas, includes guest networks, never the router itself (LAN/WAN/VPN tunnel) or VPN Director devices'
 
 # --- Promotion: one conntrack dump per cycle -------------------------------------
 : > "$TMP/ct-calls"

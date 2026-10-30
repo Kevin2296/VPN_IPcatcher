@@ -1,5 +1,11 @@
 # Wijzigingen
 
+## 2.9.17 — Gastnetwerken weer meegenomen in de flow-scan
+
+- **Herstel van een 2.9.16-beperking:** de flow-scan keek alleen naar het subnet van de capture-interface (`br0`). Apparaten op een gastnetwerk of IoT-VLAN (bijv. `192.168.179.x` via Guest Network Pro) werden daardoor niet meer geleerd. Nu telt elk apparaat in een privé-netwerk mee (10/8, 172.16/12, 192.168/16, 100.64/10).
+- De router zelf blijft uitgesloten, nu op basis van al zijn eigen adressen (LAN, WAN en VPN-tunnels). Ook een WAN-adres in een privé-reeks (dubbele NAT) wordt zo herkend.
+- amtm-menu: **VPN en routing → 3) Vaste routes tonen**.
+
 ## 2.9.16 — Vaste routes, minder CPU en betrouwbaardere caches
 
 - **Vaste routes worden nooit geleerd.** IP Catcher leest elke minuut de VPN Director-regels (`/jffs/openvpn/vpndirector_rulelist`) en de Domain VPN Routing-policies (v3.2.5) uit. Bestemmingen uit VPN Director (ook WAN-regels), apparaten die VPN Director volledig routeert (alleen lokaal IP, geen extern IP), domeinen uit andere VPN Routing-policies en IP's in hun `DVR-<policy>-v4`-IPSets worden overgeslagen. Er volgt geen leer- of routecontrole: die regels bepalen zelf al VPN of WAN. Eerder geleerde IP's die nu vast gerouteerd zijn, worden uit de candidate/wacht/finale lijst gehaald (alleen eigen entries met `src=`-comment). Overzicht: `vpn_ipcatcher.sh fixed-routes`.
