@@ -15,6 +15,7 @@ preset_domains(){
     social_instagram) echo "instagram.com www.instagram.com cdninstagram.com i.instagram.com" ;;
     social_snapchat) echo "snapchat.com app.snapchat.com sc-analytics.appspot.com feelinsonice.appspot.com" ;;
     social_reddit) echo "reddit.com www.reddit.com redd.it redditstatic.com redditmedia.com v.redd.it" ;;
+    social_tiktok) echo "tiktok.com tiktokv.com tiktokcdn.com tiktokcdn-eu.com tiktokcdn-us.com byteoversea.com ibytedtos.com ttwstatic.com" ;;
     ai_claude) echo "claude.ai anthropic.com api.anthropic.com" ;;
     ai_openai) echo "chatgpt.com chat.openai.com openai.com api.openai.com oaistatic.com oaiusercontent.com" ;;
     cam_eufy) echo "eufylife.com security-app.eufylife.com eufy.com anker.com anker-in.com" ;;
@@ -32,6 +33,8 @@ preset_domains(){
     upd_apple) echo "apple.com icloud.com mzstatic.com aaplimg.com apple-dns.net appldnld.apple.com swcdn.apple.com" ;;
     upd_google) echo "googleapis.com gvt1.com gvt2.com android.clients.google.com play.googleapis.com" ;;
     upd_google_play) echo "dl.google.com play.googleapis.com android.clients.google.com redirector.gvt1.com" ;;
+    upd_cloud) echo "dropbox.com dropboxusercontent.com onedrive.live.com 1drv.com sharepoint.com" ;;
+    upd_speedtest) echo "speedtest.net ookla.com nperf.com fast.com" ;;
     tv_samsung) echo "samsungcloudsolution.net samsungcloudsolution.com samsungacr.com samsung.com" ;;
     tv_philips) echo "philips.com tpv-tech.com philips-tvconsumercare.com" ;;
     tv_android) echo "androidtv.com android.com gstatic.com googleapis.com" ;;
@@ -39,9 +42,14 @@ preset_domains(){
     stream_netflix) echo "netflix.com www.netflix.com nflxvideo.net nflxso.net nflxext.com nflximg.net" ;;
     stream_youtube) echo "youtube.com googlevideo.com ytimg.com youtubei.googleapis.com" ;;
     stream_disney) echo "disneyplus.com disney-plus.net dssott.com bamgrid.com" ;;
-    stream_prime) echo "primevideo.com amazonvideo.com aiv-cdn.net media-amazon.com" ;;
+    stream_prime) echo "primevideo.com amazonvideo.com aiv-cdn.net aiv-delivery.net pv-cdn.net media-amazon.com" ;;
     stream_videoland) echo "videoland.com rtl.nl" ;;
     stream_viaplay) echo "viaplay.com viaplaycontent.com" ;;
+    stream_hbomax) echo "max.com hbomax.com hbo.com hbomaxcdn.com" ;;
+    stream_skyshowtime) echo "skyshowtime.com" ;;
+    stream_npo) echo "npo.nl npostart.nl omroep.nl" ;;
+    stream_spotify) echo "spotify.com scdn.co spotifycdn.com spotifycdn.net" ;;
+    stream_twitch) echo "twitch.tv ttvnw.net jtvnw.net" ;;
     *) echo "" ;;
   esac
 }
@@ -76,6 +84,7 @@ preset_label(){
     social_instagram) echo "Instagram" ;;
     social_snapchat) echo "Snapchat" ;;
     social_reddit) echo "Reddit" ;;
+    social_tiktok) echo "TikTok" ;;
     ai_claude) echo "Claude / Anthropic" ;;
     ai_openai) echo "ChatGPT / OpenAI" ;;
     cam_eufy) echo "Eufy / Anker Security" ;;
@@ -93,6 +102,8 @@ preset_label(){
     upd_apple) echo "Apple / iCloud updates" ;;
     upd_google) echo "Google / Android updates" ;;
     upd_google_play) echo "Google Play Store / app downloads" ;;
+    upd_cloud) echo "Cloudopslag (Dropbox / OneDrive)" ;;
+    upd_speedtest) echo "Snelheidstests (Ookla / nPerf / Fast)" ;;
     tv_samsung) echo "Samsung Smart TV telemetry" ;;
     tv_philips) echo "Philips Smart TV telemetry" ;;
     tv_android) echo "Android TV telemetry" ;;
@@ -103,6 +114,11 @@ preset_label(){
     stream_prime) echo "Prime Video" ;;
     stream_videoland) echo "Videoland" ;;
     stream_viaplay) echo "Viaplay" ;;
+    stream_hbomax) echo "HBO Max" ;;
+    stream_skyshowtime) echo "SkyShowtime" ;;
+    stream_npo) echo "NPO Start" ;;
+    stream_spotify) echo "Spotify" ;;
+    stream_twitch) echo "Twitch" ;;
     *) echo "$1" ;;
   esac
 }
@@ -110,14 +126,14 @@ preset_label(){
 preset_keys_for_category(){
   case "$1" in
     "DNS providers") echo "dns_cloudflare dns_quad9 dns_google dns_opendns" ;;
-    "Social / messaging") echo "social_meta social_whatsapp social_instagram social_snapchat social_reddit" ;;
+    "Social / messaging") echo "social_meta social_whatsapp social_instagram social_snapchat social_reddit social_tiktok" ;;
     "AI assistants") echo "ai_claude ai_openai" ;;
     "Security cameras / IoT cloud") echo "cam_eufy cam_dahua_imou" ;;
     "GitHub / dev CDN") echo "dev_github" ;;
     "Games / downloads") echo "game_steam game_epic game_xbox game_playstation game_nintendo game_battlenet" ;;
-    "OS / app updates") echo "upd_windows upd_msstore upd_office upd_apple upd_google upd_google_play" ;;
+    "OS / app updates") echo "upd_windows upd_msstore upd_office upd_apple upd_google upd_google_play upd_cloud upd_speedtest" ;;
     "Smart TV telemetry") echo "tv_samsung tv_philips tv_android tv_lg" ;;
-    "Streamingdiensten") echo "stream_netflix stream_youtube stream_disney stream_prime stream_videoland stream_viaplay" ;;
+    "Streamingdiensten") echo "stream_netflix stream_youtube stream_disney stream_prime stream_videoland stream_viaplay stream_hbomax stream_skyshowtime stream_npo stream_spotify stream_twitch" ;;
     *) echo "" ;;
   esac
 }

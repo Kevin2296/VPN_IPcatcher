@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.15
+# Version: 2.9.16
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -15,6 +15,16 @@ PROVIDER_CACHE_TS="/jffs/addons/vpn_ipcatcher.d/provider_ranges.ts"
 PROVIDER_ATTEMPT="/tmp/vpn_ipcatcher_provider_attempt"
 PROVIDER_LOCK="/tmp/vpn_ipcatcher_provider_lock"
 CACHE_PTR="$CACHE_DIR/ptr_cache"
+# Forward DNS answers expire so rotating CDN addresses are learned again.
+DNS_CACHE_TTL=300
+PTR_CACHE_TTL=3600
+CACHE_MAX_LINES=4000
+# Fixed routes configured by the user on the router are never learned.
+VPNDIRECTOR_RULES="/jffs/openvpn/vpndirector_rulelist"
+DVR_POLICY_DIR="/jffs/configs/domain_vpn_routing"
+CACHE_FIXED_DOMAINS="$CACHE_DIR/fixed_domains"
+CACHE_FIXED_SETS="$CACHE_DIR/fixed_sets"
+CACHE_FIXED_SIG="$CACHE_DIR/fixed.sig"
 LOGFILE="/tmp/vpn_ipcatcher.log"
 LOCK="/tmp/vpn_ipcatcher.lock"
 PIDDIR="/tmp/vpn_ipcatcher_pids"
@@ -53,6 +63,34 @@ CLEAR="$(find_bin /usr/bin/clear /bin/clear)"
 TR="$(find_bin /usr/bin/tr /bin/tr /opt/bin/tr)"
 DATEBIN="$(find_bin /bin/date /usr/bin/date)"
 SLEEPBIN="$(find_bin /bin/sleep /usr/bin/sleep)"
+MKTEMP="$(find_bin /bin/mktemp /usr/bin/mktemp /opt/bin/mktemp)"
+
+# Unique temporary paths. Background subshells share $$ with their parent,
+# so $$ alone is not unique between capture/promote workers.
+TEMP_SEQ=0
+make_temp_path(){
+  TEMP_SEQ=$((TEMP_SEQ+1))
+  # The parent of this short-lived sh is the calling (sub)shell itself.
+  temp_owner="$(exec sh -c 'echo $PPID' 2>/dev/null)"
+  printf '%s.%s.%s.%s' "$1" "${temp_owner:-$$}" "$TEMP_SEQ" "$(date '+%s' 2>/dev/null || echo 0)"
+}
+make_temp_file(){
+  if [ -n "$MKTEMP" ]; then "$MKTEMP" "$1.XXXXXX" 2>/dev/null && return 0; fi
+  temp_candidate="$(make_temp_path "$1")"
+  ( set -C; : > "$temp_candidate" ) 2>/dev/null || return 1
+  printf '%s\n' "$temp_candidate"
+}
+make_temp_dir(){
+  if [ -n "$MKTEMP" ]; then "$MKTEMP" -d "$1.XXXXXX" 2>/dev/null && return 0; fi
+  temp_candidate="$(make_temp_path "$1")"
+  mkdir "$temp_candidate" 2>/dev/null || return 1
+  printf '%s\n' "$temp_candidate"
+}
+path_age_seconds(){
+  path_mtime="$(date -r "$1" '+%s' 2>/dev/null)" || return 1
+  case "$path_mtime" in ''|*[!0-9]*) return 1 ;; esac
+  printf '%s\n' "$(( $(date '+%s' 2>/dev/null || echo 0) - path_mtime ))"
+}
 
 CAP_PIDS=""
 PROMOTE_PID=""
@@ -252,6 +290,8 @@ load_config(){
   EXCLUDE_IPS="${EXCLUDE_IPS:-}"
   EXCLUDE_NETS="${EXCLUDE_NETS-$DEFAULT_EXCLUDE_NETS}"
   EXCLUDE_NET_SET="${IPSET_NAME}_exclude"
+  FIXED_DST_SET="${IPSET_NAME}_fixed"
+  FIXED_SRC_SET="${IPSET_NAME}_fixsrc"
 
   # Vaste safety-blocklist: deze mogen nooit in candidate/final ipset komen,
   # ook niet als EXCLUDE_IPS leeg is. Dit voorkomt dat DNS resolvers via VPN Director gaan.
@@ -560,8 +600,20 @@ cleanup_stale_state(){
 start_promote_worker(){
   (
     last_promote=0
+    last_fixed=0
     while true; do
       check_learning_route
+      fixed_now="$(current_epoch)"
+      if [ "$((fixed_now - last_fixed))" -ge 60 ] || [ "$fixed_now" -lt "$last_fixed" ]; then
+        # Router rules can change at any time (WebUI, DVR menu); re-read them
+        # every minute, purge only when something actually changed.
+        refresh_lan_networks
+        if refresh_fixed_routes auto && [ "$FIXED_ROUTES_CHANGED" = 1 ]; then
+          purge_fixed_from_sets
+        fi
+        prune_caches
+        last_fixed="$fixed_now"
+      fi
       flow_scan_candidates
       promote_deferred
       now="$(current_epoch)"
@@ -758,7 +810,11 @@ rebuild_exclude_net_set(){
   load_config || return 1
   [ -n "$IPSET" ] || return 1
   ensure_exclude_net_set || return 1
-  exclude_build="vpnipc_ex_$$"
+  # Unique per worker: the promote worker and a background provider refresh
+  # share $$ and could otherwise collide on the temporary set name.
+  exclude_owner="$(exec sh -c 'echo $PPID' 2>/dev/null)"
+  TEMP_SEQ=$((TEMP_SEQ+1))
+  exclude_build="vpnipc_ex_${exclude_owner:-$$}_$TEMP_SEQ"
   exclude_comment=""
   $IPSET save "$EXCLUDE_NET_SET" 2>/dev/null | $GREP -q ' comment' && exclude_comment=comment
   $IPSET create "$exclude_build" hash:net family inet $exclude_comment >/dev/null 2>&1 || return 1
@@ -771,8 +827,8 @@ rebuild_exclude_net_set(){
   done
   # Merge provider-owned network prefixes into the private non-routing exclude IPSet.
   if [ "$PROVIDER_RANGE_AUTO" = yes ] && [ -r "$PROVIDER_CACHE" ]; then
-    provider_restore="$CACHE_DIR/provider-restore.$"
-    : > "$provider_restore"
+    provider_restore="$(make_temp_file "$CACHE_DIR/provider-restore")" ||
+      { $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
     while read -r pname cidr extra; do
       case "$pname" in ''|'#'*) continue ;; esac
       [ -z "$extra" ] || { rm -f "$provider_restore"; $IPSET destroy "$exclude_build" >/dev/null 2>&1; return 1; }
@@ -841,6 +897,32 @@ provider_cache_validate(){
   ' "$input"
 }
 
+# A refresh interrupted by an engine restart must not block all later
+# refreshes. The lock records its owner; a dead owner or an age above
+# 15 minutes makes the lock stale.
+provider_lock_acquire(){
+  provider_owner="$(exec sh -c 'echo $PPID' 2>/dev/null)"
+  [ -n "$provider_owner" ] || provider_owner="$$"
+  if mkdir "$PROVIDER_LOCK" 2>/dev/null; then
+    echo "$provider_owner" > "$PROVIDER_LOCK/pid" 2>/dev/null
+    return 0
+  fi
+  provider_lock_pid="$(cat "$PROVIDER_LOCK/pid" 2>/dev/null)"
+  provider_lock_age="$(path_age_seconds "$PROVIDER_LOCK" 2>/dev/null || echo 0)"
+  provider_lock_stale=0
+  case "$provider_lock_pid" in
+    ''|*[!0-9]*) [ "${provider_lock_age:-0}" -gt 120 ] 2>/dev/null && provider_lock_stale=1 ;;
+    *) kill -0 "$provider_lock_pid" 2>/dev/null || provider_lock_stale=1 ;;
+  esac
+  [ "${provider_lock_age:-0}" -gt 900 ] 2>/dev/null && provider_lock_stale=1
+  [ "$provider_lock_stale" = 1 ] || return 1
+  log "Provider-lock was achtergebleven (pid=${provider_lock_pid:-onbekend}); opgeruimd"
+  rm -rf "$PROVIDER_LOCK" 2>/dev/null
+  mkdir "$PROVIDER_LOCK" 2>/dev/null || return 1
+  echo "$provider_owner" > "$PROVIDER_LOCK/pid" 2>/dev/null
+}
+provider_lock_release(){ rm -rf "$PROVIDER_LOCK" 2>/dev/null; }
+
 refresh_provider_ranges(){
   mode="$1"
   load_config || return 1
@@ -855,11 +937,13 @@ refresh_provider_ranges(){
      [ $((now-old)) -ge 0 ] && [ $((now-old)) -lt 86400 ]; then return 0; fi
   if [ "$mode" != force ] && [ $((now-lasttry)) -ge 0 ] &&
      [ $((now-lasttry)) -lt 3600 ]; then return 0; fi
-  mkdir "$PROVIDER_LOCK" 2>/dev/null || return 0
+  provider_lock_acquire || return 0
   echo "$now" > "$PROVIDER_ATTEMPT"
   mkdir -p "$(dirname "$PROVIDER_CACHE")" "$CACHE_DIR" 2>/dev/null
-  work="$CACHE_DIR/providers.$"
-  mkdir "$work" 2>/dev/null || { rmdir "$PROVIDER_LOCK" 2>/dev/null; return 1; }
+  # Only the lock holder creates these work directories, so leftovers from
+  # an interrupted refresh (engine restart, watchdog) are safe to remove.
+  rm -rf "$CACHE_DIR"/providers.* 2>/dev/null
+  work="$(make_temp_dir "$CACHE_DIR/providers")" || { provider_lock_release; return 1; }
   result=0
   : > "$work/combined"
   for service in google netflix meta github apple; do
@@ -904,7 +988,7 @@ refresh_provider_ranges(){
     fi
   fi
   rm -rf "$work"
-  rmdir "$PROVIDER_LOCK" 2>/dev/null
+  provider_lock_release
   return "$result"
 }
 
@@ -930,9 +1014,205 @@ ip_in_exclude_net_set(){
   $IPSET test "$EXCLUDE_NET_SET" "$ip" >/dev/null 2>&1
 }
 
+# ---------------------------------------------------------------------------
+# Fixed routes. Destinations and devices the user already routes explicitly
+# (Merlin VPN Director, or a Domain VPN Routing policy) are never learned:
+# those rules already decide VPN or WAN, so IP Catcher stays out of the way.
+# ---------------------------------------------------------------------------
+ipset_names(){
+  $IPSET -n list 2>/dev/null && return 0
+  $IPSET list -t 2>/dev/null | $AWK '$1=="Name:" {print $2}'
+}
+
+vpndirector_rules_text(){
+  if [ -r "$VPNDIRECTOR_RULES" ]; then
+    cat "$VPNDIRECTOR_RULES" 2>/dev/null
+  elif command -v nvram >/dev/null 2>&1; then
+    nvram get vpndirector_rulelist 2>/dev/null
+  fi
+}
+
+# Prints "dst <ip|cidr>" for rules with a remote address and "src <ip|cidr>"
+# for device-wide rules (local address, no remote). Disabled rules are
+# ignored; WAN rules count too, they are an explicit routing decision.
+# Format per rule: <enable>description>localIP>remoteIP>interface
+vpndirector_fixed_entries(){
+  vpndirector_rules_text | $AWK '
+    function valid(v,   n, a, i, parts) {
+      if (index(v, "/")) {
+        split(v, parts, "/"); v = parts[1]
+        if (parts[2] !~ /^[0-9]+$/ || parts[2] + 0 < 1 || parts[2] + 0 > 32) return 0
+      }
+      n = split(v, a, ".")
+      if (n != 4) return 0
+      for (i = 1; i <= 4; i++) if (a[i] !~ /^[0-9]+$/ || a[i] + 0 > 255) return 0
+      return 1
+    }
+    BEGIN { RS = "<" }
+    {
+      gsub(/[\r\n]/, "")
+      if ($0 == "") next
+      n = split($0, f, ">")
+      if (n < 4 || f[1] != "1") next
+      local = f[3]; remote = f[4]
+      if (remote == "0.0.0.0/0" || remote == "0.0.0.0") remote = ""
+      if (remote != "") { if (valid(remote)) print "dst", remote; next }
+      if (local != "" && valid(local)) print "src", local
+    }'
+}
+
+# Domain VPN Routing policies, excluding IP Catcher's own target list and
+# IP Catcher-managed lists.
+dvr_fixed_policies(){
+  dvr_conf="$DVR_POLICY_DIR/domain_vpn_routing.conf"
+  [ -r "$dvr_conf" ] || return 0
+  $AWK -F '|' -v own="$IPSET_NAME" '
+    NF >= 4 && $1 !~ /^#/ && $1 ~ /^[A-Za-z0-9_-]+$/ && $1 !~ /^VIPC-/ && "DVR-" $1 "-v4" != own {print $1}' "$dvr_conf"
+}
+
+fixed_routes_signature(){
+  sig_input="$(make_temp_file "$CACHE_DIR/fixed-sig")" || return 1
+  {
+    vpndirector_rules_text || :
+    echo "own=$IPSET_NAME"
+    for fixed_policy in $(dvr_fixed_policies); do
+      echo "policy=$fixed_policy"
+      cat "$DVR_POLICY_DIR/policy_${fixed_policy}_domainlist" 2>/dev/null || :
+    done
+    ipset_names | $GREP '^DVR-.*-v4$' || :
+  } 2>/dev/null > "$sig_input"
+  # md5sum is always present on Asuswrt-Merlin; cksum as fallback.
+  { md5sum < "$sig_input" || cksum < "$sig_input"; } 2>/dev/null | $AWK '{print $1}'
+  rm -f "$sig_input"
+}
+
+replace_net_set(){
+  target_set="$1"; entries_file="$2"
+  $IPSET list "$target_set" >/dev/null 2>&1 ||
+    $IPSET create "$target_set" hash:net family inet >/dev/null 2>&1 || return 1
+  fixed_owner="$(exec sh -c 'echo $PPID' 2>/dev/null)"
+  TEMP_SEQ=$((TEMP_SEQ+1))
+  fixed_build="vpnipc_fx_${fixed_owner:-$$}_$TEMP_SEQ"
+  $IPSET create "$fixed_build" hash:net family inet >/dev/null 2>&1 || return 1
+  while IFS= read -r fixed_net; do
+    [ -n "$fixed_net" ] || continue
+    $IPSET add "$fixed_build" "$fixed_net" -exist >/dev/null 2>&1
+  done < "$entries_file"
+  $IPSET swap "$target_set" "$fixed_build" >/dev/null 2>&1
+  fixed_swap_rc=$?
+  $IPSET destroy "$fixed_build" >/dev/null 2>&1
+  return "$fixed_swap_rc"
+}
+
+# Rebuild the fixed-route data only when the router configuration changed.
+# Sets FIXED_ROUTES_CHANGED=1 after a rebuild.
+refresh_fixed_routes(){
+  FIXED_ROUTES_CHANGED=0
+  [ -n "$IPSET" ] || return 1
+  [ -n "$FIXED_DST_SET" ] || return 1
+  mkdir -p "$CACHE_DIR" 2>/dev/null
+  fixed_sig="$(fixed_routes_signature)" || fixed_sig=""
+  if [ "${1:-auto}" != force ] && [ -n "$fixed_sig" ] &&
+     [ "$fixed_sig" = "$(cat "$CACHE_FIXED_SIG" 2>/dev/null)" ] &&
+     $IPSET list "$FIXED_DST_SET" >/dev/null 2>&1 &&
+     $IPSET list "$FIXED_SRC_SET" >/dev/null 2>&1; then
+    return 0
+  fi
+  fixed_work="$(make_temp_dir "$CACHE_DIR/fixed")" || return 1
+  vpndirector_fixed_entries > "$fixed_work/director"
+  $AWK '$1=="dst" {print $2}' "$fixed_work/director" > "$fixed_work/dst"
+  $AWK '$1=="src" {print $2}' "$fixed_work/director" > "$fixed_work/src"
+  : > "$fixed_work/domains"
+  : > "$fixed_work/sets"
+  ipset_names > "$fixed_work/names"
+  for fixed_policy in $(dvr_fixed_policies); do
+    fixed_list="$DVR_POLICY_DIR/policy_${fixed_policy}_domainlist"
+    if [ -f "$fixed_list" ] && [ ! -L "$fixed_list" ]; then
+      $AWK '{
+        d = tolower($1); sub(/^\*\./, "", d); sub(/^\./, "", d)
+        if (d ~ /^[a-z0-9.-]+\.[a-z0-9-]+$/) print d
+      }' "$fixed_list" >> "$fixed_work/domains"
+    fi
+    if $GREP -qx "DVR-${fixed_policy}-v4" "$fixed_work/names"; then
+      echo "DVR-${fixed_policy}-v4" >> "$fixed_work/sets"
+    fi
+  done
+  fixed_rc=0
+  replace_net_set "$FIXED_DST_SET" "$fixed_work/dst" || fixed_rc=1
+  replace_net_set "$FIXED_SRC_SET" "$fixed_work/src" || fixed_rc=1
+  LC_ALL=C sort -u "$fixed_work/domains" > "$fixed_work/domains.sorted"
+  mv -f "$fixed_work/domains.sorted" "$CACHE_FIXED_DOMAINS" || fixed_rc=1
+  mv -f "$fixed_work/sets" "$CACHE_FIXED_SETS" || fixed_rc=1
+  if [ "$fixed_rc" = 0 ]; then
+    printf '%s\n' "$fixed_sig" > "$CACHE_FIXED_SIG"
+    FIXED_ROUTES_CHANGED=1
+    log "Vaste routes bijgewerkt: VPN Director bestemmingen=$(wc -l < "$fixed_work/dst" | $TR -d ' ') apparaten=$(wc -l < "$fixed_work/src" | $TR -d ' '), VPN Routing policies=$(wc -l < "$CACHE_FIXED_SETS" | $TR -d ' ') domeinen=$(wc -l < "$CACHE_FIXED_DOMAINS" | $TR -d ' ')"
+  else
+    rm -f "$CACHE_FIXED_SIG"
+    log "Vaste routes konden niet volledig worden bijgewerkt; volgende scan opnieuw"
+  fi
+  rm -rf "$fixed_work"
+  return "$fixed_rc"
+}
+
+# Destination already routed by VPN Director or another VPN Routing policy.
+ip_is_fixed(){
+  [ -n "$IPSET" ] && [ -n "$FIXED_DST_SET" ] || return 1
+  $IPSET test "$FIXED_DST_SET" "$1" >/dev/null 2>&1 && return 0
+  [ -s "$CACHE_FIXED_SETS" ] || return 1
+  while IFS= read -r fixed_set; do
+    [ -n "$fixed_set" ] || continue
+    $IPSET test "$fixed_set" "$1" >/dev/null 2>&1 && return 0
+  done < "$CACHE_FIXED_SETS"
+  return 1
+}
+
+# Device that VPN Director already routes completely (local IP, no remote).
+source_is_fixed(){
+  [ -n "$1" ] && [ -n "$IPSET" ] && [ -n "$FIXED_SRC_SET" ] || return 1
+  $IPSET test "$FIXED_SRC_SET" "$1" >/dev/null 2>&1
+}
+
+# Hostname listed (or a subdomain of one listed) in another VPN Routing policy.
+domain_is_fixed(){
+  [ -s "$CACHE_FIXED_DOMAINS" ] || return 1
+  $AWK -v d="$1" '
+    { l = length($1)
+      if (d == $1 || (length(d) > l + 1 && substr(d, length(d) - l) == "." $1)) {found = 1; exit} }
+    END {exit found ? 0 : 1}' "$CACHE_FIXED_DOMAINS"
+}
+
+# Remove fixed destinations that were learned before the rule existed. Only
+# entries IP Catcher created itself (comment src=...) are touched, so a reused
+# VPN Routing list keeps its own domain entries.
+purge_fixed_from_sets(){
+  for fixed_target in "$CAND_SET" "$WAIT_SET" "$IPSET_NAME"; do
+    $IPSET save "$fixed_target" 2>/dev/null |
+      $AWK '$1=="add" && $0 ~ /comment "src=/ {print $3}' |
+      while IFS= read -r fixed_ip; do
+        valid_ipv4 "$fixed_ip" || continue
+        if ip_is_fixed "$fixed_ip"; then
+          $IPSET del "$fixed_target" "$fixed_ip" >/dev/null 2>&1 &&
+            log "Vaste route: $fixed_ip verwijderd uit $fixed_target"
+        fi
+      done
+  done
+}
+
+show_fixed_routes(){
+  load_config || return 1
+  refresh_fixed_routes force >/dev/null 2>&1
+  say "Vaste routes (worden nooit geleerd):"
+  say "  VPN Director bestemmingen : $(ipset_member_count "$FIXED_DST_SET")"
+  say "  VPN Director apparaten    : $(ipset_member_count "$FIXED_SRC_SET")"
+  say "  VPN Routing policies      : $( [ -s "$CACHE_FIXED_SETS" ] && $TR '\n' ' ' < "$CACHE_FIXED_SETS" || echo geen)"
+  say "  VPN Routing domeinen      : $( [ -f "$CACHE_FIXED_DOMAINS" ] && wc -l < "$CACHE_FIXED_DOMAINS" | $TR -d ' ' || echo 0)"
+}
+
 ip_is_excluded(){
   ip="$1"
   ip_is_base_excluded "$ip" && return 0
+  ip_is_fixed "$ip" && return 0
   ip_in_exclude_net_set "$ip" && return 0
   ip_in_resolved_exclude_cache "$ip" && return 0
   return 1
@@ -1048,15 +1328,41 @@ refresh_exclusion_ip_cache(){
   exclude_cache_unlock
 }
 
+# ptr_cache format: "<ip> <epoch> <name|->". "-" caches a missing PTR so the
+# same address is not looked up again on every scan.
 reverse_lookup_ip(){
   ip="$1"
   valid_ipv4 "$ip" || return 0
-  [ -f "$CACHE_PTR" ] && cached="$($AWK -v ip="$ip" '$1==ip {print $2; found=1} END{if(!found) exit 1}' "$CACHE_PTR" 2>/dev/null)" && [ -n "$cached" ] && { echo "$cached"; return 0; }
+  ptr_now="$(current_epoch)"
+  if [ -s "$CACHE_PTR" ]; then
+    cached="$($AWK -v ip="$ip" -v now="$ptr_now" -v ttl="$PTR_CACHE_TTL" '
+      $1==ip && $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl && NF>=3 {name=$3; found=1}
+      END{if(found) print name; else exit 1}' "$CACHE_PTR" 2>/dev/null)" && {
+      [ "$cached" = "-" ] || echo "$cached"
+      return 0
+    }
+  fi
   name="$($NSLOOKUP "$ip" 127.0.0.1 2>/dev/null | $AWK '
     /name =/ {gsub(/\.$/,"",$NF); print $NF; exit}
     /^Name:/ {print $2; exit}
   ' | $TR '[:upper:]' '[:lower:]' | $TR -cd 'A-Za-z0-9.-')"
-  [ -n "$name" ] && { mkdir -p "$CACHE_DIR" 2>/dev/null; echo "$ip $name" >> "$CACHE_PTR"; echo "$name"; }
+  mkdir -p "$CACHE_DIR" 2>/dev/null
+  printf '%s %s %s\n' "$ip" "$ptr_now" "${name:--}" >> "$CACHE_PTR"
+  [ -n "$name" ] && echo "$name"
+  return 0
+}
+
+# Keep RAM-backed caches in /tmp bounded.
+prune_caches(){
+  [ -f "$CACHE_PTR" ] || return 0
+  ptr_lines="$(wc -l < "$CACHE_PTR" 2>/dev/null | $TR -d ' ')"
+  case "$ptr_lines" in ''|*[!0-9]*) return 0 ;; esac
+  [ "$ptr_lines" -gt "$CACHE_MAX_LINES" ] || return 0
+  ptr_tmp="$(make_temp_file "$CACHE_PTR")" || return 0
+  $AWK -v now="$(current_epoch)" -v ttl="$PTR_CACHE_TTL" '
+    $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl {last[$1]=$0}
+    END{for(k in last) print last[k]}' "$CACHE_PTR" 2>/dev/null | $TAIL -n "$CACHE_MAX_LINES" > "$ptr_tmp"
+  mv -f "$ptr_tmp" "$CACHE_PTR" 2>/dev/null || rm -f "$ptr_tmp"
 }
 
 ip_excluded_by_reverse_dns(){
@@ -1074,6 +1380,11 @@ should_skip_service_ip(){
   comment="$3"
 
   [ -z "$ip" ] && return 0
+
+  if ip_is_fixed "$ip"; then
+    log "Skip vaste route ${stage}: $ip ($comment)"
+    return 0
+  fi
 
   if ip_is_excluded "$ip"; then
     log "Skip excluded IP ${stage}: $ip ($comment)"
@@ -1094,17 +1405,50 @@ safe_domain(){
   printf '%s' "$1" | $AWK '{print tolower($0)}' | $SED 's/[^a-z0-9.-]//g'
 }
 
+# dom2ip format: "<domain> <epoch> <ip> [<ip>...]". Entries expire after
+# DNS_CACHE_TTL so rotating CDN addresses are resolved and learned again.
+# Lines in the pre-2.9.16 format have no epoch and count as expired.
 cache_get(){
   dom="$1"
-  $AWK -v d="$dom" '$1==d { $1=""; sub(/^ /,""); print }' "$CACHE_DOM2IP" 2>/dev/null | $TAIL -n 1
+  [ -s "$CACHE_DOM2IP" ] || return 0
+  $AWK -v d="$dom" -v now="$(current_epoch)" -v ttl="$DNS_CACHE_TTL" '
+    $1==d && $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl {
+      line=""; for(i=3;i<=NF;i++) line=line (i>3?" ":"") $i; found=line
+    }
+    END{if(found!="") print found}' "$CACHE_DOM2IP" 2>/dev/null
+}
+
+cache_lock(){
+  cache_tries=0
+  while ! mkdir "${CACHE_DOM2IP}.lock" 2>/dev/null; do
+    cache_tries=$((cache_tries+1))
+    if [ "$cache_tries" -ge 3 ]; then
+      # A crashed writer can leave the lock behind; it is never held long.
+      cache_lock_age="$(path_age_seconds "${CACHE_DOM2IP}.lock" 2>/dev/null || echo 0)"
+      [ "${cache_lock_age:-0}" -gt 30 ] 2>/dev/null && rmdir "${CACHE_DOM2IP}.lock" 2>/dev/null
+      return 1
+    fi
+    sleep 1
+  done
 }
 
 cache_put(){
   dom="$1"; ips="$2"
-  tmpfile="${CACHE_DOM2IP}.$$"
-  $AWK -v d="$dom" '$1!=d {print}' "$CACHE_DOM2IP" 2>/dev/null > "$tmpfile"
-  echo "$dom $ips" >> "$tmpfile"
-  mv "$tmpfile" "$CACHE_DOM2IP"
+  [ -n "$dom" ] && [ -n "$ips" ] || return 0
+  mkdir -p "$CACHE_DIR" 2>/dev/null
+  # Several capture workers write concurrently; skip caching rather than
+  # lose other entries when the lock is busy.
+  cache_lock || return 0
+  tmpfile="$(make_temp_file "$CACHE_DOM2IP")" || { rmdir "${CACHE_DOM2IP}.lock" 2>/dev/null; return 0; }
+  cache_now="$(current_epoch)"
+  {
+    $AWK -v d="$dom" -v now="$cache_now" -v ttl="$DNS_CACHE_TTL" '
+      $1!=d && $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl {print}' "$CACHE_DOM2IP" 2>/dev/null | $TAIL -n "$CACHE_MAX_LINES"
+    printf '%s %s %s\n' "$dom" "$cache_now" "$ips"
+  } > "$tmpfile"
+  mv -f "$tmpfile" "$CACHE_DOM2IP" 2>/dev/null || rm -f "$tmpfile"
+  rmdir "${CACHE_DOM2IP}.lock" 2>/dev/null
+  return 0
 }
 
 extract_nslookup_ips(){
@@ -1133,6 +1477,7 @@ resolve_once(){
   dom="$(safe_domain "$1")"
   [ -z "$dom" ] && return 0
   domain_is_excluded "$dom" && return 0
+  domain_is_fixed "$dom" && return 0
 
   line="$(cache_get "$dom")"
   [ -n "$line" ] && { echo "$line"; return 0; }
@@ -1332,6 +1677,23 @@ port_allowed(){
   return 1
 }
 
+# LAN networks of the capture interfaces ("net/len") and the router's own
+# addresses. The flow scan only looks at LAN clients, so downloads by the
+# router itself (amtm updates, Skynet lists, AdGuardHome filters, spdMerlin
+# speed tests, Entware) are never learned as IPTV streams.
+refresh_lan_networks(){
+  LAN_NETS=""; ROUTER_IPS=""
+  [ -n "$IPBIN" ] || return 0
+  for lan_iface in $INTERFACES; do
+    lan_info="$($IPBIN -4 -o addr show dev "$lan_iface" 2>/dev/null | $AWK '{for(i=1;i<=NF;i++) if($i=="inet") print $(i+1)}')"
+    for lan_cidr in $lan_info; do
+      valid_cidr "$lan_cidr" || continue
+      LAN_NETS="$LAN_NETS $lan_cidr"
+      ROUTER_IPS="$ROUTER_IPS ${lan_cidr%/*}"
+    done
+  done
+}
+
 flow_scan_candidates(){
   [ "$STREAM_FLOW_SCAN" = "yes" ] || return 0
   [ -n "$CT" ] || return 0
@@ -1339,74 +1701,109 @@ flow_scan_candidates(){
   refresh_exclusion_ip_cache auto
 
   mkdir -p "$CACHE_DIR" 2>/dev/null
-  curfile="${FLOW_STATE}.cur"
-  tmpstate="${FLOW_STATE}.new"
-  : > "$curfile"
-  : > "$tmpstate"
+  [ -f "$FLOW_STATE" ] || : > "$FLOW_STATE"
+  flow_work="$(make_temp_dir "$CACHE_DIR/flowscan")" || return 0
 
-  # Aggregateer per source+destination+port. Daarna vergelijken we met de vorige scan.
-  # Belangrijk: conntrack bytes zijn cumulatief zolang de verbinding bestaat. Daarom kijken we naar DELTA.
-  $CT -L 2>/dev/null | $AWK -v sources="$SOURCE_IPS" -v ports="$PORTS" '
-    BEGIN {
-      n=split(sources,sa," "); for(i=1;i<=n;i++) if(sa[i] != "") srcok[sa[i]]=1
-      use_src_filter=(n>0 && sources!="")
-      m=split(ports,pa,","); for(i=1;i<=m;i++) if(pa[i] != "") portok[pa[i]]=1
-    }
-    /^(tcp|udp)/ {
-      src=""; dst=""; dport=""; bytes=0
-      for(i=1;i<=NF;i++){
-        if($i ~ /^src=/ && src=="") { src=$i; sub(/^src=/,"",src) }
-        if($i ~ /^dst=/ && dst=="") { dst=$i; sub(/^dst=/,"",dst) }
-        if($i ~ /^dport=/ && dport=="") { dport=$i; sub(/^dport=/,"",dport) }
-        if($i ~ /^bytes=/) { b=$i; sub(/^bytes=/,"",b); bytes+=b }
+  # Conntrack bytes are cumulative per connection, so growth is measured as
+  # the DELTA against the previous scan. One awk pass aggregates per
+  # source+destination+port, joins the previous state and applies the byte
+  # thresholds; only qualifying flows reach the shell.
+  $CT -L > "$flow_work/snapshot" 2>/dev/null
+  $AWK -v statefile="$FLOW_STATE" -v newstate="$flow_work/state" \
+      -v sources="$SOURCE_IPS" -v ports="$PORTS" -v lans="$LAN_NETS" -v routers="$ROUTER_IPS" \
+      -v minbytes="$STREAM_MIN_BYTES" -v mindelta="$STREAM_MIN_DELTA" -v growth="$STREAM_REQUIRE_GROWTH" '
+    function ip2n(ip,   a) { split(ip, a, "."); return ((a[1] * 256 + a[2]) * 256 + a[3]) * 256 + a[4] }
+    function in_lan(ip,   i, n, size) {
+      n = ip2n(ip)
+      for (i = 1; i <= lan_count; i++) {
+        size = 2 ^ (32 - lan_len[i])
+        if (int(n / size) == int(lan_net[i] / size)) return 1
       }
-      if(src=="" || dst=="" || dport=="") next
-      if(use_src_filter && !(src in srcok)) next
-      if(!(dport in portok)) next
-      key=src"|"dst"|"dport
-      total[key]+=bytes
+      return 0
     }
-    END { for(k in total){ split(k,a,"|"); print a[1], a[2], a[3], total[k] } }
-  ' > "$curfile"
+    BEGIN {
+      n = split(sources, sa, " "); for (i = 1; i <= n; i++) if (sa[i] != "") srcok[sa[i]] = 1
+      use_src_filter = (n > 0 && sources != "")
+      m = split(ports, pa, ","); for (i = 1; i <= m; i++) if (pa[i] != "") portok[pa[i]] = 1
+      k = split(lans, la, " ")
+      for (i = 1; i <= k; i++) if (la[i] != "") { split(la[i], c, "/"); lan_count++; lan_net[lan_count] = ip2n(c[1]); lan_len[lan_count] = c[2] + 0 }
+      r = split(routers, ra, " "); for (i = 1; i <= r; i++) if (ra[i] != "") router[ra[i]] = 1
+    }
+    FILENAME == statefile { prev[$1] = $2; next }
+    /^(tcp|udp)/ {
+      src = ""; dst = ""; dport = ""; bytes = 0
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^src=/ && src == "") { src = $i; sub(/^src=/, "", src) }
+        if ($i ~ /^dst=/ && dst == "") { dst = $i; sub(/^dst=/, "", dst) }
+        if ($i ~ /^dport=/ && dport == "") { dport = $i; sub(/^dport=/, "", dport) }
+        if ($i ~ /^bytes=/) { b = $i; sub(/^bytes=/, "", b); bytes += b }
+      }
+      if (src == "" || dst == "" || dport == "") next
+      if (use_src_filter) { if (!(src in srcok)) next }
+      else if (lan_count > 0 && (!in_lan(src) || (src in router))) next
+      if (!(dport in portok)) next
+      total[src "|" dst "|" dport] += bytes
+    }
+    END {
+      for (key in total) {
+        bytes = total[key]
+        printf "%s %.0f\n", key, bytes > newstate
+        p = (key in prev) ? prev[key] + 0 : 0
+        delta = bytes - p
+        if (delta < 0) delta = bytes
+        if (growth == "yes" && (p == 0 || delta < mindelta + 0)) continue
+        if (bytes < minbytes + 0) continue
+        split(key, f, "|")
+        printf "%s %s %s %.0f %.0f\n", f[1], f[2], f[3], bytes, delta
+      }
+    }' "$FLOW_STATE" "$flow_work/snapshot" > "$flow_work/hits"
 
-  while IFS=' ' read -r src ip dport bytes; do
-    [ -z "$ip" ] && continue
-    key="${src}|${ip}|${dport}"
-    prev=""
-    [ -f "$FLOW_STATE" ] && prev="$($AWK -v k="$key" '$1==k {print $2; exit}' "$FLOW_STATE" 2>/dev/null)"
-    [ -z "$prev" ] && prev=0
-    delta=$((bytes - prev))
-    [ "$delta" -lt 0 ] && delta="$bytes"
-
-    printf '%s %s\n' "$key" "$bytes" >> "$tmpstate"
-
-    if [ "$STREAM_REQUIRE_GROWTH" = "yes" ]; then
-      [ "$prev" = "0" ] && continue
-      [ "$delta" -lt "$STREAM_MIN_DELTA" ] && continue
+  while IFS=' ' read -r src ip dport bytes delta; do
+    [ -n "$ip" ] || continue
+    valid_ipv4 "$ip" || continue
+    source_is_fixed "$src" && continue
+    ip_is_excluded "$ip" && continue
+    if ip_excluded_by_reverse_dns "$ip"; then
+      log "Skip reverse-DNS excluded flow IP: $ip"
+      continue
     fi
-
-    [ "$bytes" -lt "$STREAM_MIN_BYTES" ] && continue
-
-    if valid_ipv4 "$ip" && ! ip_is_excluded "$ip"; then
-      if ip_excluded_by_reverse_dns "$ip"; then
-        log "Skip reverse-DNS excluded flow IP: $ip"
-        continue
-      fi
-      if [ "$STREAM_FLOW_TARGET" = "final" ]; then
-        add_final_immediate "$ip" "flow-delta${delta}b-total${bytes}b-${src}-${dport}"
-      else
-        add_candidate_once "$ip" "flow-delta${delta}b-total${bytes}b-${src}-${dport}"
-      fi
+    if [ "$STREAM_FLOW_TARGET" = "final" ]; then
+      add_final_immediate "$ip" "flow-delta${delta}b-total${bytes}b-${src}-${dport}"
+    else
+      add_candidate_once "$ip" "flow-delta${delta}b-total${bytes}b-${src}-${dport}"
     fi
-  done < "$curfile"
+  done < "$flow_work/hits"
 
-  mv "$tmpstate" "$FLOW_STATE" 2>/dev/null
-  rm -f "$curfile" 2>/dev/null
+  [ -f "$flow_work/state" ] || : > "$flow_work/state"
+  mv -f "$flow_work/state" "$FLOW_STATE" 2>/dev/null
+  rm -rf "$flow_work" 2>/dev/null
 }
 
 promote_candidates(){
   mode="$PROMOTE_MODE"
   [ "$mode" = "auto" ] && mode="$( [ "$ACCT_OK" = "1" ] && [ -n "$CT" ] && echo bytes || echo age )"
+
+  # Bytes mode: one conntrack dump per promotion cycle (not one per
+  # candidate), summed per destination for the configured sources/ports.
+  promote_totals=""
+  if [ "$mode" = bytes ]; then
+    mkdir -p "$CACHE_DIR" 2>/dev/null
+    promote_totals="$(make_temp_file "$CACHE_DIR/promote-totals")" || return 0
+    $CT -L 2>/dev/null | $AWK -v sources="$SOURCE_IPS" -v ports="$PORTS" '
+      BEGIN { n = split(sources, s, " "); for (i = 1; i <= n; i++) if (s[i] != "") allowed[s[i]] = 1
+              n = split(ports, p, ","); for (i = 1; i <= n; i++) portok[p[i]] = 1 }
+      /^(tcp|udp)/ {
+        src = ""; dst = ""; port = ""; bytes = 0
+        for (i = 1; i <= NF; i++) {
+          if ($i ~ /^src=/ && src == "") { src = $i; sub(/^src=/, "", src) }
+          if ($i ~ /^dst=/ && dst == "") { dst = $i; sub(/^dst=/, "", dst) }
+          if ($i ~ /^dport=/ && port == "") { port = $i; sub(/^dport=/, "", port) }
+          if ($i ~ /^bytes=/) { b = $i; sub(/^bytes=/, "", b); bytes += b }
+        }
+        if (dst != "" && (sources == "" || src in allowed) && port in portok) sum[dst] += bytes
+      }
+      END { for (d in sum) printf "%s %.0f\n", d, sum[d] }' > "$promote_totals"
+  fi
 
   $IPSET list "$CAND_SET" 2>/dev/null | $SED -n '/^Members:/,$p' | tail -n +2 | \
   while IFS= read -r line; do
@@ -1431,27 +1828,16 @@ promote_candidates(){
         ;;
       bytes)
         [ "$age" -lt "$MIN_AGE" ] && continue
-        total_bytes="$($CT -L 2>/dev/null | $AWK -v target="$ip" -v sources="$SOURCE_IPS" -v ports="$PORTS" '
-          BEGIN { n=split(sources,s," "); for(i=1;i<=n;i++) allowed[s[i]]=1;
-                  n=split(ports,p,","); for(i=1;i<=n;i++) portok[p[i]]=1 }
-          /^(tcp|udp)/ {
-            src=""; dst=""; port=""; bytes=0
-            for(i=1;i<=NF;i++) {
-              if($i ~ /^src=/ && src=="") {src=$i; sub(/^src=/,"",src)}
-              if($i ~ /^dst=/ && dst=="") {dst=$i; sub(/^dst=/,"",dst)}
-              if($i ~ /^dport=/ && port=="") {port=$i; sub(/^dport=/,"",port)}
-              if($i ~ /^bytes=/) {b=$i; sub(/^bytes=/,"",b); bytes+=b}
-            }
-            if(dst==target && (sources=="" || src in allowed) && port in portok) sum+=bytes
-          }
-          END {printf "%.0f\n",sum+0}')"
-        [ -z "$total_bytes" ] && total_bytes=0
+        total_bytes="$($AWK -v target="$ip" '$1==target {print $2; exit}' "$promote_totals" 2>/dev/null)"
+        case "$total_bytes" in ''|*[!0-9]*) total_bytes=0 ;; esac
         if [ "$total_bytes" -ge "$MIN_BYTES" ]; then
           add_final_immediate "$ip" "promoted-bytes" && $IPSET del "$CAND_SET" "$ip" >/dev/null 2>&1
         fi
         ;;
     esac
   done
+  [ -z "$promote_totals" ] || rm -f "$promote_totals"
+  return 0
 }
 
 build_bpf(){
@@ -1463,7 +1849,13 @@ build_bpf(){
     pexp="${pexp}port ${p}"
   done
   [ -z "$pexp" ] && pexp="port 80 or port 443"
-  BPF="tcp and ($pexp)"
+  # Only the first payload bytes that can carry a destination name: a TLS
+  # handshake (ClientHello with SNI) or an HTTP request/response header.
+  # Bulk stream data no longer reaches the shell, which keeps the router CPU
+  # free while video plays.
+  payload='tcp[((tcp[12:1] & 0xf0) >> 2)'
+  start="(${payload}:1] = 0x16 or ${payload}:4] = 0x47455420 or ${payload}:4] = 0x504f5354 or ${payload}:4] = 0x48454144 or ${payload}:4] = 0x48545450)"
+  BPF="tcp and ($pexp) and $start"
   if [ -n "$SOURCE_IPS" ]; then
     sexp=""
     for src in $SOURCE_IPS; do
@@ -1473,6 +1865,82 @@ build_bpf(){
     done
     BPF="$BPF and ($sexp)"
   fi
+}
+
+# Parse tcpdump -A output in one awk process. Prints one line per finding:
+#   ip  <client-ip> <ipv4>      HTTP Location with a literal address
+#   dom <client-ip> <hostname>  HTTP Host header (or SNI-like name if enabled)
+# The client is the source of the request packet, or the destination of a
+# response packet (server port in PORTS).
+capture_parse(){
+  $AWK -v generic="$CAPTURE_GENERIC_HOSTNAMES" -v ports="$PORTS" '
+    BEGIN { n = split(ports, pa, ","); for (i = 1; i <= n; i++) if (pa[i] != "") portok[pa[i]] = 1 }
+    function addr(hp,   k) { k = match(hp, /\.[0-9]+:?$/); return k ? substr(hp, 1, k - 1) : hp }
+    function port(hp,   k) { k = match(hp, /\.[0-9]+:?$/); if (!k) return ""; hp = substr(hp, k + 1); sub(/:$/, "", hp); return hp }
+    function emit(kind, value,   key) {
+      key = kind " " client " " value
+      if (key in seen) return
+      seen[key] = 1
+      if (++seen_count > 4000) { delete seen; seen_count = 0 }
+      print key; fflush()
+    }
+    / IP [0-9.]+ > [0-9.]+:/ {
+      # Forget duplicates regularly so rotating DNS answers are re-resolved.
+      if (++packets > 2000) { delete seen; seen_count = 0; packets = 0 }
+      for (i = 1; i <= NF; i++) if ($i == ">") { src = $(i - 1); dst = $(i + 1); break }
+      client = (port(src) in portok) ? addr(dst) : addr(src)
+      next
+    }
+    client == "" { next }
+    {
+      line = $0
+      if (match(line, /[Ll]ocation: https?:\/\/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/)) {
+        v = substr(line, RSTART, RLENGTH); sub(/.*\/\//, "", v); emit("ip", v)
+      }
+      if (match(line, /[Hh]ost:[ \t]*[A-Za-z0-9.-]+/)) {
+        v = substr(line, RSTART, RLENGTH); sub(/^[Hh]ost:[ \t]*/, "", v); emit("dom", tolower(v))
+      }
+      if (generic == "yes") {
+        rest = line
+        while (match(rest, /([A-Za-z0-9-]+\.)+[A-Za-z][A-Za-z]+/)) {
+          v = tolower(substr(rest, RSTART, RLENGTH)); rest = substr(rest, RSTART + RLENGTH)
+          if (v !~ /\.\./ && v !~ /\.local$/ && v !~ /^localhost/) emit("dom", v)
+        }
+      }
+    }'
+}
+
+learn_ip(){
+  if [ "$PROMOTE_MODE" = "immediate" ]; then
+    add_final_immediate "$1" "$2"
+  else
+    add_candidate_once "$1" "$2"
+  fi
+}
+
+handle_capture_finding(){
+  kind="$1"; client="$2"; value="$3"
+  [ -n "$value" ] || return 0
+  # Devices fully routed by VPN Director are left alone.
+  source_is_fixed "$client" && return 0
+  case "$kind" in
+    ip)
+      valid_ipv4 "$value" || return 0
+      learn_ip "$value" "http-location"
+      ;;
+    dom)
+      dom_lc="$(safe_domain "$value")"
+      [ -n "$dom_lc" ] || return 0
+      domain_is_excluded "$dom_lc" && return 0
+      if domain_is_fixed "$dom_lc"; then
+        log "Skip vaste route domein: $dom_lc (VPN Routing policy)"
+        return 0
+      fi
+      ips="$(resolve_once "$dom_lc")"
+      [ -n "$ips" ] || return 0
+      for ip in $ips; do learn_ip "$ip" "$dom_lc"; done
+      ;;
+  esac
 }
 
 capture_iface(){
@@ -1487,46 +1955,9 @@ capture_iface(){
     fi
 
     log "[$iface] Start tcpdump filter '($BPF)'"
-    "$TCPDUMP" -i "$iface" -A -n -s 1024 -l "$BPF" 2>>"$LOGFILE" | \
-    while IFS= read -r line; do
-      # HTTP Location met direct IP
-      echo "$line" | $SED -n 's/.*[Ll]ocation: http[s]*:\/\/\([0-9]\{1,3\}\(\.[0-9]\{1,3\}\)\{3\}\).*/\1/p' | \
-      while IFS= read -r ip; do
-        [ -z "$ip" ] && continue
-        [ "$PROMOTE_MODE" = "immediate" ] && add_final_immediate "$ip" "http-location" || add_candidate_once "$ip" "http-location"
-      done
-
-      # HTTP Host header
-      echo "$line" | $SED -n 's/.*[Hh]ost:[[:space:]]*\([A-Za-z0-9.-]\+\).*/\1/p' | \
-      while IFS= read -r dom; do
-        [ -z "$dom" ] && continue
-        dom_lc="$(safe_domain "$dom")"
-        [ -z "$dom_lc" ] && continue
-        domain_is_excluded "$dom_lc" && continue
-        ips="$(resolve_once "$dom_lc")"
-        [ -z "$ips" ] && continue
-        for ip in $ips; do
-          [ "$PROMOTE_MODE" = "immediate" ] && add_final_immediate "$ip" "$dom_lc" || add_candidate_once "$ip" "$dom_lc"
-        done
-      done
-
-      # Generic hostnames / TLS SNI-achtige strings
-      # Dit kan veel ruis geven; standaard uit via CAPTURE_GENERIC_HOSTNAMES=no.
-      if [ "$CAPTURE_GENERIC_HOSTNAMES" = "yes" ]; then
-        echo "$line" | $GREP -aoE '([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}' | \
-        while IFS= read -r dom; do
-          [ -z "$dom" ] && continue
-          case "$dom" in *..*|*.local|localhost|localdomain) continue ;; esac
-          dom_lc="$(safe_domain "$dom")"
-          [ -z "$dom_lc" ] && continue
-          domain_is_excluded "$dom_lc" && continue
-          ips="$(resolve_once "$dom_lc")"
-          [ -z "$ips" ] && continue
-          for ip in $ips; do
-            [ "$PROMOTE_MODE" = "immediate" ] && add_final_immediate "$ip" "$dom_lc" || add_candidate_once "$ip" "$dom_lc"
-          done
-        done
-      fi
+    "$TCPDUMP" -i "$iface" -A -n -s 2048 -l "$BPF" 2>>"$LOGFILE" | capture_parse | \
+    while read -r kind client value; do
+      handle_capture_finding "$kind" "$client" "$value"
     done
 
     log "[$iface] tcpdump stream ended; retry ${backoff}s"
@@ -1564,6 +1995,8 @@ run_engine(){
   rm -f "$CACHE_DIR/promotion-probe/connections"
   rmdir "$CACHE_DIR/promotion-probe" 2>/dev/null || true
   rebuild_exclude_net_set || { log "FOUT: exclusion IPSet kon niet worden opgebouwd"; cleanup; }
+  refresh_fixed_routes force && purge_fixed_from_sets
+  refresh_lan_networks
   check_learning_route
 
   enable_conntrack_acct
@@ -1577,6 +2010,8 @@ run_engine(){
   log "Stream flow scan: $STREAM_FLOW_SCAN source_ips=${SOURCE_IPS:-all-devices} min_bytes=$STREAM_MIN_BYTES min_delta=$STREAM_MIN_DELTA require_growth=$STREAM_REQUIRE_GROWTH scan_every=$STREAM_SCAN_EVERY target=$STREAM_FLOW_TARGET"
   log "Exclusion resolver: $EXCLUDE_RESOLVE_CACHE every=${EXCLUDE_RESOLVE_EVERY}s reverse_dns=$REVERSE_DNS_CHECK"
   log "Exclude net set: $EXCLUDE_NET_SET nets=$(echo "$EXCLUDE_NETS" | $AWK '{print NF+0}')"
+  log "Vaste routes: $FIXED_DST_SET (VPN Director bestemmingen), $FIXED_SRC_SET (VPN Director apparaten), VPN Routing policies: $( [ -s "$CACHE_FIXED_SETS" ] && $TR '\n' ' ' < "$CACHE_FIXED_SETS" || echo geen)"
+  log "LAN-bronnen flow scan: ${LAN_NETS:-alle} (router zelf uitgesloten: ${ROUTER_IPS:-n.v.t.})"
 
   # Start workers first; exclusion refresh mag startup niet blokkeren.
   start_promote_worker
@@ -1615,6 +2050,7 @@ ipset_member_count(){
 ipset_remove_excluded(){
   load_config
   rebuild_exclude_net_set
+  refresh_fixed_routes auto
   for setname in "$CAND_SET" "$WAIT_SET" "$IPSET_NAME"; do
     $IPSET list "$setname" >/dev/null 2>&1 || continue
     $IPSET list "$setname" 2>/dev/null | $SED -n '/^Members:/,$p' | tail -n +2 | \
@@ -2361,6 +2797,7 @@ preset_category_menu(){
       printf " %2s) [%-4s] %-34s\n" "$i" "$(preset_is_active "$key")" "$(preset_label "$key")"
       i=$((i+1))
     done
+    preset_menu_count=$((i-1))
     say "------------------------------------------------------------"
     say "  a) Alles toevoegen      r) Alles verwijderen"
     say "  v) Toon details         q) Terug"
@@ -2399,7 +2836,10 @@ preset_category_menu(){
           case "$n" in
             ''|*[!0-9]*) say "Ongeldige keuze overgeslagen: $n"; continue ;;
           esac
-          eval "sel=\${k$n}"
+          # Only numbers from this menu; k-variables of an earlier, longer
+          # menu must never toggle a preset from another category.
+          sel=""
+          [ "${#n}" -le 3 ] && [ "$n" -ge 1 ] && [ "$n" -le "$preset_menu_count" ] && eval "sel=\${k$n}"
           if [ -n "$sel" ]; then
             st="$(preset_is_active "$sel")"
             # Toggle: ON/PART = verwijderen, off = toevoegen.
@@ -3151,7 +3591,7 @@ menu_loop(){
 
 usage(){
   cat <<EOF2
-Gebruik: $SELF [menu|start|stop|restart|status|show-config|edit-config|log|live-log|show-cand|show-final|live-sets|safe-excludes|repair-excludes|resolve-excludes|show-excludes|clean-excluded|webstatus|run]
+Gebruik: $SELF [menu|start|stop|restart|status|show-config|edit-config|log|live-log|show-cand|show-final|live-sets|safe-excludes|repair-excludes|resolve-excludes|show-excludes|clean-excluded|fixed-routes|webstatus|run]
 
 menu           Interactief menu (standaard)
 start          Start engine op achtergrond
@@ -3169,6 +3609,7 @@ safe-excludes   Voeg DNS/GitHub/Social/Camera basis-exclusions toe en schoon ips
 resolve-excludes Ververs resolved exclude-cache nu
 show-excludes   Toon domein/IP/range exclusions
 clean-excluded Verwijder uitgesloten IPs uit candidate/final
+fixed-routes   Toon vaste routes (VPN Director / VPN Routing) die nooit worden geleerd
 webstatus      Schrijf actuele WebGUI status JSON
 run            Start capture-engine direct
 EOF2
@@ -3196,6 +3637,7 @@ case "$1" in
   resolve-excludes) refresh_exclusion_ip_cache force || exit $?; show_resolved_exclusion_cache ;;
   provider-ranges-refresh) refresh_provider_ranges force; show_provider_ranges ;;
   provider-ranges-status) show_provider_ranges ;;
+  fixed-routes) show_fixed_routes ;;
   show-excludes) show_all_exclusions ;;
   clean-excluded) ipset_remove_excluded ;;
   webstatus) write_web_status ;;

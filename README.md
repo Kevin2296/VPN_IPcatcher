@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.15](https://img.shields.io/badge/version-2.9.15-087F8C?style=for-the-badge)
+![Version 2.9.16](https://img.shields.io/badge/version-2.9.16-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,8 +39,15 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.15.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.9.16.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**Vaste routes blijven ongemoeid (2.9.16):** alles wat je zelf al vast routeert, leert IP Catcher niet en controleert het ook niet. Dat zijn bestemmingen en apparaten uit **VPN Director** (VPN- én WAN-regels) en de domeinen en IPSets van je andere **VPN Routing**-policies. De catcher leest die regels elke minuut opnieuw in en ruimt eerder geleerde IP's op die inmiddels vast gerouteerd zijn. Daarnaast verwerkt tcpdump alleen nog handshakes en HTTP-headers (veel minder CPU tijdens streamen), negeert de flow-scan downloads van de router zelf, en verloopt de DNS-cache na 5 minuten. Controleer na update:
+
+```sh
+/jffs/scripts/vpn_ipcatcher.sh fixed-routes
+grep -E 'Vaste routes|Start tcpdump' /tmp/vpn_ipcatcher.log | tail -5
+```
 
 **Watchdog-stabiliteit (2.9.15):** de v2.9.14-hoofdloop schreef per ongeluk een letterlijk dollarteken naar het engine-PID-bestand. Daardoor herstartte de watchdog de catcher iedere minuut. 2.9.15 bewaart de echte proces-ID, verifieert procesidentiteit en voorkomt dat oude processen gedeelde PID-bestanden van een nieuwe engine verwijderen. EPG-routing en provider-uitsluitingen blijven behouden. Controleer na update:
 
@@ -598,8 +605,16 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.12.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.9.16.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**2.9.16 Fixed routes are left alone:** destinations and devices from **VPN Director** (VPN and WAN rules) and the domains and IPSets of your other **VPN Routing** policies are never learned or checked; those rules already decide the route. They are re-read every minute and previously learned fixed destinations are purged. tcpdump now only captures handshakes and HTTP headers (much less CPU during playback), the flow scan ignores router-originated downloads, and DNS cache entries expire after 5 minutes. Check with `/jffs/scripts/vpn_ipcatcher.sh fixed-routes`.
+
+**2.9.15 Watchdog/PID hotfix:** v2.9.14 overwrote the valid engine PID every ten seconds with a literal dollar character; the watchdog subsequently restarted the service each minute. v2.9.15 keeps the original numeric PID and prevents stale engines from deleting replacement worker/PID state. Existing EPG/DVR, IPTV and provider-exclusion configuration is preserved. Verify the engine PID remains stable across multiple cron watchdog checks.
+
+**2.9.14 Always-VPN EPG/XMLTV hostnames:** Open **Domain routes** in the WebGUI; paste `https://epg.example.org/guide.xml.gz`, select the specific DVR policy/VPN and click **Always route via VPN**. Only the hostname is submitted (no path or token); DVR immediately resolves and routes it, bypassing IPTV auto-learning. The router verifies an active IPv4 destination in the chosen policy, refuses cross-policy duplicate names, and protects existing VPN marks in its managed-v1 IP routing mode. Redirect hostnames must be assigned separately; shared CDN IPs are not routable per URL path.
+
+**2.9.13 Provider-owned network exclusions:** Daily RIPEstat IPv4 prefix lookup for Google, Netflix Open Connect, Meta, GitHub and Apple when corresponding domains are excluded. Settings: PROVIDER_RANGE_AUTO and `provider-ranges-refresh`/`provider-ranges-status`. Not all endpoints hosted on shared cloud/CDNs can be safely excluded, particularly Dahua/Imou.
 
 **2.9.12 IPTV known-service guard:** Excludes the documented YouTube/Google 136.22.128.0/19 edge range from learned IPTV routes and adds opt-in Reddit, Claude and ChatGPT presets. Existing routing and SOURCE_IPS remain unchanged. Use `clean-excluded` when no IPTV stream is playing to remove previously learned excluded IPs. This is a targeted fix, not a complete Google-IP exclusion.
 

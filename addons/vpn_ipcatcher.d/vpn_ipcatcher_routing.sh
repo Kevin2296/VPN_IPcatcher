@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.14
+# Version: 2.9.16
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"

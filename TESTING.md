@@ -1,5 +1,9 @@
 # Release Verification / Releasecontrole
 
+## 2.9.16 fixed routes, capture filter and caches
+
+`tests/fixed-routes-checks.sh` parses mocked VPN Director rule lists (enabled-only, device-wide vs destination rules, WAN rules, rejection of /0 and invalid addresses) and Domain VPN Routing policies (own target list and IP Catcher-managed lists excluded). It verifies fixed destinations, devices, policy IPSets and domain suffix boundaries; rebuild only after a configuration change; purge of only IP Catcher-learned entries; the single-awk tcpdump parser with client attribution and duplicate suppression; the BPF payload filter; LAN-only, router-excluded delta flow scan; one conntrack dump per promotion cycle; DNS/PTR cache expiry; unique temporary paths between background workers; and stale provider-lock recovery. The BPF expression and BusyBox awk behaviour must still be validated on the router: check the log for `Start tcpdump filter` without errors and `Vaste routes bijgewerkt`.
+
 ## 2.9.15 watchdog PID regression
 
 `tests/watchdog-pid-checks.sh` loads the production engine loop and runs it through three mocked iterations, checking `engine.pid` and lock never change to invalid text. It also checks that cleanup from a non-owner process preserves newer PID/worker files, and that watchdog rejects malformed, dead and unrelated PID references. Live ASUS validation remains necessary, ideally observe at least two watchdog cron invocations before declaring stability.

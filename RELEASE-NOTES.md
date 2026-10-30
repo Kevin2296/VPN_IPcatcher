@@ -1,3 +1,15 @@
+# VPN IP Catcher 2.9.16 — Vaste routes, minder CPU, betrouwbaardere caches
+
+**NL:** IP Catcher laat vaste routes voortaan volledig met rust. Bestemmingen en apparaten uit **VPN Director** (VPN- én WAN-regels) en de domeinen en IPSets van je andere **VPN Routing**-policies worden nooit geleerd en niet gecontroleerd; die regels bepalen zelf al de route. De lijst wordt elke minuut opnieuw ingelezen; eerder geleerde IP's die nu vast gerouteerd zijn, worden opgeruimd. Controleer met `/jffs/scripts/vpn_ipcatcher.sh fixed-routes`.
+
+Daarnaast vangt tcpdump alleen nog TLS-handshakes en HTTP-headers in plaats van alle streamdata, wat tijdens het kijken veel router-CPU scheelt. De flow-scan negeert downloads van de router zelf (amtm, Skynet, AdGuardHome, spdMerlin), de DNS-cache verloopt na 5 minuten zodat wisselende CDN-adressen opnieuw worden geleerd, en een onderbroken provider-refresh kan het verversen niet meer blokkeren tot de volgende reboot. Nieuwe opt-in presets voor TikTok, HBO Max, SkyShowtime, NPO Start, Spotify, Twitch, cloudopslag en snelheidstests.
+
+Bestaande configuratie, EPG/Domain VPN Routing-toewijzingen en geleerde lijsten blijven behouden. Herstart de catcher na de update en controleer de log op de regel "Vaste routes bijgewerkt".
+
+**EN:** Fixed routes are now left alone: VPN Director destinations and device-wide rules (VPN and WAN) plus domains and IPSets of other Domain VPN Routing policies are never learned or checked; previously learned fixed destinations are purged (own `src=` entries only). tcpdump now captures only TLS handshakes and HTTP headers, cutting CPU use during playback. Flow scan ignores router-originated downloads. DNS cache entries expire after 5 minutes, missing PTR records are cached, stale provider-refresh locks are recovered, and temporary paths are unique per worker. New opt-in presets. Validate on ASUS hardware after updating.
+
+---
+
 # VPN IP Catcher 2.9.15 — Stabiliteitsfix voor herstartlus
 
 **NL:** Versie 2.9.14 had een fout in de hoofdloop waardoor een geldig numeriek engine-PID elke 10 seconden werd overschreven met een dollarteken. De watchdog kon de actieve service daardoor niet herkennen en startte hem om de minuut opnieuw. Dat leidde tot dubbele workers, tcpdump-onderbrekingen en SIGTERM-meldingen. In 2.9.15 blijft het PID correct, controleert de watchdog de procesidentiteit en verwijdert een oude engine de PID/workerstatus van een nieuw proces niet meer.

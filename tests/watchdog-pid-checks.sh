@@ -27,6 +27,11 @@ CACHE_DOM2IP="$CACHE_DIR/dom2ip"
 ROUTING_HELPER="$TMP/route"
 EXCLUDE_NETS=""
 EXCLUDE_NET_SET="FixtureExcludes"
+FIXED_DST_SET="FixtureIPTV_fixed"
+FIXED_SRC_SET="FixtureIPTV_fixsrc"
+CACHE_FIXED_SETS="$TMP/cache/fixed_sets"
+LAN_NETS=""
+ROUTER_IPS=""
 IPSET_NAME="FixtureIPTV"
 CAND_SET="FixtureCandidates"
 WAIT_SET="FixtureWaiting"
@@ -79,6 +84,9 @@ ensure_workers_alive(){ :; }
 write_web_status(){ :; }
 refresh_exclusion_ip_cache(){ :; }
 refresh_provider_ranges(){ :; }
+refresh_fixed_routes(){ :; }
+purge_fixed_from_sets(){ :; }
+refresh_lan_networks(){ :; }
 current_epoch(){ echo 1000; }
 log(){ printf '%s\n' "$*" >> "$TMP/engine.log"; }
 sleep(){ LOOP_COUNT=$((LOOP_COUNT+1)); }

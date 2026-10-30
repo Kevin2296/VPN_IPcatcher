@@ -1,5 +1,18 @@
 # Wijzigingen
 
+## 2.9.16 — Vaste routes, minder CPU en betrouwbaardere caches
+
+- **Vaste routes worden nooit geleerd.** IP Catcher leest elke minuut de VPN Director-regels (`/jffs/openvpn/vpndirector_rulelist`) en de Domain VPN Routing-policies (v3.2.5) uit. Bestemmingen uit VPN Director (ook WAN-regels), apparaten die VPN Director volledig routeert (alleen lokaal IP, geen extern IP), domeinen uit andere VPN Routing-policies en IP's in hun `DVR-<policy>-v4`-IPSets worden overgeslagen. Er volgt geen leer- of routecontrole: die regels bepalen zelf al VPN of WAN. Eerder geleerde IP's die nu vast gerouteerd zijn, worden uit de candidate/wacht/finale lijst gehaald (alleen eigen entries met `src=`-comment). Overzicht: `vpn_ipcatcher.sh fixed-routes`.
+- **Veel minder CPU tijdens streamen.** tcpdump vangt alleen nog TLS-handshakes en HTTP-headers (BPF-filter op de eerste payloadbytes) in plaats van alle streamdata, en één awk-proces verwerkt de uitvoer. Voorheen startte elke tcpdump-regel twee tot drie extra processen.
+- Bytes-promotie leest conntrack één keer per ronde in plaats van één keer per kandidaat; de flow-scan koppelt de vorige meting in één awk-pass (was O(n²)).
+- De flow-scan kijkt alleen naar LAN-apparaten van de capture-interfaces en nooit naar de router zelf. Downloads van amtm-scripts, Skynet, AdGuardHome, spdMerlin, MerlinAU of Entware worden daardoor niet meer als stream geleerd.
+- **DNS-cache verloopt nu na 5 minuten.** Voorheen bleef een domein-IP-koppeling tot de reboot bewaard, waardoor nieuwe CDN-adressen nooit werden geleerd en de cache onbeperkt groeide in RAM. Ontbrekende PTR-records worden nu ook gecachet (1 uur), zodat niet bij elke scan opnieuw `nslookup` draait. Caches worden begrensd.
+- **Provider-ranges kunnen niet meer permanent vastlopen.** Een refresh die werd onderbroken (bijv. door een herstart) liet een lock of werkmap achter, waarna tot de volgende reboot niets meer werd ververst. Dode of verouderde locks worden nu opgeruimd.
+- Zelfde typfout als in 2.9.14 hersteld op drie plekken (`.$` in plaats van een uniek pad) en tijdelijke bestanden/IPSets zijn nu uniek per worker; capture-workers op meerdere interfaces deelden voorheen hetzelfde tijdelijke bestand.
+- Preset-menu: een nummer uit een eerder, langer menu kon een preset uit een andere categorie omzetten.
+- Nieuwe opt-in presets: TikTok, HBO Max, SkyShowtime, NPO Start, Spotify, Twitch, cloudopslag (Dropbox/OneDrive) en snelheidstests (Ookla/nPerf/Fast); Prime Video uitgebreid met extra CDN-domeinen.
+- Nieuwe regressietest `tests/fixed-routes-checks.sh`.
+
 ## 2.9.15 — Watchdog/PID herstel
 
 - **Kritieke stabiliteitsfix:** 2.9.14 overschreef iedere 10 seconden het geldige proces-ID in `/tmp/vpn_ipcatcher.lock` en `/tmp/vpn_ipcatcher_pids/engine.pid` met een letterlijk dollarteken. De watchdog zag daardoor bij iedere cron-run een ongeldig engine-PID en herstartte de service telkens opnieuw (zoals in de gebruikerslog van 2026-10-27 tussen 02:09 en 02:12).

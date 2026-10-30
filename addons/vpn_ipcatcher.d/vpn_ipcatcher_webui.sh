@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.9.15
+# Version: 2.9.16
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -449,7 +449,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.9.15",
+  "version":"2.9.16",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -926,7 +926,7 @@ stream_ack(){
   valid_nonce "$ack_nonce" || return 1
   case "$ack_next" in ''|*[!0-9]*) return 1 ;; esac
   case "$ack_state" in ready|received|error) ;; *) return 1 ;; esac
-  ack_tmp="${STREAM_ACK}.$"
+  ack_tmp="${STREAM_ACK}.$$"
   (umask 022; printf '{"nonce":"%s","next":%s,"state":"%s"}\n' "$ack_nonce" "$ack_next" "$ack_state" > "$ack_tmp") || return 1
   mv -f "$ack_tmp" "$STREAM_ACK" || { rm -f "$ack_tmp"; return 1; }
   chmod 644 "$STREAM_ACK" 2>/dev/null || true
