@@ -1,5 +1,9 @@
 # Release Verification / Releasecontrole
 
+## 2.10.2 DNS-name worker
+
+`tests/fixed-routes-checks.sh` feeds tcpdump `-vv` DNS responses (including a CNAME chain, a duplicate answer and a private address) through the DNS-name worker and checks the stored ip/name pairs.
+
 ## 2.10.1 names and comments
 
 `tests/fixed-routes-checks.sh` checks ipset comments without BusyBox `tr` classes and origin retention after the waiting list. `tests/webui-flow-status-checks.sh` checks PTR parsing for both BusyBox styles, name priority (DNS answer, learned hostname, PTR) and negative PTR caching. `tests/webui-checks.js` checks the readable origin text (including legacy "wromoted" comments) and name rendering.

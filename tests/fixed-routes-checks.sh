@@ -256,3 +256,27 @@ case "$comment" in src=promoted-after-idle\;seen=*) ;; *) echo "Comment corrupte
   grep -qx '145.53.10.41 after-idle:unknown' "$TMP/final-calls"
 )
 echo 'PASS: ipset comments are not corrupted (no tr classes) and keep their origin after the waiting list'
+
+# --- 2.10.2: DNS-name worker parses tcpdump -vv DNS answers ----------------
+(
+  DNS_NAMES="$TMP/dns_names"; : > "$DNS_NAMES"
+  TCPDUMP="$TMP/tcpdump-dns"
+  cat > "$TCPDUMP" <<'EOS'
+#!/bin/sh
+cat <<'EOD'
+1761868800.123456 br0   Out IP (tos 0x0, ttl 64, id 1234, offset 0, flags [DF], proto UDP (17), length 120)
+    192.168.178.1.53 > 192.168.178.20.40000: [bad udp cksum 0x1234 -> 0x5678!] 4321 q: A? Live.IPTV.example. 2/0/0 live.iptv.example. CNAME edge.cdn.example., edge.cdn.example. A 185.94.239.64 (92)
+1761868801.000001 br0   Out IP (tos 0x0, ttl 64, id 1235, offset 0, flags [DF], proto UDP (17), length 100)
+    192.168.178.1.53 > 192.168.178.20.40001: 4322 q: A? live.iptv.example. 1/0/0 live.iptv.example. A 185.94.239.64 (60)
+1761868802.000001 br0   Out IP (tos 0x0, ttl 64, id 1236, offset 0, flags [DF], proto UDP (17), length 100)
+    192.168.178.1.53 > 192.168.178.21.40002: 4323 q: A? nas.local.lan. 1/0/0 nas.local.lan. A 192.168.178.5 (60)
+1761868803.000001 br0   Out IP (tos 0x0, ttl 64, id 1237, offset 0, flags [DF], proto UDP (17), length 100)
+    192.168.178.1.53 > 192.168.178.21.40003: 4324 q: A? www.msftconnecttest.com. 2/0/0 www.msftconnecttest.com. A 13.107.4.52, www.msftconnecttest.com. A 13.107.4.53 (80)
+EOD
+EOS
+  chmod +x "$TCPDUMP"
+  sleep(){ exit 0; }
+  dns_name_worker
+)
+[ "$(cat "$TMP/dns_names")" = "$(printf '185.94.239.64 1761868800 live.iptv.example\n13.107.4.52 1761868803 www.msftconnecttest.com\n13.107.4.53 1761868803 www.msftconnecttest.com')" ] || { echo 'DNS names mismatch:'; cat "$TMP/dns_names"; exit 1; }
+echo 'PASS: DNS-name worker maps answers to the asked name, deduplicates and skips private addresses'

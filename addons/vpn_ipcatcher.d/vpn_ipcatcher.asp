@@ -388,6 +388,8 @@ Object.assign(VPNIPC_I18N.en,{
 });
 function applyStatusData(d){
   dataCache=d;
+  learnedHostNames={};
+  [d.candidate_text,d.waiting_text,d.final_text].forEach(rememberLearnedHosts);
   if(Array.isArray(d.protected_ips)) protectedPresetIps=d.protected_ips;
   updateOverview(d);
   fillConfig(d.config,d.config_revision);
@@ -1031,13 +1033,24 @@ function flowStateCell(r){
 }
 /* Destination names: DNS name a device received, the hostname an IP was
    learned with, or reverse DNS. Provided by the router as destination_names. */
+/* Hostnames from ipset comments ("src=host.example") as a local fallback,
+   so a name is shown even when the router sends no destination_names. */
+var learnedHostNames={};
+function rememberLearnedHosts(txt){
+  String(txt||'').replace(/(\d+\.\d+\.\d+\.\d+)\s[^\n]*?comment\s+"src=([a-z0-9-]+(?:\.[a-z0-9-]+)+)[;"]/g,function(all,ip,host){
+    if(/[a-z]/.test(host)&&!/^(flow-|after-idle|[wp]romoted)/.test(host)) learnedHostNames[ip]=host;
+    return all;
+  });
+}
 function destinationName(ip){
   var names=(dataCache&&dataCache.destination_names)||{}, entry=names[ip];
-  return entry&&entry.n?entry.n:'';
+  if(entry&&entry.n) return entry.n;
+  return learnedHostNames[ip]||'';
 }
 function destinationKind(ip){
   var names=(dataCache&&dataCache.destination_names)||{}, entry=names[ip];
-  return entry?entry.k:'';
+  if(entry&&entry.n) return entry.k;
+  return learnedHostNames[ip]?'host':'';
 }
 function nameCell(ip){
   var name=destinationName(ip), kind=destinationKind(ip);

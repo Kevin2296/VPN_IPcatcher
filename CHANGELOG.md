@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 2.10.2 — Echte DNS-namen in Liveflows
+
+- Nieuwe zuinige **DNS-namenvanger**: leest alleen de DNS-antwoorden die de router (dnsmasq of AdGuardHome) aan apparaten stuurt en onthoudt welk IP bij welke opgevraagde naam hoort (2 uur, begrensd). Daardoor tonen Liveflows en de lijsten voor vrijwel elke bestemming de naam die het apparaat echt opvroeg, ook als er geen omgekeerde DNS bestaat. Privé-adressen worden niet opgeslagen; de namen worden alleen voor weergave gebruikt.
+- Bij meerdere namen voor één IP wint de meest recente.
+- De WebUI toont de hostnaam waarmee een IP is geleerd ook als naam wanneer de router (nog) geen namen meestuurt, bijvoorbeeld direct na een update.
+- Preset **Samsung Smart TV** uitgebreid met de Samsung-appstore en -cloud (`samsungapps.com`, `samsungcloud.com`, `samsungosp.com`, `samsungqbe.com`, `samsungelectronics.com`).
+
 ## 2.10.1 — Namen bij IP-adressen, "Hoe geleerd" en de "wromoted"-fout
 
 - **Bugfix:** BusyBox `tr` op Asuswrt-Merlin kent geen `[:upper:]`/`[:lower:]` en vertaalt de letters één voor één (`u→l`, `p→w`). Daardoor werd "promoted" opgeslagen als "wromoted" en raakten hostnamen bij de omgekeerde DNS-controle verminkt, zodat uitsluitingen daar niet op aansloegen. Nu via awk/sed.

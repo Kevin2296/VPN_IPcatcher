@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.1
+# Version: 2.10.2
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -25,6 +25,10 @@ DVR_POLICY_DIR="/jffs/configs/domain_vpn_routing"
 CACHE_FIXED_DOMAINS="$CACHE_DIR/fixed_domains"
 CACHE_FIXED_SETS="$CACHE_DIR/fixed_sets"
 CACHE_FIXED_SIG="$CACHE_DIR/fixed.sig"
+# "ip epoch name": names LAN devices actually received from the router's DNS
+# (dnsmasq or AdGuardHome). Only used to show names in the WebUI.
+DNS_NAMES="$CACHE_DIR/dns_names"
+DNS_NAMES_TTL=7200
 LOGFILE="/tmp/vpn_ipcatcher.log"
 LOCK="/tmp/vpn_ipcatcher.lock"
 PIDDIR="/tmp/vpn_ipcatcher_pids"
@@ -641,6 +645,49 @@ start_capture_workers(){
     record_cap_pid "$pid"
     log "Capture worker gestart iface=$i pid=$pid"
   done
+  if [ -n "$TCPDUMP" ]; then
+    ( dns_name_worker ) &
+    pid="$!"
+    CAP_PIDS="$CAP_PIDS $pid"
+    record_cap_pid "$pid"
+    log "DNS-namen worker gestart pid=$pid"
+  fi
+}
+
+# Read the DNS answers the router sends to clients (udp source port 53) and
+# remember which IPv4 address belongs to which name. tcpdump -vv shows the
+# question ("A? name.") with the answers ("A 1.2.3.4"); a header line may
+# carry the timestamp on its own, so it is remembered across lines. Each
+# pair is written at most every 5 minutes; the file is reopened per write
+# so pruning by the promote worker cannot strand the writer.
+dns_name_worker(){
+  while true; do
+    "$TCPDUMP" -i any -nn -tt -l -vv -s 1500 'udp and src port 53' 2>/dev/null | $AWK -v out="$DNS_NAMES" '
+      function public(s,   a, n, i) {
+        n = split(s, a, "."); if (n != 4) return 0
+        for (i = 1; i <= 4; i++) if (a[i] !~ /^[0-9]+$/ || a[i] + 0 > 255) return 0
+        if (a[1] == 10 || a[1] == 127 || a[1] == 0 || (a[1] == 192 && a[2] == 168) || (a[1] == 172 && a[2] >= 16 && a[2] <= 31) || (a[1] == 169 && a[2] == 254)) return 0
+        return 1
+      }
+      $1 ~ /^[0-9]+\.[0-9]+$/ { stamp = $1; sub(/\..*/, "", stamp) }
+      {
+        if (stamp == "") next
+        q = ""
+        for (i = 1; i < NF; i++) if ($i == "A?") { q = tolower($(i + 1)); sub(/[.,]$/, "", q); break }
+        if (q == "" || length(q) > 253 || q !~ /^[a-z0-9_.-]+\.[a-z0-9-]+$/) next
+        for (i = 1; i < NF; i++) if ($i == "A") {
+          a = $(i + 1); sub(/,$/, "", a)
+          if (!public(a)) continue
+          key = a " " q
+          if ((key in last) && stamp - last[key] < 300) continue
+          last[key] = stamp
+          if (++written > 20000) { delete last; written = 0 }
+          print a, stamp, q >> out
+          close(out)
+        }
+      }'
+    sleep 30
+  done
 }
 
 count_alive_pids_in_file(){
@@ -675,6 +722,8 @@ ensure_workers_alive(){
   for _i in $INTERFACES; do
     expected_caps=$((expected_caps+1))
   done
+  # The DNS-name worker is tracked with the capture workers.
+  [ -n "$TCPDUMP" ] && expected_caps=$((expected_caps+1))
 
   if [ "$alive_capture" -lt "$expected_caps" ]; then
     log "Een of meer capture workers zijn weggevallen ($alive_capture/$expected_caps); opnieuw starten"
@@ -1356,6 +1405,18 @@ reverse_lookup_ip(){
 
 # Keep RAM-backed caches in /tmp bounded.
 prune_caches(){
+  if [ -f "$DNS_NAMES" ]; then
+    dns_lines="$(wc -l < "$DNS_NAMES" 2>/dev/null | $TR -d ' ')"
+    case "$dns_lines" in ''|*[!0-9]*) dns_lines=0 ;; esac
+    if [ "$dns_lines" -gt "$CACHE_MAX_LINES" ]; then
+      dns_tmp="$(make_temp_file "$DNS_NAMES")" && {
+        $AWK -v now="$(current_epoch)" -v ttl="$DNS_NAMES_TTL" '
+          $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl {last[$1]=$0}
+          END{for(k in last) print last[k]}' "$DNS_NAMES" 2>/dev/null | $TAIL -n "$CACHE_MAX_LINES" > "$dns_tmp"
+        mv -f "$dns_tmp" "$DNS_NAMES" 2>/dev/null || rm -f "$dns_tmp"
+      }
+    fi
+  fi
   [ -f "$CACHE_PTR" ] || return 0
   ptr_lines="$(wc -l < "$CACHE_PTR" 2>/dev/null | $TR -d ' ')"
   case "$ptr_lines" in ''|*[!0-9]*) return 0 ;; esac

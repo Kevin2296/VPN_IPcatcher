@@ -1,3 +1,11 @@
+# VPN IP Catcher 2.10.2 — Echte DNS-namen in Liveflows
+
+**NL:** Liveflows en de lijsten tonen nu voor vrijwel elke bestemming de DNS-naam die je apparaat echt opvroeg. Een kleine worker leest daarvoor alleen de DNS-antwoorden van de router (ook met AdGuardHome) mee. Na de update de catcher herstarten en de WebUI met Ctrl+F5 verversen.
+
+**EN:** Live flows and lists now show the DNS name a device actually looked up for almost every destination, from a small worker reading only the router's DNS answers (dnsmasq or AdGuardHome). Restart the catcher and hard-refresh the WebUI after updating.
+
+---
+
 # VPN IP Catcher 2.10.1 — Namen bij IP-adressen
 
 **NL:** De WebUI toont nu bij elk IP een naam (de DNS-naam die een apparaat opvroeg, de hostnaam waarmee het is geleerd, of omgekeerde DNS) en een leesbare kolom **Hoe geleerd**. Hersteld: op Merlin werd "promoted" door een `tr`-beperking opgeslagen als "wromoted", en hostnamen bij de omgekeerde DNS-controle raakten verminkt. Nieuwe presets voor connectiviteitscontroles en certificaten (msftconnecttest, Let's Encrypt, …), Microsoft en Home Assistant.

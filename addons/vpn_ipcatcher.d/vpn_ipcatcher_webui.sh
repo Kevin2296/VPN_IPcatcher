@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.10.1
+# Version: 2.10.2
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -41,6 +41,7 @@ FIXED_SETS_FILE="/tmp/vpn_ipcatcher/fixed_sets"
 NSLOOKUP="$(find_bin /usr/bin/nslookup /bin/nslookup /opt/bin/nslookup)"
 TIMEOUT_BIN="$(find_bin /usr/bin/timeout /bin/timeout /opt/bin/timeout)"
 DOM2IP_CACHE="/tmp/vpn_ipcatcher/dom2ip"
+DNS_NAMES_FILE="/tmp/vpn_ipcatcher/dns_names"
 PTR_CACHE="/tmp/vpn_ipcatcher/ptr_cache"
 PTR_TTL=3600
 PTR_LOOKUPS_PER_PUBLISH=6
@@ -359,6 +360,7 @@ destination_names_json(){
   printf '%s\n' $names_ips | ${AWK:-awk} '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && !seen[$0]++' > "$names_work/ips"
   : > "$names_work/known"
   [ -r "$DIAGNOSTIC_DNS" ] && ${AWK:-awk} 'NF>=4 && $4 ~ /^[0-9.]+$/ {print $4, "dns", tolower($3)}' "$DIAGNOSTIC_DNS" >> "$names_work/known" 2>/dev/null
+  [ -r "$DNS_NAMES_FILE" ] && ${AWK:-awk} -v now="$(date +%s)" '$2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<7200 && NF>=3 {print $1, "dns", $3}' "$DNS_NAMES_FILE" >> "$names_work/known" 2>/dev/null
   [ -r "$DOM2IP_CACHE" ] && ${AWK:-awk} '$2 ~ /^[0-9]+$/ {for(i=3;i<=NF;i++) print $i, "dns", $1}' "$DOM2IP_CACHE" >> "$names_work/known" 2>/dev/null
   printf '%s\n' "$names_comments" | ${AWK:-awk} '
     match($0, /^[0-9.]+ /) && match($0, /src=[a-z0-9.-]+\.[a-z][a-z0-9-]+[;"]/) {
@@ -380,7 +382,7 @@ destination_names_json(){
   ${AWK:-awk} -v want="$names_work/ips" '
     BEGIN { while ((getline line < want) > 0) wanted[line] = 1; rank["dns"]=1; rank["host"]=2; rank["ptr"]=3 }
     ($1 in wanted) && $3 != "-" && $3 ~ /^[A-Za-z0-9.-]+$/ {
-      if (!($1 in best) || rank[$2] < rank[kind[$1]]) { best[$1] = $3; kind[$1] = $2 }
+      if (!($1 in best) || rank[$2] <= rank[kind[$1]]) { best[$1] = $3; kind[$1] = $2 }
     }
     END {
       printf "{"; n = 0
@@ -577,7 +579,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.10.1",
+  "version":"2.10.2",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",

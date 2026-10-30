@@ -38,7 +38,7 @@ preset_domains(){
     upd_connectivity) echo "msftconnecttest.com msftncsi.com connectivitycheck.gstatic.com connectivitycheck.android.com captive.apple.com detectportal.firefox.com nmcheck.gnome.org checkonline.home-assistant.io lencr.org letsencrypt.org digicert.com sectigo.com pki.goog globalsign.com" ;;
     upd_microsoft) echo "microsoft.com windows.com windows.net windowsupdate.com live.com msn.com bing.com microsoftonline.com msauth.net msftauth.net s-microsoft.com skype.com teams.microsoft.com msftconnecttest.com msftncsi.com" ;;
     upd_speedtest) echo "speedtest.net ookla.com nperf.com fast.com" ;;
-    tv_samsung) echo "samsungcloudsolution.net samsungcloudsolution.com samsungacr.com samsung.com" ;;
+    tv_samsung) echo "samsungcloudsolution.net samsungcloudsolution.com samsungacr.com samsung.com samsungapps.com samsungcloud.com samsungosp.com samsungqbe.com samsungelectronics.com" ;;
     tv_philips) echo "philips.com tpv-tech.com philips-tvconsumercare.com" ;;
     tv_android) echo "androidtv.com android.com gstatic.com googleapis.com" ;;
     tv_lg) echo "lge.com lgsmartad.com lgtvcommon.com" ;;
