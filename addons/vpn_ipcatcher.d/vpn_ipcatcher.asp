@@ -17,438 +17,177 @@
 <script type="text/javascript" src="/validator.js"></script>
 
 <style>
-/* JOUW EIGEN CSS - body aangepast naar .vpn_ipcatcher_dashboard */
-.vpn_ipcatcher_dashboard{font-family:Arial,Helvetica,sans-serif;background:#1f2d3a;color:#d9e6f2;margin:0;padding:0; border-radius:10px; overflow:hidden;}
-.wrap{max-width:1280px;margin:0 auto;padding:18px}
-.topbar{background:linear-gradient(135deg,#26394c,#182430);border:1px solid #34495e;border-radius:12px;padding:18px 20px;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.title{font-size:28px;font-weight:700;color:#fff}
-.subtitle{color:#a9bdcf;margin-top:5px;font-size:13px}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
-.card{background:#233446;border:1px solid #3a536b;border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
-.card h3{margin:0 0 8px;color:#9cc9ff;font-size:13px;text-transform:uppercase;letter-spacing:.8px}
-.big{font-size:24px;color:#fff;font-weight:700}
-.muted{color:#a9bdcf;font-size:12px}
-.badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
-.ok{background:#1d6b44;color:#d5ffe9}.bad{background:#762b2b;color:#ffe0e0}.warn{background:#80621d;color:#fff0c5}
-.panel{background:#223243;border:1px solid #3a536b;border-radius:12px;margin:14px 0;overflow:hidden}
-.panel-title{background:#192838;color:#fff;padding:12px 14px;font-weight:700;border-bottom:1px solid #3a536b}
-.panel-body{padding:14px}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{border:1px solid #4e6c86;background:#2d465d;color:#fff;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:700}
-.btn:hover{background:#3c5e7b}.btn.green{background:#1e7048}.btn.red{background:#7a3030}.btn.orange{background:#8a5a1c}.btn.blue{background:#235f8f}.btn:disabled{opacity:.5;cursor:wait}
-.vpn_ipcatcher_dashboard .layoutTabs,.vpn_ipcatcher_dashboard .tabs{display:flex;gap:10px;flex-wrap:wrap}
-.vpn_ipcatcher_dashboard .layoutTabs{margin:12px 0 2px}
-.vpn_ipcatcher_dashboard .layoutTab,.vpn_ipcatcher_dashboard .tab{padding:10px 16px;border-radius:12px;border:1px solid #4b6780;background:#182532;color:#dce9f6;cursor:pointer;font-size:15px;font-weight:700}
-.vpn_ipcatcher_dashboard .layoutTab.active,.vpn_ipcatcher_dashboard .tab.active{background:#3a6f9e;color:#fff;border-color:#5f8eb7}
-.page{display:none}.page.active{display:block}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.formgrid{display:grid;grid-template-columns:220px 1fr;gap:10px 14px;align-items:center}
-.formgrid label{color:#c4d5e6}
-.formgrid input,.formgrid select,.formgrid textarea{background:#101923;color:#fff;border:1px solid #4a657d;border-radius:8px;padding:8px;width:100%;box-sizing:border-box}
-.formgrid textarea{min-height:96px;font-family:monospace}
-.note{background:#162435;border-left:4px solid #4e9ee8;padding:10px 12px;border-radius:8px;color:#cfe2f4;margin-bottom:12px}
-.footer{color:#8fa7bb;font-size:12px;margin:12px 0;text-align:right}
-pre{white-space:pre-wrap;word-break:break-word;background:#101923;border:1px solid #31475c;border-radius:10px;padding:12px;color:#dcecff;max-height:440px;overflow:auto;font-size:12px;line-height:1.35}
-table.data{width:100%;border-collapse:collapse;background:#101923;border:1px solid #31475c;border-radius:10px;overflow:hidden;font-size:13px}
-table.data th,table.data td{padding:8px 10px;border-bottom:1px solid #243849;vertical-align:top;text-align:left}
-table.data th{background:#152434;color:#bcd7ef;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
-table.data tr:last-child td{border-bottom:none}
-.scroll{max-height:460px;overflow:auto;border-radius:10px}
-.mono{font-family:Consolas,Monaco,monospace}
-.presetGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.presetCard{background:#182634;border:1px solid #35506a;border-radius:12px;padding:12px}
-.presetCard h4{margin:0 0 8px;color:#9cc9ff}
-.presetItem{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid #274052}
-.presetItem:first-child{border-top:none}
-.presetMeta{font-size:12px;color:#9eb4c8;margin-top:3px;line-height:1.35}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#28445a;color:#d7ebff;font-size:11px;margin-right:6px}
-.search{margin-bottom:12px}
-.search input{background:#101923;color:#fff;border:1px solid #4a657d;border-radius:10px;padding:10px 12px;width:100%;box-sizing:border-box}
-.helperBar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-.statusOn{color:#7df2ab;font-weight:700}
-.statusPart{color:#ffd37f;font-weight:700}
-.statusOff{color:#9eb4c8;font-weight:700}
-.smallinfo{font-size:12px;color:#a9bdcf}
-@media(max-width:980px){.grid{grid-template-columns:repeat(2,1fr)}.split,.presetGrid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.wrap{padding:10px}}
-/* ASUS_COMPACT_START */
-
-.vpn_ipcatcher_dashboard {
-  width: 100%;
-  background: #475a5f;
-  color: #ffffff;
-  border-radius: 0;
-  overflow: visible;
+/* VPN IP Catcher WebUI - Asuswrt-Merlin look (2.10)
+   Colours follow the stock ASUS pages: content #4D595D, FormTable rows
+   #475A5F with #1F2D35 label cells, grey-blue section bars and the dark
+   button_gen gradient with the cyan hover. */
+.vpn_ipcatcher_dashboard{
+  --vp-bg:#4D595D; --vp-row:#475A5F; --vp-row-alt:#4F6267; --vp-label:#1F2D35; --vp-tile:#2F3A3E;
+  --vp-line:#222E33; --vp-soft:#5E7177; --vp-text:#FFFFFF; --vp-muted:#C1CFD3; --vp-dim:#9DB0B6;
+  --vp-accent:#2BC0F0; --vp-yellow:#FFCC00; --vp-green:#43D18E; --vp-red:#FF6B5E; --vp-violet:#C9A6FF;
+  width:100%; background:var(--vp-bg); color:var(--vp-text); font-family:Arial,Helvetica,sans-serif; font-size:13px;
 }
-
-.vpn_ipcatcher_dashboard * {
-  box-sizing: border-box;
-}
-
-.vpn_ipcatcher_dashboard .wrap {
-  max-width: none;
-  width: 100%;
-  margin: 0;
-  padding: 12px;
-}
-
-/* Compacte paginatitel */
-.vpn_ipcatcher_dashboard .topbar {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 8px 6px 14px;
-  margin: 0;
-  text-align: center;
-}
-
-.vpn_ipcatcher_dashboard .title {
-  font-size: 24px;
-  line-height: 1.2;
-  color: #ffffff;
-  text-shadow: 0 1px 1px #000000;
-}
-
-.vpn_ipcatcher_dashboard .subtitle {
-  margin-top: 5px;
-  color: #dce5e8;
-  font-size: 12px;
-}
-
-/* Alle vijf statuskaarten op één regel */
-.vpn_ipcatcher_dashboard .grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
-  margin: 8px 0;
-}
-
-.vpn_ipcatcher_dashboard .card {
-  min-height: 88px;
-  padding: 10px;
-  background: #2f3a3e;
-  border: 1px solid #718187;
-  border-radius: 2px;
-  box-shadow: none;
-}
-
-.vpn_ipcatcher_dashboard .card h3 {
-  margin: 0 0 7px;
-  color: #d8e6eb;
-  font-size: 11px;
-  letter-spacing: .5px;
-}
-
-.vpn_ipcatcher_dashboard .big {
-  font-size: 22px;
-}
-
-/* Panelen zoals andere Merlin-add-ons */
-.vpn_ipcatcher_dashboard .panel {
-  margin: 8px 0;
-  background: #4d595d;
-  border: 1px solid #7c8a90;
-  border-radius: 2px;
-  box-shadow: none;
-  overflow: hidden;
-}
-
-.vpn_ipcatcher_dashboard .panel-title {
-  padding: 7px 10px;
-  background: linear-gradient(to bottom, #7c8a90, #596e74);
-  border-bottom: 1px solid #29363a;
-  color: #ffffff;
-  font-size: 13px;
-  text-shadow: 0 1px 1px #000000;
-}
-
-.vpn_ipcatcher_dashboard .panel-body {
-  padding: 10px;
-}
-
-/* Knoppen compacter */
-.vpn_ipcatcher_dashboard .actions,
-.vpn_ipcatcher_dashboard .helperBar {
-  gap: 6px;
-}
-
-.vpn_ipcatcher_dashboard .btn {
-  padding: 7px 11px;
-  background: linear-gradient(to bottom, #465c64, #26373d);
-  border: 1px solid #75878d;
-  border-radius: 4px;
-  color: #ffffff;
-  font-size: 12px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
-}
-
-.vpn_ipcatcher_dashboard .btn:hover {
-  background: linear-gradient(to bottom, #58717a, #30464d);
-}
-
-.vpn_ipcatcher_dashboard .btn.green {
-  background: linear-gradient(to bottom, #31895a, #1f603f);
-}
-
-.vpn_ipcatcher_dashboard .btn.red {
-  background: linear-gradient(to bottom, #a04a4a, #733232);
-}
-
-.vpn_ipcatcher_dashboard .btn.orange {
-  background: linear-gradient(to bottom, #b77922, #805315);
-}
-
-.vpn_ipcatcher_dashboard .btn.blue {
-  background: linear-gradient(to bottom, #3c83b5, #27638d);
-}
-
-/* Hoofdtabs */
-.vpn_ipcatcher_dashboard .layoutTabs,
-.vpn_ipcatcher_dashboard .tabs {
-  gap: 4px;
-}
-
-.vpn_ipcatcher_dashboard .layoutTabs {
-  margin: 8px 0 4px;
-}
-
-.vpn_ipcatcher_dashboard .layoutTab,
-.vpn_ipcatcher_dashboard .tab {
-  padding: 7px 12px;
-  background: linear-gradient(to bottom, #354950, #1d2c31);
-  border: 1px solid #718187;
-  border-radius: 3px;
-  color: #ffffff;
-  font-size: 13px;
-}
-
-.vpn_ipcatcher_dashboard .layoutTab.active,
-.vpn_ipcatcher_dashboard .tab.active {
-  background: linear-gradient(to bottom, #4b91c1, #2d6e9a);
-  border-color: #91b3ca;
-}
-
-/* Tabellen */
-.vpn_ipcatcher_dashboard table.data {
-  background: #2f3a3e;
-  border: 1px solid #748388;
-  border-radius: 0;
-}
-
-.vpn_ipcatcher_dashboard table.data th {
-  background: #39484d;
-  color: #dce8eb;
-  font-size: 11px;
-}
-
-.vpn_ipcatcher_dashboard table.data td {
-  background: #2f3a3e;
-  border-bottom-color: #48595e;
-}
-
-/* Formuliervelden */
-.vpn_ipcatcher_dashboard .formgrid input,
-.vpn_ipcatcher_dashboard .formgrid select,
-.vpn_ipcatcher_dashboard .formgrid textarea,
-.vpn_ipcatcher_dashboard .search input {
-  background: #263438;
-  border: 1px solid #78898e;
-  border-radius: 3px;
-}
-
-.vpn_ipcatcher_dashboard .note {
-  background: #34464b;
-  border-left-color: #55a6db;
-  border-radius: 2px;
-}
-
-.vpn_ipcatcher_dashboard pre {
-  background: #273539;
-  border-color: #748388;
-  border-radius: 2px;
-}
-
-.vpn_ipcatcher_dashboard .split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-}
-
-.vpn_ipcatcher_dashboard .footer {
-  margin: 14px 0 4px;
-  color: #d0dadd;
-  text-align: center;
-}
-
-/* Responsive */
-@media (max-width: 1100px) {
-  .vpn_ipcatcher_dashboard .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .vpn_ipcatcher_dashboard .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .vpn_ipcatcher_dashboard .split {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ASUS_COMPACT_END */
-/* VPNIPC_FINAL_LAYOUT_START */
-
-/* Ruimte onder de statuskaarten */
-.vpn_ipcatcher_dashboard .grid + .muted {
-  display: block;
-  clear: both;
-  margin: 10px 2px 14px !important;
-  line-height: 18px;
-}
-
-/* Statuskaarten allemaal even hoog */
-.vpn_ipcatcher_dashboard .grid {
-  align-items: stretch;
-  margin-bottom: 0;
-}
-
-.vpn_ipcatcher_dashboard .card {
-  min-height: 112px;
-}
-
-.vpn_ipcatcher_dashboard .card .muted {
-  font-size: 11px;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-  word-break: normal;
-}
-
-/* Iets meer afstand vóór Actions */
-.vpn_ipcatcher_dashboard .grid + .muted + .panel {
-  margin-top: 0;
-}
-
-/* Titelblok iets compacter */
-.vpn_ipcatcher_dashboard .topbar {
-  padding-top: 10px;
-  padding-bottom: 12px;
-}
-
-/* VPNIPC_FINAL_LAYOUT_END */
-
-/* VPNIPC_LIVE_LAYOUT_V10_START */
-.vpn_ipcatcher_dashboard #page_live .panel-body{padding:16px}
-.vpn_ipcatcher_dashboard #page_live .tabs{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:8px;margin:0 0 18px}
-.vpn_ipcatcher_dashboard #page_live .tab{width:100%;min-height:42px;padding:9px 10px;line-height:1.2;text-align:center;white-space:normal}
-.vpn_ipcatcher_dashboard #liveOutput{margin-top:0}
-.vpn_ipcatcher_dashboard #liveOutput>pre,.vpn_ipcatcher_dashboard #liveOutput .ipsetDump>pre{margin:0 0 18px;padding:16px 18px;line-height:1.55;max-height:320px}
-.vpn_ipcatcher_dashboard #liveOutput .scroll{margin-top:0;border:1px solid #718187;border-radius:3px}
-.vpn_ipcatcher_dashboard #liveOutput table.data{table-layout:auto;margin:0;border:0}
-.vpn_ipcatcher_dashboard #liveOutput table.data th,.vpn_ipcatcher_dashboard #liveOutput table.data td{padding:11px 14px;line-height:1.35}
-.vpn_ipcatcher_dashboard #liveOutput table.data th{white-space:nowrap}
-.vpn_ipcatcher_dashboard #liveOutput table.data td.mono{white-space:nowrap}
-.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data th:nth-child(1),.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data td:nth-child(1){width:18%}
-.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data th:nth-child(2),.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data td:nth-child(2),.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data th:nth-child(3),.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data td:nth-child(3),.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data th:nth-child(4),.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data td:nth-child(4){width:12%}
-.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data th:nth-child(5),.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data td:nth-child(5){width:20%}
-.vpn_ipcatcher_dashboard #liveOutput .ipsetDump table.data td:last-child{white-space:normal;overflow-wrap:anywhere}
-@media(max-width:1150px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(4,minmax(130px,1fr))}}
-@media(max-width:760px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard #liveOutput{overflow-x:auto}.vpn_ipcatcher_dashboard #liveOutput table.data{min-width:850px}}
-/* VPNIPC_LIVE_LAYOUT_V10_END */
-
-
-/* VPNIPC_I18N_V11_START */
-.vpn_ipcatcher_dashboard .languageRow{
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:7px;
-  margin:-2px 0 5px;
-  min-height:28px;
-}
-.vpn_ipcatcher_dashboard .languageRow label{
-  color:#dce5e8;
-  font-size:11px;
-  font-weight:700;
-}
-.vpn_ipcatcher_dashboard .languageRow select{
-  min-width:128px;
-  padding:4px 7px;
-  background:#263438;
-  color:#fff;
-  border:1px solid #78898e;
-  border-radius:3px;
-  font-size:11px;
-}
-@media(max-width:760px){
-  .vpn_ipcatcher_dashboard .languageRow{justify-content:center;margin-bottom:7px}
-}
-/* VPNIPC_I18N_V11_END */
-
-/* Scoped operational layout; leave Merlin's surrounding navigation untouched. */
-.vpn_ipcatcher_dashboard .wrap{padding:12px}
-.vpn_ipcatcher_dashboard .topbar{margin-bottom:6px}
-.vpn_ipcatcher_dashboard .grid{margin:8px 0;gap:8px}
-.vpn_ipcatcher_dashboard .grid .card{min-height:76px;padding:10px}
-.vpn_ipcatcher_dashboard .grid .card .big{font-size:22px}
-.vpn_ipcatcher_dashboard .liveFilters{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:10px 0}
-.vpn_ipcatcher_dashboard #flowControls{display:contents}
-.vpn_ipcatcher_dashboard .liveFilters label{display:flex;flex:1 1 130px;flex-direction:column;gap:4px;font-size:12px;min-width:0}
-.vpn_ipcatcher_dashboard .liveFilters input,.vpn_ipcatcher_dashboard .liveFilters select{box-sizing:border-box;width:100%;min-width:0;padding:7px;background:#263235;color:#edf3f3;border:1px solid #637375;border-radius:3px}
-.vpn_ipcatcher_dashboard #diagnosticControls label{flex:1 1 240px}
-.vpn_ipcatcher_dashboard #diagnosticControls [data-i18n="diagnosticDnsNote"],.vpn_ipcatcher_dashboard #diagnosticControls [data-i18n="diagnosticLimited"]{flex-basis:100%}
-.vpn_ipcatcher_dashboard #diagnosticProgress{width:160px;height:10px;accent-color:#69c6b6}
-.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;margin-bottom:10px}
-.vpn_ipcatcher_dashboard #page_live .tab{padding:7px 4px;font-size:12px;border-radius:3px}
-.vpn_ipcatcher_dashboard #liveOutput table.data td,.vpn_ipcatcher_dashboard #liveOutput table.data th{padding:7px 9px}
-@media(max-width:1100px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:600px){.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.vpn_ipcatcher_dashboard{background:#263235;color:#edf3f3}
-.vpn_ipcatcher_dashboard .topbar{text-align:left;padding:12px 0}
-.vpn_ipcatcher_dashboard .title{font-size:22px;text-shadow:none}
-.vpn_ipcatcher_dashboard .subtitle{display:none}
-.vpn_ipcatcher_dashboard .panel{background:transparent;border:0;border-radius:0;margin:16px 0}
-.vpn_ipcatcher_dashboard .panel-title{background:transparent;border-bottom:1px solid #536365;padding:10px 0;text-shadow:none}
-.vpn_ipcatcher_dashboard .panel-body{padding:12px 0}
-.vpn_ipcatcher_dashboard .card{background:#344245;border-color:#59686a;border-radius:4px;min-height:108px}
-.vpn_ipcatcher_dashboard .card h3,.vpn_ipcatcher_dashboard table.data th{letter-spacing:0}
-.vpn_ipcatcher_dashboard #liveOutput table.data{overflow:visible}
-.vpn_ipcatcher_dashboard #liveOutput table.data th{position:sticky;top:0;z-index:2}
-.vpn_ipcatcher_dashboard .columnSort{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;padding:0;margin:0;background:none;border:0;border-radius:0;color:inherit;font:inherit;text-align:left;text-transform:inherit;cursor:pointer}
-.vpn_ipcatcher_dashboard .columnSort:focus-visible{outline:2px solid #5cc8bb;outline-offset:3px}
-.vpn_ipcatcher_dashboard #page_help table{table-layout:fixed}
-.vpn_ipcatcher_dashboard #page_help td{overflow-wrap:anywhere}
-.vpn_ipcatcher_dashboard .card .muted{overflow-wrap:anywhere}
-.vpn_ipcatcher_dashboard .layoutTabs{gap:0;border-bottom:1px solid #637375}
-.vpn_ipcatcher_dashboard .layoutTab{background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;padding:12px;font-size:14px}
-.vpn_ipcatcher_dashboard .layoutTab.active{background:transparent;border-color:#67c6b8;color:#b5eee2}
-.vpn_ipcatcher_dashboard .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.vpn_ipcatcher_dashboard .tab{min-width:0;white-space:normal;overflow-wrap:anywhere;padding:10px 6px;font-size:13px;line-height:1.4}
-.vpn_ipcatcher_dashboard .presetGrid{align-items:start}
-.vpn_ipcatcher_dashboard .presetCard{background:transparent;border:0;border-top:2px solid #687e80;border-radius:0;padding:14px 0}
-.vpn_ipcatcher_dashboard .presetItem{min-width:0;align-items:start}
-.vpn_ipcatcher_dashboard .presetMeta{overflow-wrap:anywhere}
-.vpn_ipcatcher_dashboard details summary{cursor:pointer;color:#bce1df;padding:8px 0}
-.vpn_ipcatcher_dashboard .previewList{max-height:250px;overflow:auto;line-height:1.6;overflow-wrap:anywhere}
-.vpn_ipcatcher_dashboard .settingsGroup{margin:16px 0;border:0;border-top:1px solid #536365;padding:12px 0}
-.vpn_ipcatcher_dashboard .settingsGroup legend{font-weight:700;padding-right:12px;color:#b5eee2}
-.vpn_ipcatcher_dashboard .formgrid input[readonly]{opacity:.8;border-style:dashed;cursor:default}
-.vpn_ipcatcher_dashboard .saveBar{position:sticky;bottom:0;background:#263235;padding:12px 0;border-top:1px solid #536365;z-index:2}
+.vpn_ipcatcher_dashboard *{box-sizing:border-box}
 .vpn_ipcatcher_dashboard [hidden]{display:none!important}
-.vpn_ipcatcher_dashboard .sessionMeta{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;color:#bce1df;font-size:13px}
-.vpn_ipcatcher_dashboard .maintenance{margin-top:10px}
-.vpn_ipcatcher_dashboard .note{background:transparent;border-radius:0;color:#c7d8d8}
-.vpn_ipcatcher_dashboard .languageRow{float:right;margin:0 0 4px 12px}
-.vpn_ipcatcher_dashboard .topbar{display:flow-root;padding:8px 0}
-.vpn_ipcatcher_dashboard .sessionMeta{margin-top:6px}
-.vpn_ipcatcher_dashboard .panel{margin:10px 0}
-.vpn_ipcatcher_dashboard .panel-title{padding:7px 0}
-.vpn_ipcatcher_dashboard .panel-body{padding:8px 0}
-.vpn_ipcatcher_dashboard .layoutTab{padding:8px 10px}
-.vpn_ipcatcher_dashboard #page_live .tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
-.vpn_ipcatcher_dashboard #page_live .tab{height:auto;min-height:38px;overflow-wrap:normal;word-break:normal;line-height:1.4}
-@media(max-width:600px){.vpn_ipcatcher_dashboard .languageRow{float:none;margin:0 0 7px}}
-@media(max-width:600px){.vpn_ipcatcher_dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.vpn_ipcatcher_dashboard .languageRow{justify-content:flex-start}.vpn_ipcatcher_dashboard .layoutTab{padding:10px 8px;font-size:13px}.vpn_ipcatcher_dashboard .split{grid-template-columns:1fr}}
+.vpn_ipcatcher_dashboard .wrap{padding:10px 14px 14px}
+.vpn_ipcatcher_dashboard a{color:var(--vp-accent)}
+
+/* Page title like other Merlin add-on pages */
+.vpn_ipcatcher_dashboard .topbar{padding:4px 0 10px;border-bottom:1px solid #7E8593;margin-bottom:12px}
+.vpn_ipcatcher_dashboard .title{font-size:20px;font-weight:bold;color:#FFF;text-shadow:1px 1px 0 #000}
+.vpn_ipcatcher_dashboard .subtitle{color:var(--vp-muted);font-size:12px;margin-top:3px}
+.vpn_ipcatcher_dashboard .sessionMeta{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:var(--vp-muted)}
+.vpn_ipcatcher_dashboard .sessionMeta strong{color:var(--vp-yellow)}
+.vpn_ipcatcher_dashboard .languageRow{float:right;display:flex;align-items:center;gap:8px;font-size:12px}
+.vpn_ipcatcher_dashboard .languageRow select{width:auto}
+
+/* Status tiles */
+.vpn_ipcatcher_dashboard .grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:0 0 6px}
+.vpn_ipcatcher_dashboard .card{background:var(--vp-tile);border:1px solid var(--vp-line);border-top:3px solid var(--vp-soft);border-radius:4px;padding:9px 10px;min-height:86px}
+.vpn_ipcatcher_dashboard .card.accent{border-top-color:var(--vp-accent)}
+.vpn_ipcatcher_dashboard .card.good{border-top-color:var(--vp-green)}
+.vpn_ipcatcher_dashboard .card.attention{border-top-color:var(--vp-yellow)}
+.vpn_ipcatcher_dashboard .card.violet{border-top-color:var(--vp-violet)}
+.vpn_ipcatcher_dashboard .card h3{margin:0 0 6px;color:var(--vp-dim);font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;line-height:1.2}
+.vpn_ipcatcher_dashboard .big{font-size:24px;font-weight:bold;color:#FFF;line-height:1.1}
+.vpn_ipcatcher_dashboard .muted{color:var(--vp-muted);font-size:12px}
+.vpn_ipcatcher_dashboard .card .muted{overflow-wrap:anywhere}
+.vpn_ipcatcher_dashboard .badge{display:inline-block;padding:3px 10px;border-radius:3px;font-size:12px;font-weight:bold;letter-spacing:.3px}
+.vpn_ipcatcher_dashboard .ok{background:#1E7A4C;color:#E5FFF1}
+.vpn_ipcatcher_dashboard .bad{background:#8F2F28;color:#FFE6E3}
+.vpn_ipcatcher_dashboard .warn{background:#8A6D12;color:#FFF5CF}
+
+/* Hint / attention bars (ASUS yellow hint colour) */
+.vpn_ipcatcher_dashboard .note{background:#3C4B50;border-left:3px solid var(--vp-yellow);padding:9px 12px;margin:0 0 10px;color:#F1F5F6;line-height:1.45}
+.vpn_ipcatcher_dashboard .alertBar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#3C4B50;border-left:3px solid var(--vp-yellow);padding:8px 12px;margin:8px 0 10px}
+.vpn_ipcatcher_dashboard .alertBar span{flex:1 1 300px;line-height:1.4}
+
+/* Sections styled like ASUS FormTable */
+.vpn_ipcatcher_dashboard .panel{background:var(--vp-row);border:1px solid var(--vp-line);margin:10px 0;border-radius:0}
+.vpn_ipcatcher_dashboard .panel-title{background:linear-gradient(to bottom,#92A0A5 0%,#66757C 100%);color:#FFF;font-weight:bold;padding:7px 10px;font-size:13px;text-shadow:1px 1px 0 #2B3437}
+.vpn_ipcatcher_dashboard .panel-body{padding:10px}
+.vpn_ipcatcher_dashboard #page_routing>.panel-title,.vpn_ipcatcher_dashboard #page_help>.panel-title{margin-top:10px}
+.vpn_ipcatcher_dashboard #page_routing>.panel-body,.vpn_ipcatcher_dashboard #page_help>.panel-body{background:var(--vp-row);border:1px solid var(--vp-line);border-top:0}
+.vpn_ipcatcher_dashboard .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vpn_ipcatcher_dashboard .split>.panel{margin:10px 0 0}
+
+/* Buttons: ASUS button_gen */
+.vpn_ipcatcher_dashboard .actions,.vpn_ipcatcher_dashboard .helperBar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vpn_ipcatcher_dashboard .btn{background:linear-gradient(to bottom,#233438 0%,#0F1517 100%);color:#FFF;border:0;border-radius:8px;min-height:30px;padding:6px 14px;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit}
+.vpn_ipcatcher_dashboard .btn:hover,.vpn_ipcatcher_dashboard .btn:focus-visible{background:linear-gradient(to bottom,#27C9C9 0%,#279FD9 100%);outline:none}
+.vpn_ipcatcher_dashboard .btn.blue{box-shadow:inset 0 0 0 1px var(--vp-accent)}
+.vpn_ipcatcher_dashboard .btn.green{box-shadow:inset 0 0 0 1px var(--vp-green)}
+.vpn_ipcatcher_dashboard .btn.red{box-shadow:inset 0 0 0 1px var(--vp-red)}
+.vpn_ipcatcher_dashboard .btn.orange{box-shadow:inset 0 0 0 1px var(--vp-yellow)}
+.vpn_ipcatcher_dashboard .btn.red:hover,.vpn_ipcatcher_dashboard .btn.danger:hover{background:linear-gradient(to bottom,#E0574B 0%,#A8352C 100%)}
+.vpn_ipcatcher_dashboard .btn:disabled{opacity:.5;cursor:wait}
+.vpn_ipcatcher_dashboard .btn.small{min-height:24px;padding:3px 10px;font-size:11px}
+
+/* Page tabs like ASUS sub tabs */
+.vpn_ipcatcher_dashboard .layoutTabs{display:flex;flex-wrap:wrap;gap:2px;margin:14px 0 0;border-bottom:2px solid var(--vp-accent)}
+.vpn_ipcatcher_dashboard .layoutTab{background:var(--vp-tile);color:#DDE6E8;border:1px solid var(--vp-line);border-bottom:0;border-radius:6px 6px 0 0;padding:8px 14px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit}
+.vpn_ipcatcher_dashboard .layoutTab:hover{color:#FFF;background:#3A484C}
+.vpn_ipcatcher_dashboard .layoutTab.active{background:var(--vp-accent);color:#0F1E24;border-color:var(--vp-accent)}
+.vpn_ipcatcher_dashboard .tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.vpn_ipcatcher_dashboard .tab{background:var(--vp-label);color:#DDE6E8;border:1px solid #33464D;border-radius:4px;padding:6px 11px;font-size:12px;font-weight:bold;cursor:pointer;font-family:inherit}
+.vpn_ipcatcher_dashboard .tab:hover{background:#2C3E45}
+.vpn_ipcatcher_dashboard .tab.active{background:#2C5E6E;border-color:var(--vp-accent);color:#FFF}
+.vpn_ipcatcher_dashboard .page{display:none}
+.vpn_ipcatcher_dashboard .page.active{display:block}
+
+/* Forms: label cells like FormTable th, inputs like ASUS input_32_table */
+.vpn_ipcatcher_dashboard .formgrid{display:grid;grid-template-columns:260px 1fr;gap:0;border:1px solid var(--vp-line)}
+.vpn_ipcatcher_dashboard .formgrid>label{background:var(--vp-label);color:#FFF;padding:9px 10px;border-bottom:1px solid var(--vp-line);display:flex;align-items:center;font-weight:bold;font-size:12px}
+.vpn_ipcatcher_dashboard .formgrid>input,.vpn_ipcatcher_dashboard .formgrid>select,.vpn_ipcatcher_dashboard .formgrid>textarea,.vpn_ipcatcher_dashboard .formgrid>.fieldCell{margin:0;border-bottom:1px solid var(--vp-line)}
+.vpn_ipcatcher_dashboard .formgrid>.fieldCell{background:var(--vp-row);padding:6px 8px}
+.vpn_ipcatcher_dashboard input,.vpn_ipcatcher_dashboard select,.vpn_ipcatcher_dashboard textarea{background:#576D73;color:#FFF;border:1px solid #929EA1;border-radius:3px;padding:6px 8px;font-size:13px;font-family:Arial,Helvetica,sans-serif;width:100%}
+.vpn_ipcatcher_dashboard input[type=checkbox]{width:auto;accent-color:var(--vp-accent)}
+.vpn_ipcatcher_dashboard .formgrid>input,.vpn_ipcatcher_dashboard .formgrid>select,.vpn_ipcatcher_dashboard .formgrid>textarea{border-radius:0;border-left:0;border-right:0;border-top:0;border-color:var(--vp-line);background:#566B71}
+.vpn_ipcatcher_dashboard textarea{min-height:92px;font-family:"Lucida Console",Monaco,monospace;font-size:12px;line-height:1.5}
+.vpn_ipcatcher_dashboard input[readonly]{background:#3E4F54;color:#C9D6D9}
+.vpn_ipcatcher_dashboard input:focus,.vpn_ipcatcher_dashboard select:focus,.vpn_ipcatcher_dashboard textarea:focus{outline:1px solid var(--vp-accent);outline-offset:-1px}
+.vpn_ipcatcher_dashboard .settingsGroup{margin:12px 0 0;border:0;padding:0}
+.vpn_ipcatcher_dashboard .settingsGroup legend,.vpn_ipcatcher_dashboard .settingsGroup>summary{background:linear-gradient(to bottom,#92A0A5 0%,#66757C 100%);color:#FFF;font-weight:bold;padding:7px 10px;width:100%;text-shadow:1px 1px 0 #2B3437;cursor:default}
+.vpn_ipcatcher_dashboard details.settingsGroup>summary{cursor:pointer}
+.vpn_ipcatcher_dashboard .saveBar{position:sticky;bottom:0;background:var(--vp-bg);padding:10px 0;border-top:1px solid #7E8593;z-index:2}
+.vpn_ipcatcher_dashboard #pendingBar{background:#3C4B50;border-left:3px solid var(--vp-yellow);padding:8px 12px;margin:8px 0}
+
+/* Device picker for source IPs */
+.vpn_ipcatcher_dashboard .devicePicker{margin-top:6px;border:1px solid var(--vp-line);background:var(--vp-tile);max-height:260px;overflow:auto}
+.vpn_ipcatcher_dashboard .deviceRow{display:flex;gap:10px;align-items:center;padding:6px 10px;border-bottom:1px solid #26343A;cursor:pointer}
+.vpn_ipcatcher_dashboard .deviceRow:hover{background:#38484D}
+.vpn_ipcatcher_dashboard .deviceRow .deviceName{flex:1;font-weight:bold}
+.vpn_ipcatcher_dashboard .deviceRow .deviceIp{font-family:"Lucida Console",Monaco,monospace;color:var(--vp-muted)}
+
+/* Data tables */
+.vpn_ipcatcher_dashboard table.data{width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--vp-line)}
+.vpn_ipcatcher_dashboard table.data th{background:var(--vp-label);color:#FFF;text-align:left;padding:7px 9px;font-weight:bold;border-bottom:1px solid var(--vp-line);white-space:nowrap}
+.vpn_ipcatcher_dashboard table.data td{padding:6px 9px;border-bottom:1px solid #3D4F54;vertical-align:top}
+.vpn_ipcatcher_dashboard table.data tbody tr:nth-child(even) td{background:var(--vp-row-alt)}
+.vpn_ipcatcher_dashboard table.data tbody tr:hover td{background:#56696F}
+.vpn_ipcatcher_dashboard .panel-body>table.data th{width:34%}
+.vpn_ipcatcher_dashboard .scroll{max-height:470px;overflow:auto;border:1px solid var(--vp-line)}
+.vpn_ipcatcher_dashboard .scroll table.data{border:0}
+.vpn_ipcatcher_dashboard .scroll thead th{position:sticky;top:0;z-index:1}
+.vpn_ipcatcher_dashboard .columnSort{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;padding:0;margin:0;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.vpn_ipcatcher_dashboard .columnSort:focus-visible{outline:2px solid var(--vp-accent);outline-offset:3px}
+.vpn_ipcatcher_dashboard .mono{font-family:"Lucida Console",Monaco,monospace}
+.vpn_ipcatcher_dashboard pre{white-space:pre-wrap;word-break:break-word;background:var(--vp-tile);border:1px solid var(--vp-line);padding:10px;color:#E3ECEE;max-height:440px;overflow:auto;font-size:12px;line-height:1.4}
+
+/* Flow status pills */
+.vpn_ipcatcher_dashboard .flowState{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:bold;white-space:nowrap;background:#3B4A4F;color:#DDE6E8}
+.vpn_ipcatcher_dashboard .flowState.final{background:#1E7A4C;color:#E5FFF1}
+.vpn_ipcatcher_dashboard .flowState.waiting{background:#8A6D12;color:#FFF5CF}
+.vpn_ipcatcher_dashboard .flowState.candidate{background:#1D5D73;color:#E2F7FF}
+.vpn_ipcatcher_dashboard .flowState.fixed{background:#5B3F86;color:#F2E9FF}
+.vpn_ipcatcher_dashboard .flowState.excluded{background:#59656A;color:#F0F3F4}
+.vpn_ipcatcher_dashboard .flowState.router,.vpn_ipcatcher_dashboard .flowState.local{background:#334146;color:#AFC1C6}
+
+/* Filters */
+.vpn_ipcatcher_dashboard .liveFilters{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:8px 0}
+.vpn_ipcatcher_dashboard .liveFilters label{display:flex;flex:1 1 140px;flex-direction:column;gap:4px;font-size:12px;color:var(--vp-muted);min-width:0}
+.vpn_ipcatcher_dashboard #flowControls{display:flex;flex:3 1 420px;gap:8px;flex-wrap:wrap}
+.vpn_ipcatcher_dashboard #flowControls[hidden]{display:none}
+
+/* Presets */
+.vpn_ipcatcher_dashboard .search{margin-bottom:10px}
+.vpn_ipcatcher_dashboard .presetGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.vpn_ipcatcher_dashboard .deviceTag{display:block;font-family:Arial,Helvetica,sans-serif;font-weight:bold;color:#FFF}
+.vpn_ipcatcher_dashboard .presetCard{background:var(--vp-row);border:1px solid var(--vp-line)}
+.vpn_ipcatcher_dashboard .presetCard h4{margin:0;background:linear-gradient(to bottom,#92A0A5 0%,#66757C 100%);color:#FFF;padding:7px 10px;font-size:13px;text-shadow:1px 1px 0 #2B3437}
+.vpn_ipcatcher_dashboard .presetCard>.presetMeta:first-of-type{padding:7px 10px 0}
+.vpn_ipcatcher_dashboard .presetItem{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-top:1px solid #3D4F54}
+.vpn_ipcatcher_dashboard .presetItem:first-of-type{border-top:0}
+.vpn_ipcatcher_dashboard .presetItem input.presetCheck{margin-top:2px;width:16px;height:16px}
+.vpn_ipcatcher_dashboard .presetMeta{font-size:12px;color:var(--vp-muted);margin-top:3px;line-height:1.4}
+.vpn_ipcatcher_dashboard .pill{display:inline-block;padding:1px 7px;border-radius:3px;background:var(--vp-label);color:#DDE6E8;font-size:11px;margin-right:4px}
+.vpn_ipcatcher_dashboard .statusOn{color:var(--vp-green);font-weight:bold}
+.vpn_ipcatcher_dashboard .statusPart{color:var(--vp-yellow);font-weight:bold}
+.vpn_ipcatcher_dashboard .statusOff{color:var(--vp-dim);font-weight:bold}
+.vpn_ipcatcher_dashboard .smallinfo{font-size:12px;color:var(--vp-muted);margin:6px 0 10px}
+.vpn_ipcatcher_dashboard .previewList{max-height:240px;overflow:auto;line-height:1.6;overflow-wrap:anywhere}
+
+/* Collapsible blocks */
+.vpn_ipcatcher_dashboard details>summary{cursor:pointer;color:var(--vp-muted);font-weight:bold;padding:4px 0}
+.vpn_ipcatcher_dashboard details>summary:hover{color:#FFF}
+.vpn_ipcatcher_dashboard .maintenance{margin:0;padding:0 10px 10px}
+.vpn_ipcatcher_dashboard .maintenance .actions{margin-top:6px}
+.vpn_ipcatcher_dashboard .maintenance .danger-zone{margin-top:10px;border-top:1px dashed #6B7C81;padding-top:6px}
+.vpn_ipcatcher_dashboard .maintenance .danger-zone>summary{color:#FFB3AB}
+.vpn_ipcatcher_dashboard #toast{color:var(--vp-yellow);font-weight:normal;margin-left:10px}
+
+.vpn_ipcatcher_dashboard .footer{color:var(--vp-dim);font-size:11px;margin:14px 0 0;text-align:right}
+.vpn_ipcatcher_dashboard h3{color:var(--vp-yellow);font-size:14px;margin:16px 0 6px}
+.vpn_ipcatcher_dashboard p{line-height:1.5}
+
+@media(max-width:1100px){.vpn_ipcatcher_dashboard .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){
+  .vpn_ipcatcher_dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .vpn_ipcatcher_dashboard .split,.vpn_ipcatcher_dashboard .presetGrid{grid-template-columns:1fr}
+  .vpn_ipcatcher_dashboard .formgrid{grid-template-columns:1fr}
+  .vpn_ipcatcher_dashboard .languageRow{float:none;margin-bottom:6px}
+  .vpn_ipcatcher_dashboard .layoutTab{padding:7px 9px;font-size:12px}
+}
 </style>
 
 <script>
@@ -496,7 +235,7 @@ var VPNIPC_I18N={
     saveConfig:'Configuratie opslaan', saveRestart:'Opslaan + herstarten', reloadConfig:'Opnieuw laden uit configuratie', currentConfigExclusions:'Huidige configuratie-uitsluitingen',
     domains:'Domeinen', ips:'IP’s', ranges:'Bereiken', notes:'Toelichting',
     presetSearch:'Zoek op naam, domein of bereik…', selectAllVisible:'Alles zichtbaars selecteren', clearVisible:'Zichtbare selectie wissen',
-    footer:'vpn_ipcatcher UI v11 - ASUS Merlin-integratie',
+    footer:'VPN IP Catcher - Asuswrt-Merlin',
     running:'ACTIEF', stopped:'GESTOPT', loading:'LADEN', noData:'Geen gegevens.',
     bytes:'Bytes', source:'Bron', destination:'Bestemming', port:'Poort', cand:'Kand.', hint:'Hint', timestamp:'Tijdstip', message:'Bericht', field:'Veld', value:'Waarde', timeout:'Time-out', packets:'Pakketten', seen:'Gezien', hostnameDomain:'Hostnaam / domein', range:'Bereik', comment:'Opmerking',
     serviceRunning:'Service draait en de workerprocessen zijn actief.', serviceStopped:'Service staat uit.', allDevices:'alle apparaten (LAN + Wi-Fi) - meer ruis',
@@ -532,7 +271,7 @@ var VPNIPC_I18N={
     saveConfig:'Save configuration', saveRestart:'Save + restart', reloadConfig:'Reload from configuration', currentConfigExclusions:'Current configuration exclusions',
     domains:'Domains', ips:'IPs', ranges:'Ranges', notes:'Notes',
     presetSearch:'Search by name, domain or range…', selectAllVisible:'Select all visible', clearVisible:'Clear visible',
-    footer:'vpn_ipcatcher UI v11 - ASUS Merlin integration',
+    footer:'VPN IP Catcher - Asuswrt-Merlin',
     running:'RUNNING', stopped:'STOPPED', loading:'LOADING', noData:'No data.',
     bytes:'Bytes', source:'Source', destination:'Destination', port:'Port', cand:'Cand', hint:'Hint', timestamp:'Timestamp', message:'Message', field:'Field', value:'Value', timeout:'Timeout', packets:'Packets', seen:'Seen', hostnameDomain:'Hostname / domain', range:'Range', comment:'Comment',
     serviceRunning:'Service is running and the worker processes are active.', serviceStopped:'Service is stopped.', allDevices:'all devices (LAN + Wi-Fi) - more noise',
@@ -654,6 +393,7 @@ function applyStatusData(d){
   fillConfig(d.config,d.config_revision);
   renderLiveTab();
   renderPresets();
+  var picker=byId('devicePicker'); if(picker&&!picker.hidden) renderDevicePicker();
 }
 function waitForActionResult(nonce, attempts){
   return fetch('/user/vpn_ipcatcher_status.json?ts='+Date.now(),{cache:'no-store'})
@@ -1141,7 +881,10 @@ function filterLiveRows(rows){
     if(state==='final') return r.final==='yes';
     if(state==='candidate') return r.cand==='yes';
     if(state==='excluded') return /^excluded/.test(r.hint||'');
-    if(state==='other') return r.final==='no' && r.cand==='no' && !/^excluded/.test(r.hint||'');
+    if(state==='waiting') return r.hint==='waiting';
+    if(state==='fixed') return /^fixed/.test(r.hint||'');
+    if(state==='router') return r.hint==='router'||r.hint==='local';
+    if(state==='other') return r.final==='no' && r.cand==='no' && (r.hint==='watch'||!r.hint);
     return true;
   });
   setText('liveRowCount',filtered.length+' / '+rows.length+' '+t('filterRows'));
@@ -1196,8 +939,8 @@ function renderLiveTab(){
     var flows=parseFlows(txt);
     updateFlowOptions('flowSource',flows.map(function(r){return r.src;}));
     updateFlowOptions('flowPort',flows.map(function(r){return r.port;}));
-    var rows=filterLiveRows(flows).map(function(r){return r.raw?'<td colspan="7" class="mono">'+escapeHtml(r.raw)+'</td>':'<td class="mono" title="'+escapeHtml(r.bytes)+' B">'+escapeHtml(formatFlowBytes(r.bytes))+'</td>'+td(r.src,'mono')+td(r.dst,'mono')+td(r.port,'mono')+td(r.cand)+td(r.final)+td(r.hint);});
-    html=renderTable([t('trafficVolume'),t('source'),t('destination'),t('port'),t('cand'),t('final'),t('hint')], rows);
+    var rows=filterLiveRows(flows).map(function(r){return r.raw?'<td colspan="7" class="mono">'+escapeHtml(r.raw)+'</td>':'<td class="mono" title="'+escapeHtml(r.bytes)+' B">'+escapeHtml(formatFlowBytes(r.bytes))+'</td>'+sourceCell(r.src)+td(r.dst,'mono')+td(r.port,'mono')+td(r.cand)+td(r.final)+flowStateCell(r);});
+    html=renderTable([t('trafficVolume'),t('source'),t('destination'),t('port'),t('cand'),t('final'),t('flowStatus')], rows);
   } else if(currentTab==='log'){
     var rows=filterLiveRows(parseLog(txt)).map(function(r){return td(r.ts,'mono')+td(r.msg);});
     html=renderTable([t('timestamp'),t('message')], rows);
@@ -1231,6 +974,133 @@ function renderLiveTab(){
   }
   renderedLiveTab=currentTab;
 }
+/* 2.10 WebUI texts */
+Object.assign(VPNIPC_I18N.nl,{
+  subtitle:'IPTV-streams automatisch via de VPN, al het andere verkeer via WAN',
+  fixedRoutes:'Vaste routes', fixedRoutesHint:'VPN Director / VPN Routing, nooit geleerd', waitingShort:'wachtlijst',
+  fixedMetaText:'{dst} bestemmingen · {dev} apparaten · {pol} policies', fixedDestinations:'VPN Director-bestemmingen', fixedDevices:'VPN Director-apparaten', fixedPolicies:'VPN Routing-policies', none:'geen',
+  waitingExplain:'{count} IP’s klaar voor de VPN; ze wisselen pas als de lopende stream stopt',
+  sourceAlert:'IP Catcher kijkt nu naar alle apparaten. Kies je IPTV-box of tv als bronapparaat, dan kan ander verkeer nooit per ongeluk via de VPN gaan.',
+  chooseDevices:'IPTV-apparaten kiezen', devicePickerClear:'Alle apparaten', devicePickerEmpty:'Geen online apparaten gevonden.', devicePickerOffline:'niet online',
+  devicePickerSelected:'{count} apparaat/apparaten gekozen - sla daarna op', devicePickerChanged:'Bron-apparaten aangepast - vergeet Opslaan + herstarten niet',
+  amtmAutoUpdate:'Automatische updates via amtm:', advancedDanger:'Geavanceerd (overschrijft instellingen)',
+  flowStatus:'Status', filterWaiting:'Wachtlijst', filterFixed:'Vaste route', filterRouter:'Router / lokaal',
+  flow_final:'via VPN', flow_waiting:'wacht op einde stream', flow_candidate:'in beoordeling', flow_watch:'via WAN',
+  flow_fixed_route:'vaste route', flow_fixed_device:'vast apparaat', flow_excluded_range:'uitgesloten', flow_router:'router zelf', flow_local:'lokaal',
+  flow_final_help:'Bestemming staat in de VPN-lijst.', flow_waiting_help:'Klaar voor de VPN; wisselt pas als deze verbinding stopt, zodat de stream niet hapert.',
+  flow_candidate_help:'Wordt beoordeeld; gaat naar de VPN als het genoeg verkeer blijft geven.', flow_watch_help:'Niet geleerd; loopt via WAN.',
+  flow_fixed_route_help:'Al geregeld door VPN Director of een andere VPN Routing-policy; wordt niet geleerd.', flow_fixed_device_help:'Dit apparaat wordt volledig door VPN Director gerouteerd.',
+  flow_excluded_range_help:'Valt onder je uitsluitingen; blijft via WAN.', flow_router_help:'Verkeer van de router zelf (updates, Skynet, AdGuardHome); wordt nooit geleerd.', flow_local_help:'Bestemming in je eigen netwerk.',
+  presetPartHint:'Niet alle domeinen staan aan (bijv. nieuw toegevoegd na een update). Vink aan om alles uit te sluiten.',
+  defaultValue:'Standaard', yourValue:'Jouw waarde',
+  helpFixed:'Alles wat je zelf al vast routeert, laat IP Catcher met rust: bestemmingen en apparaten uit VPN Director (VPN- én WAN-regels) en de domeinen en IP’s van je andere VPN Routing-policies. Die regels bepalen zelf al VPN of WAN. Ze worden elke minuut opnieuw ingelezen.'
+});
+Object.assign(VPNIPC_I18N.en,{
+  subtitle:'IPTV streams automatically via the VPN, all other traffic via the WAN',
+  fixedRoutes:'Fixed routes', fixedRoutesHint:'VPN Director / VPN Routing, never learned', waitingShort:'waiting',
+  fixedMetaText:'{dst} destinations · {dev} devices · {pol} policies', fixedDestinations:'VPN Director destinations', fixedDevices:'VPN Director devices', fixedPolicies:'VPN Routing policies', none:'none',
+  waitingExplain:'{count} IPs ready for the VPN; they switch only after the running stream stops',
+  sourceAlert:'IP Catcher is watching all devices. Choose your IPTV box or TV as source device so other traffic can never end up on the VPN by accident.',
+  chooseDevices:'Choose IPTV devices', devicePickerClear:'All devices', devicePickerEmpty:'No online devices found.', devicePickerOffline:'offline',
+  devicePickerSelected:'{count} device(s) selected - save afterwards', devicePickerChanged:'Source devices changed - remember Save + restart',
+  amtmAutoUpdate:'Automatic updates via amtm:', advancedDanger:'Advanced (overwrites settings)',
+  flowStatus:'Status', filterWaiting:'Waiting', filterFixed:'Fixed route', filterRouter:'Router / local',
+  flow_final:'via VPN', flow_waiting:'waits for stream end', flow_candidate:'under review', flow_watch:'via WAN',
+  flow_fixed_route:'fixed route', flow_fixed_device:'fixed device', flow_excluded_range:'excluded', flow_router:'router itself', flow_local:'local',
+  flow_final_help:'Destination is in the VPN list.', flow_waiting_help:'Ready for the VPN; switches only when this connection ends so the stream does not stall.',
+  flow_candidate_help:'Under review; moves to the VPN if it keeps carrying enough traffic.', flow_watch_help:'Not learned; uses the WAN.',
+  flow_fixed_route_help:'Already handled by VPN Director or another VPN Routing policy; not learned.', flow_fixed_device_help:'This device is routed completely by VPN Director.',
+  flow_excluded_range_help:'Matches your exclusions; stays on the WAN.', flow_router_help:'Traffic of the router itself (updates, Skynet, AdGuardHome); never learned.', flow_local_help:'Destination in your own network.',
+  presetPartHint:'Not all domains are enabled (for example added by an update). Tick to exclude everything.',
+  defaultValue:'Default', yourValue:'Your value',
+  helpFixed:'Anything you already route yourself is left alone: destinations and devices from VPN Director (VPN and WAN rules) and the domains and IPs of your other VPN Routing policies. Those rules already decide VPN or WAN. They are re-read every minute.'
+});
+var FLOW_STATE_CLASS={final:'final',waiting:'waiting',candidate:'candidate','fixed-route':'fixed','fixed-device':'fixed','excluded-range':'excluded',router:'router',local:'local',watch:''};
+function flowStateCell(r){
+  var hint=r.hint||'watch', cls=FLOW_STATE_CLASS.hasOwnProperty(hint)?FLOW_STATE_CLASS[hint]:'';
+  var key='flow_'+hint.replace(/-/g,'_'), label=VPNIPC_I18N[vpnipcCurrentLanguage]&&VPNIPC_I18N[vpnipcCurrentLanguage][key]?t(key):hint;
+  return '<td data-sort="'+escapeHtml(hint)+'"><span class="flowState '+cls+'" title="'+escapeHtml(t(key+'_help')===key+'_help'?'':t(key+'_help'))+'">'+escapeHtml(label)+'</span></td>';
+}
+function sourceCell(ip){
+  var match=sourceDevices.filter(function(d){return d.ip===ip&&d.name!==ip;})[0];
+  if(!match) return td(ip,'mono');
+  return '<td class="mono" data-sort="'+escapeHtml(ip)+'"><span class="deviceTag">'+escapeHtml(match.name)+'</span>'+escapeHtml(ip)+'</td>';
+}
+function fixedRoutesText(f){
+  var parts=[];
+  parts.push(t('fixedDestinations')+': '+(f.destinations||0)+(f.destination_list?' ('+f.destination_list+')':''));
+  parts.push(t('fixedDevices')+': '+(f.devices||0)+(f.device_list?' ('+f.device_list+')':''));
+  parts.push(t('fixedPolicies')+': '+(f.policies||t('none'))+(Number(f.domains)?' · '+f.domains+' '+t('domainsCount'):''));
+  return parts.join(' · ');
+}
+function updateDefaultsTable(cfg){
+  var table=byId('defaultsTable'); if(!table||!table.querySelectorAll) return;
+  table.querySelectorAll('tr[data-keys]').forEach(function(row){
+    var keys=row.getAttribute('data-keys').split(' '), unit=row.getAttribute('data-unit');
+    var values=keys.map(function(k){var v=cfg[k]; return (v===undefined||v==='')?'-':v;});
+    var text=values.join(' / ')+(unit&&values[0]!=='-'?' '+unit:'');
+    if(keys[0]==='SOURCE_IPS') text=cfg.SOURCE_IPS?sourceDeviceLabel(cfg.SOURCE_IPS):t('allDevices');
+    var cell=row.querySelector('.current'); if(cell) cell.textContent=text;
+  });
+}
+/* Source device picker: choose IPTV boxes from the ASUS client list instead of typing IPs. */
+var sourceDevices=[], sourceDevicesLoaded=false, sourceDevicesBusy=false;
+function sourceDeviceLabel(ips){
+  return getWords(ips).map(function(ip){
+    var match=sourceDevices.filter(function(d){return d.ip===ip;})[0];
+    return match&&match.name!==ip?match.name+' ('+ip+')':ip;
+  }).join(', ');
+}
+function setupDevicePicker(){
+  var input=byId('cfg_SOURCE_IPS'); if(!input||!input.parentNode||byId('devicePickerRow')) return;
+  var row=document.createElement('div'); row.id='devicePickerRow'; row.className='fieldCell'; row.style.gridColumn='1 / -1';
+  row.innerHTML='<div class="actions"><button type="button" class="btn small blue" onclick="toggleDevicePicker()" data-i18n="chooseDevices">'+escapeHtml(t('chooseDevices'))+'</button>'+
+    '<button type="button" class="btn small" onclick="clearSourceDevices()" data-i18n="devicePickerClear">'+escapeHtml(t('devicePickerClear'))+'</button>'+
+    '<span id="devicePickerStatus" class="muted"></span></div><div id="devicePicker" class="devicePicker" hidden></div>';
+  input.parentNode.insertBefore(row,input.nextSibling);
+}
+function openDevicePicker(){
+  setPage('config');
+  var picker=byId('devicePicker'); if(picker) picker.hidden=false;
+  loadSourceDevices();
+  var field=byId('cfg_SOURCE_IPS'); if(field&&field.scrollIntoView) field.scrollIntoView({block:'center'});
+}
+function toggleDevicePicker(){
+  var picker=byId('devicePicker'); if(!picker) return;
+  picker.hidden=!picker.hidden;
+  if(!picker.hidden) loadSourceDevices();
+}
+function renderDevicePicker(){
+  var picker=byId('devicePicker'); if(!picker) return;
+  var selected=getWords(byId('cfg_SOURCE_IPS').value), known={}, list=sourceDevices.slice();
+  list.forEach(function(d){known[d.ip]=1;});
+  selected.forEach(function(ip){ if(!known[ip]) list.push({ip:ip,name:t('devicePickerOffline')}); });
+  if(!list.length){ picker.innerHTML='<div class="deviceRow muted">'+escapeHtml(t('devicePickerEmpty'))+'</div>'; return; }
+  picker.innerHTML=list.map(function(d){
+    var on=selected.indexOf(d.ip)>=0;
+    return '<label class="deviceRow"><input type="checkbox" data-ip="'+escapeHtml(d.ip)+'" '+(on?'checked ':'')+'onchange="toggleSourceDevice(this)"><span class="deviceName">'+escapeHtml(d.name)+'</span><span class="deviceIp">'+escapeHtml(d.ip)+'</span></label>';
+  }).join('');
+  setText('devicePickerStatus', selected.length ? t('devicePickerSelected',{count:selected.length}) : t('emptyAllDevices'));
+}
+function toggleSourceDevice(el){
+  var ip=el.getAttribute('data-ip'), field=byId('cfg_SOURCE_IPS');
+  if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return;
+  field.value=el.checked?mergeUnique(field.value,[ip]):removeWords(field.value,[ip]);
+  dirty=true; renderPresets(); renderDevicePicker();
+  showToast(t('devicePickerChanged'));
+}
+function clearSourceDevices(){
+  var field=byId('cfg_SOURCE_IPS'); if(!field||!field.value) return;
+  field.value=''; dirty=true; renderPresets(); renderDevicePicker();
+}
+function loadSourceDevices(){
+  if(sourceDevicesBusy) return;
+  sourceDevicesBusy=true; setText('devicePickerStatus',t('diagnosticLoading'));
+  fetch('/appGet.cgi?hook=get_clientlist()',{credentials:'same-origin',cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(data){
+    sourceDevices=diagnosticDevices(data&&data.get_clientlist); sourceDevicesLoaded=true; renderDevicePicker();
+    if(dataCache) updateOverview(dataCache);
+  }).catch(function(){ setText('devicePickerStatus',t('diagnosticClientsFailed')); renderDevicePicker(); }).finally(function(){sourceDevicesBusy=false;});
+}
 function updateOverview(d){
   setText('addonVersion',d.version||'-');
   var connection=d.vpn_connection||'', match=connection.match(/^(ovpnc|wgc)([1-5])$/);
@@ -1239,7 +1109,17 @@ function updateOverview(d){
   badge(d.engine); setText('lastUpdate',d.last_update); setText('enginePid',d.engine_pid); setText('tcpdumpCount',d.tcpdump_count); setText('candidateCount',d.candidate_count); setText('finalCount',d.final_count); setText('resolvedCount',d.resolved_count); setText('excludeNetCount',d.exclude_net_count); setText('excludeNetSet',d.exclude_net_set); setText('ipsetName',d.ipset_name);
   setText('overviewEngineState', d.engine==='running' ? t('serviceRunning') : t('serviceStopped'));
     setText('overviewCapture', 'tcpdump: '+(d.tcpdump_count||'-')+' - '+t('updated')+': '+(d.last_update||'-'));
-  setText('overviewSourceIps', (d.config && d.config.SOURCE_IPS) ? d.config.SOURCE_IPS : t('allDevices'));
+  var sourceIps=(d.config && d.config.SOURCE_IPS) ? d.config.SOURCE_IPS : '';
+  setText('overviewSourceIps', sourceIps ? sourceDeviceLabel(sourceIps) : t('allDevices'));
+  var alertBar=byId('sourceAlert'); if(alertBar) alertBar.hidden=!!sourceIps || !d.config;
+  setText('waitingCount', d.waiting_count||'0');
+  setText('overviewWaiting', t('waitingExplain',{count:d.waiting_count||'0'}));
+  var fixed=d.fixed_routes||{}, fixedTotal=(Number(fixed.destinations)||0)+(Number(fixed.devices)||0)+String(fixed.policies||'').split(/\s+/).filter(Boolean).length;
+  setText('fixedCount', d.fixed_routes ? fixedTotal : '-');
+  setText('fixedMeta', d.fixed_routes ? t('fixedMetaText',{dst:fixed.destinations||0,dev:fixed.devices||0,pol:String(fixed.policies||'').split(/\s+/).filter(Boolean).length}) : t('fixedRoutesHint'));
+  setText('overviewFixed', d.fixed_routes ? fixedRoutesText(fixed) : '-');
+  setText('footerVersion', d.version||'-');
+  updateDefaultsTable(d.config||{});
   var select=byId('dvrPolicy');
   if(select){
     var value=select.value,options='<option value="">'+escapeHtml(t('dvrChoose'))+'</option>';
@@ -1333,6 +1213,7 @@ function renderPresets(){
       html+='<div style="flex:1">';
       html+='<div><strong>'+escapeHtml(vpnipcPresetLabel(item))+'</strong> - <span class="'+cls+'">'+shownState+'</span></div>';
       html+='<div class="presetMeta">'+meta.join(' ')+'</div>';
+      if(state==='PART' && !pending) html+='<div class="presetMeta statusPart">'+escapeHtml(t('presetPartHint'))+'</div>';
       html+='<details data-preset="'+escapeHtml(item.key)+'" '+(openDetails[item.key]?'open':'')+'><summary>'+escapeHtml(t('choosePresetItems'))+'</summary><div class="presetMeta">';
       ['domains','ips','nets'].forEach(function(kind){
         var field=byId('cfg_EXCLUDE_'+(kind==='domains'?'DOMAINS':kind==='ips'?'IPS':'NETS'));
@@ -1416,9 +1297,10 @@ function loadStatus(){
 
 window.addEventListener('load', function(){
   organizeSettings();
+  setupDevicePicker();
   vpnipcInitLanguage();
   document.querySelectorAll('.vpn_ipcatcher_dashboard [id^="cfg_"]').forEach(function(e){ e.addEventListener('input', function(){ dirty=true; updateExclusionPreview(); renderPresets(); }); });
-  setPage('overview'); setTab('flows'); loadPresets(); loadStatus(); setInterval(function(){ if(!actionBusy){if(currentPage==='live'&&currentTab==='diagnostic')refreshDiagnostic();loadStatus();} }, 5000);
+  setPage('overview'); setTab('flows'); loadPresets(); loadStatus(); loadSourceDevices(); setInterval(function(){ if(!actionBusy){if(currentPage==='live'&&currentTab==='diagnostic')refreshDiagnostic();loadStatus();} }, 5000);
   setInterval(function(){if(currentPage==='live'&&currentTab==='diagnostic')updateDiagnosticTimer();},1000);
 });
 </script>
@@ -1458,7 +1340,7 @@ window.addEventListener('load', function(){
                     </select>
                   </div>
                   <div class="title" data-i18n="title">VPN IP Catcher-dashboard</div>
-                  <div class="subtitle" data-i18n="subtitle">ASUS Merlin WebUI - stabiele runtime en betere uitsluitingen/presets</div>
+                  <div class="subtitle" data-i18n="subtitle">IPTV-streams automatisch via de VPN, al het andere verkeer via WAN</div>
                   <div class="sessionMeta"><span><span data-i18n="version">Versie</span> <strong id="addonVersion">-</strong></span><span>VPN: <strong id="selectedVpn">-</strong></span><span class="mono" id="selectedList"></span></div>
                 </div>
 
@@ -1473,12 +1355,14 @@ window.addEventListener('load', function(){
                 <iframe name="vpnipc_hidden_frame" id="vpnipc_hidden_frame" style="display:none;width:0;height:0;border:0"></iframe>
 
                 <div class="grid">
-                  <div class="card"><h3 data-i18n="engine">Engine</h3><div><span id="engineBadge" class="badge warn" data-i18n="loading">LADEN</span></div><div class="muted">PID: <span id="enginePid">-</span></div></div>
-                  <div class="card"><h3 data-i18n="finalIps">Definitieve IP’s</h3><div class="big" id="finalCount">-</div><div class="muted" id="ipsetName">-</div></div>
-                  <div class="card"><h3 data-i18n="candidateIps">Kandidaat-IP’s</h3><div class="big" id="candidateCount">-</div><div class="muted" data-i18n="candidateHint">tijdelijke leerset</div></div>
+                  <div class="card accent"><h3 data-i18n="engine">Engine</h3><div><span id="engineBadge" class="badge warn" data-i18n="loading">LADEN</span></div><div class="muted">PID: <span id="enginePid">-</span></div></div>
+                  <div class="card good"><h3 data-i18n="finalIps">Definitieve IP’s</h3><div class="big" id="finalCount">-</div><div class="muted" id="ipsetName">-</div></div>
+                  <div class="card attention"><h3 data-i18n="candidateIps">Kandidaat-IP’s</h3><div class="big" id="candidateCount">-</div><div class="muted"><span data-i18n="waitingShort">wachtlijst</span>: <strong id="waitingCount">-</strong></div></div>
                   <div class="card"><h3 data-i18n="excludeCache">Uitsluitcache</h3><div class="big" id="resolvedCount">-</div><div class="muted" data-i18n="excludeCacheHint">tijdelijk opgeloste domein-IP’s</div></div>
                   <div class="card"><h3 data-i18n="excludeRanges">Uitsluitbereiken</h3><div class="big" id="excludeNetCount">-</div><div class="muted" id="excludeNetSet" data-default-i18n="fixedRanges">vaste CIDR-bereiken</div></div>
+                  <div class="card violet"><h3 data-i18n="fixedRoutes">Vaste routes</h3><div class="big" id="fixedCount">-</div><div class="muted" id="fixedMeta">VPN Director / VPN Routing, nooit geleerd</div></div>
                 </div>
+                <div class="alertBar" id="sourceAlert" hidden><span data-i18n="sourceAlert">IP Catcher kijkt nu naar alle apparaten. Kies je IPTV-box of tv als bronapparaat, dan kan ander verkeer nooit per ongeluk via de VPN gaan.</span><button type="button" class="btn blue" onclick="openDevicePicker()" data-i18n="chooseDevices">IPTV-apparaten kiezen</button></div>
                 <div class="muted" style="margin:-4px 0 8px 2px">tcpdump: <span id="tcpdumpCount">-</span> - <span data-i18n="updated">bijgewerkt</span>: <span id="lastUpdate">-</span></div>
 
                 <div class="panel">
@@ -1489,20 +1373,30 @@ window.addEventListener('load', function(){
                     <button type="button" class="btn orange" onclick="applyAction('restart')" data-i18n="restart">Herstarten</button>
                     <button type="button" class="btn blue" onclick="applyAction('publish')" data-i18n="refreshStatus">Status vernieuwen</button>
                   </div>
-                  <details class="maintenance"><summary data-i18n="maintenance">Onderhoud</summary><div class="actions">
-                    <button type="button" class="btn" onclick="applyAction('resolve_excludes')" data-i18n="resolveExcludes">Uitsluitingen oplossen</button>
-                    <button type="button" class="btn" onclick="applyAction('safe_excludes')" data-i18n="safeBaseExcludes">Veilige basisuitsluitingen</button>
-                    <button type="button" class="btn orange" onclick="applyAction('repair_excludes')" data-i18n="repairSafeExcludes">Veilige uitsluitingen herstellen</button>
-                    <button type="button" class="btn" onclick="applyAction('clean_excluded')" data-i18n="cleanExcludedIps">Uitgesloten IP’s opruimen</button>
-                    <button type="button" class="btn" onclick="applyAction('clear_log')" data-i18n="clearLog">Log wissen</button>
-                    <button type="button" class="btn" onclick="applyAction('check_update')" data-i18n="checkUpdate">Update controleren</button>
-                    <button type="button" class="btn blue" onclick="applyAction('install_update')" data-i18n="installUpdate">Update installeren</button>
-                    <button type="button" class="btn" onclick="applyAction('force_update')" data-i18n="forceUpdate">Opnieuw installeren</button>
-                    <progress id="maintenanceProgress" hidden></progress>
-                    <button type="button" class="btn" onclick="applyAction('auto_update_enable')" data-i18n="autoUpdateEnable">amtm-updates toestaan</button>
-                    <button type="button" class="btn" onclick="applyAction('auto_update_disable')" data-i18n="autoUpdateDisable">amtm-updates uitschakelen</button>
-                    <span id="autoUpdateStatus" role="status"></span>
-                  </div><p id="maintenanceResult" role="status"></p></details>
+                  <details class="maintenance"><summary data-i18n="maintenance">Onderhoud</summary>
+                    <div class="actions">
+                      <button type="button" class="btn" onclick="applyAction('check_update')" data-i18n="checkUpdate">Update controleren</button>
+                      <button type="button" class="btn blue" onclick="applyAction('install_update')" data-i18n="installUpdate">Update installeren</button>
+                      <button type="button" class="btn" onclick="applyAction('resolve_excludes')" data-i18n="resolveExcludes">Uitsluitingen oplossen</button>
+                      <button type="button" class="btn" onclick="applyAction('clean_excluded')" data-i18n="cleanExcludedIps">Uitgesloten IP’s opruimen</button>
+                      <button type="button" class="btn" onclick="applyAction('clear_log')" data-i18n="clearLog">Log wissen</button>
+                      <progress id="maintenanceProgress" hidden></progress>
+                    </div>
+                    <div class="actions" style="margin-top:8px">
+                      <span class="muted" data-i18n="amtmAutoUpdate">Automatische updates via amtm:</span>
+                      <button type="button" class="btn small" onclick="applyAction('auto_update_enable')" data-i18n="autoUpdateEnable">amtm-updates toestaan</button>
+                      <button type="button" class="btn small" onclick="applyAction('auto_update_disable')" data-i18n="autoUpdateDisable">amtm-updates uitschakelen</button>
+                      <span id="autoUpdateStatus" role="status" class="muted"></span>
+                    </div>
+                    <details class="danger-zone"><summary data-i18n="advancedDanger">Geavanceerd (overschrijft instellingen)</summary>
+                      <div class="actions">
+                        <button type="button" class="btn danger" onclick="applyAction('safe_excludes')" data-i18n="safeBaseExcludes">Veilige basisuitsluitingen</button>
+                        <button type="button" class="btn danger" onclick="applyAction('repair_excludes')" data-i18n="repairSafeExcludes">Veilige uitsluitingen herstellen</button>
+                        <button type="button" class="btn danger" onclick="applyAction('force_update')" data-i18n="forceUpdate">Opnieuw installeren</button>
+                      </div>
+                    </details>
+                    <p id="maintenanceResult" role="status"></p>
+                  </details>
                 </div>
 
                 <div class="layoutTabs">
@@ -1524,7 +1418,9 @@ window.addEventListener('load', function(){
                         <table class="data"><tbody>
                           <tr><th data-i18n="engine">Engine</th><td id="overviewEngineState">-</td></tr>
                           <tr><th data-i18n="capture">Verkeer vastleggen</th><td id="overviewCapture">-</td></tr>
-                          <tr><th data-i18n="sourceIps">Bron-IP’s</th><td id="overviewSourceIps">-</td></tr>
+                          <tr><th data-i18n="sourceIps">Bron-IP’s</th><td><span id="overviewSourceIps">-</span> <button type="button" class="btn small" onclick="openDevicePicker()" data-i18n="chooseDevices">IPTV-apparaten kiezen</button></td></tr>
+                          <tr><th data-i18n="waiting">Wachtlijst</th><td id="overviewWaiting">-</td></tr>
+                          <tr><th data-i18n="fixedRoutes">Vaste routes</th><td id="overviewFixed">-</td></tr>
                           <tr><th data-i18n="tip">Tip</th><td data-i18n-html="overviewTip"></td></tr>
                         </tbody></table>
                       </div>
@@ -1581,7 +1477,7 @@ window.addEventListener('load', function(){
                         <div id="flowControls">
                           <label><span data-i18n="filterSource">Bronapparaat</span><select id="flowSource" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option></select></label>
                           <label><span data-i18n="filterPort">Poort</span><select id="flowPort" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option></select></label>
-                          <label><span data-i18n="filterState">Lijststatus</span><select id="flowState" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option><option value="final" data-i18n="filterFinal">Definitieve lijst</option><option value="candidate" data-i18n="filterCandidate">Kandidaat</option><option value="excluded" data-i18n="filterExcluded">Uitgesloten</option><option value="other" data-i18n="filterOther">Overige</option></select></label>
+                          <label><span data-i18n="filterState">Lijststatus</span><select id="flowState" onchange="renderLiveTab()"><option value="" data-i18n="filterAll">Alles</option><option value="final" data-i18n="filterFinal">Definitieve lijst</option><option value="candidate" data-i18n="filterCandidate">Kandidaat</option><option value="waiting" data-i18n="filterWaiting">Wachtlijst</option><option value="fixed" data-i18n="filterFixed">Vaste route</option><option value="excluded" data-i18n="filterExcluded">Uitgesloten</option><option value="router" data-i18n="filterRouter">Router / lokaal</option><option value="other" data-i18n="filterOther">Overige</option></select></label>
                         </div>
                         <button type="button" class="btn" onclick="clearLiveFilters()" data-i18n="filterClear">Filters wissen</button>
                         <span id="liveRowCount" class="muted" aria-live="polite"></span>
@@ -1704,20 +1600,22 @@ window.addEventListener('load', function(){
                     <h3 data-i18n="defaultsTitle">Standaardwaarden</h3>
                     <p data-i18n="defaultsExplain"></p>
                     <p data-i18n="promotionExplain"></p>
-                    <table class="data"><thead><tr><th data-i18n="field">Veld</th><th data-i18n="value">Waarde</th></tr></thead><tbody>
-                      <tr><td data-i18n="promoteMode">Promotiemodus</td><td>auto</td></tr>
-                      <tr><td data-i18n="promoteInterval">Promotie-interval</td><td>15 s</td></tr>
-                      <tr><td data-i18n="minAge">Minimale leeftijd</td><td>30 s</td></tr>
-                      <tr><td data-i18n="candidateTimeout">Kandidaat-time-out</td><td>600 s (10 min)</td></tr>
-                      <tr><td data-i18n="finalTimeout">Definitieve time-out</td><td>604800 s (7 d)</td></tr>
-                      <tr><td>STREAM_FLOW_SCAN / STREAM_FLOW_TARGET</td><td>yes / candidate</td></tr>
-                      <tr><td>STREAM_SCAN_EVERY</td><td>5 s</td></tr>
-                      <tr><td>MIN_BYTES / STREAM_MIN_BYTES</td><td>1000000 / 15000000 B</td></tr>
-                      <tr><td>STREAM_MIN_DELTA / STREAM_REQUIRE_GROWTH</td><td>750000 B / yes</td></tr>
-                      <tr><td>EXCLUDE_RESOLVE_CACHE / EXCLUDE_RESOLVE_EVERY</td><td>yes / 3600 s</td></tr>
-                      <tr><td>REVERSE_DNS_CHECK / CAPTURE_GENERIC_HOSTNAMES / ALLOW_EXTERNAL_DNS</td><td>no / no / no</td></tr>
+                    <table class="data" id="defaultsTable"><thead><tr><th data-i18n="field">Veld</th><th data-i18n="defaultValue">Standaard</th><th data-i18n="yourValue">Jouw waarde</th></tr></thead><tbody>
+                      <tr data-keys="PROMOTE_MODE"><td data-i18n="promoteMode">Promotiemodus</td><td>auto</td><td class="current">-</td></tr>
+                      <tr data-keys="PROMOTE_EVERY" data-unit="s"><td data-i18n="promoteInterval">Promotie-interval</td><td>15 s</td><td class="current">-</td></tr>
+                      <tr data-keys="MIN_AGE" data-unit="s"><td data-i18n="minAge">Minimale leeftijd</td><td>30 s</td><td class="current">-</td></tr>
+                      <tr data-keys="CANDIDATE_TIMEOUT" data-unit="s"><td data-i18n="candidateTimeout">Kandidaat-time-out</td><td>600 s (10 min)</td><td class="current">-</td></tr>
+                      <tr data-keys="FINAL_TIMEOUT" data-unit="s"><td data-i18n="finalTimeout">Definitieve time-out</td><td>604800 s (7 d)</td><td class="current">-</td></tr>
+                      <tr data-keys="STREAM_FLOW_SCAN STREAM_FLOW_TARGET"><td>STREAM_FLOW_SCAN / STREAM_FLOW_TARGET</td><td>yes / candidate</td><td class="current">-</td></tr>
+                      <tr data-keys="STREAM_SCAN_EVERY" data-unit="s"><td>STREAM_SCAN_EVERY</td><td>5 s</td><td class="current">-</td></tr>
+                      <tr data-keys="MIN_BYTES STREAM_MIN_BYTES"><td>MIN_BYTES / STREAM_MIN_BYTES</td><td>1000000 / 15000000 B</td><td class="current">-</td></tr>
+                      <tr data-keys="STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH"><td>STREAM_MIN_DELTA / STREAM_REQUIRE_GROWTH</td><td>750000 B / yes</td><td class="current">-</td></tr>
+                      <tr data-keys="EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY"><td>EXCLUDE_RESOLVE_CACHE / EXCLUDE_RESOLVE_EVERY</td><td>yes / 3600 s</td><td class="current">-</td></tr>
+                      <tr data-keys="REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS"><td>REVERSE_DNS_CHECK / CAPTURE_GENERIC_HOSTNAMES / ALLOW_EXTERNAL_DNS</td><td>no / no / no</td><td class="current">-</td></tr>
+                      <tr data-keys="SOURCE_IPS"><td data-i18n="sourceIpsLabel">Bron-IP’s</td><td data-i18n="emptyAllDevices">leeg = alle apparaten</td><td class="current">-</td></tr>
                     </tbody></table>
                     <p data-i18n="defaultsAdvice"></p>
+                    <h3 data-i18n="fixedRoutes">Vaste routes</h3><p data-i18n="helpFixed"></p>
                     <h3 data-i18n="candidate">Kandidaat</h3><p data-i18n="helpLists"></p>
                     <h3 data-i18n="routing">Domeinroutes</h3><p data-i18n="helpRouting"></p>
                     <h3 data-i18n="presetLists">Presetlijsten</h3><p data-i18n="helpPresets"></p>
@@ -1725,7 +1623,7 @@ window.addEventListener('load', function(){
                     <h3 data-i18n="maintenance">Onderhoud</h3><p data-i18n="helpUpdates"></p>
                   </div>
                 </div>
-                <div class="footer" data-i18n="footer">vpn_ipcatcher UI v11 - ASUS Merlin-integratie</div>
+                <div class="footer">VPN IP Catcher <span id="footerVersion">-</span> · Asuswrt-Merlin</div>
               </div>
             </div>
             </td>

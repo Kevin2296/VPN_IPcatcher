@@ -74,6 +74,6 @@ mkdir "$PUBLISH_LOCK"
 touch -t 202001010101 "$PUBLISH_LOCK"
 publish_status
 [ -s "$STATUS_JSON" ]
-node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));if(d.version!=="2.9.17"||d.vpn_connection!=="ovpnc3")process.exit(1)' "$STATUS_JSON"
+node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));if(d.version!=="2.10.0"||d.vpn_connection!=="ovpnc3")process.exit(1)' "$STATUS_JSON"
 [ ! -e "$PUBLISH_LOCK" ]
 echo 'PASS: WebGUI status generated as valid JSON and lock released'

@@ -6,7 +6,7 @@
 
 IPv4-learning voor jouw Asuswrt-Merlin VPN-routing.
 
-![Version 2.9.17](https://img.shields.io/badge/version-2.9.17-087F8C?style=for-the-badge)
+![Version 2.10.0](https://img.shields.io/badge/version-2.10.0-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -39,8 +39,10 @@ IPv4-leeraddon voor Asuswrt-Merlin. IP Catcher leert adressen uit verkeer en
 regelt automatisch de bijbehorende lijst en eigen routingregels. Het gebruikt
 de VPN-routingtabellen van je router/DVR; IP Catcher is zelf geen VPN-client.
 
-**Versie: 2.9.17.** [Wijzigingen](CHANGELOG.md) |
+**Versie: 2.10.0.** [Wijzigingen](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**Nieuwe WebUI (2.10.0):** de pagina is vormgegeven in ASUS-stijl, met tegels voor vaste routes en de wachtlijst, een **IPTV-apparatenkiezer** (Configuratie of de tip op het overzicht) en een duidelijke status per verbinding in Liveflows. In amtm vind je de kiezer onder **Instellingen → 7) IPTV-apparaten kiezen**.
 
 **Vaste routes blijven ongemoeid (2.9.16):** alles wat je zelf al vast routeert, leert IP Catcher niet en controleert het ook niet. Dat zijn bestemmingen en apparaten uit **VPN Director** (VPN- én WAN-regels) en de domeinen en IPSets van je andere **VPN Routing**-policies. De catcher leest die regels elke minuut opnieuw in en ruimt eerder geleerde IP's op die inmiddels vast gerouteerd zijn. Daarnaast verwerkt tcpdump alleen nog handshakes en HTTP-headers (veel minder CPU tijdens streamen), negeert de flow-scan downloads van de router zelf, en verloopt de DNS-cache na 5 minuten. Controleer na update:
 
@@ -605,8 +607,10 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.9.17.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.10.0.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
+
+**2.10.0 New WebUI:** ASUS-style design with fixed-route and waiting-list tiles, an **IPTV device picker** and a readable per-connection status in Live flows. In amtm: **Settings → 7) choose IPTV devices**.
 
 **2.9.16 Fixed routes are left alone:** destinations and devices from **VPN Director** (VPN and WAN rules) and the domains and IPSets of your other **VPN Routing** policies are never learned or checked; those rules already decide the route. They are re-read every minute and previously learned fixed destinations are purged. tcpdump now only captures handshakes and HTTP headers (much less CPU during playback), the flow scan ignores router-originated downloads, and DNS cache entries expire after 5 minutes. Check with `/jffs/scripts/vpn_ipcatcher.sh fixed-routes`.
 

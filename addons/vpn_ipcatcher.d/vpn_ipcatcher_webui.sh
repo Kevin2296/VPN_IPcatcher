@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.9.17
+# Version: 2.10.0
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -36,6 +36,9 @@ CAT="$(find_bin /bin/cat /usr/bin/cat /opt/bin/cat)"
 PSBIN="$(find_bin /bin/ps /usr/bin/ps)"
 CT="$(find_bin /opt/sbin/conntrack /opt/bin/conntrack /usr/sbin/conntrack /usr/bin/conntrack /sbin/conntrack)"
 CRU="$(find_bin /usr/sbin/cru /sbin/cru /usr/bin/cru /bin/cru)"
+IPBIN="$(find_bin /sbin/ip /bin/ip /usr/sbin/ip /usr/bin/ip /opt/sbin/ip /opt/bin/ip)"
+FIXED_SETS_FILE="/tmp/vpn_ipcatcher/fixed_sets"
+FIXED_DOMAINS_FILE="/tmp/vpn_ipcatcher/fixed_domains"
 LOGGER="$(find_bin /usr/bin/logger /bin/logger)"; [ -z "$LOGGER" ] && LOGGER="logger"
 DATEBIN="$(find_bin /bin/date /usr/bin/date)"
 BASE64="$(find_bin /usr/bin/base64 /bin/base64 /opt/bin/base64)"
@@ -273,23 +276,75 @@ diagnostic_text(){
     }
     END{if(failed)print "ERROR: conntrack failed";if(count>2000)print "TRUNCATED " count;}'
 }
+# Live flows with a readable status per destination. Status priority:
+#   router        traffic of the router itself (LAN/WAN/VPN tunnel address)
+#   fixed-device  source routed completely by a VPN Director rule
+#   fixed-route   destination in VPN Director or another VPN Routing policy
+#   excluded-range destination in the exclusion IPSet
+#   local         private destination (router WebUI, NAS, ...)
+#   waiting       ready for VPN, waits until the running stream ends
+#   final / candidate / watch
 live_flows_text(){
   [ -n "$CT" ] || { echo "conntrack not found"; return; }
   ports="$(cfg_get PORTS)"; [ -z "$ports" ] && ports="80,443"
   ipset="$(cfg_get IPSET_NAME)"; [ -z "$ipset" ] && ipset="DVR-StreamsVPNSW-v4"
-  cand="${ipset}_cand"; exnet="${ipset}_exclude"
+  cand="${ipset}_cand"; exnet="${ipset}_exclude"; waitset="${ipset}_wait"
+  fixdst="${ipset}_fixed"; fixsrc="${ipset}_fixsrc"
+  router_ips=""
+  [ -n "$IPBIN" ] && router_ips="$($IPBIN -4 -o addr show 2>/dev/null | ${AWK:-awk} '{for(i=1;i<=NF;i++) if($i=="inet") {split($(i+1),a,"/"); printf " %s ", a[1]}}')"
   printf "%-12s %-15s %-15s %-5s %-5s %-5s %s\n" "Bytes" "Source" "Destination" "Port" "Cand" "Final" "Hint"
   $CT -L 2>/dev/null | ${AWK:-awk} -v ports="$ports" '
     BEGIN{m=split(ports,p,","); for(i=1;i<=m;i++) portok[p[i]]=1}
-    /^(tcp|udp)/ && /bytes=/ {src=""; dst=""; dport=""; bytes=0; for(i=1;i<=NF;i++){if($i~/^src=/ && src==""){src=$i; sub(/^src=/,"",src)}; if($i~/^dst=/ && dst==""){dst=$i; sub(/^dst=/,"",dst)}; if($i~/^dport=/ && dport==""){dport=$i; sub(/^dport=/,"",dport)}; if($i~/^bytes=/){b=$i; sub(/^bytes=/,"",b); bytes+=b}}; if(src==""||dst==""||dport=="") next; if(!(dport in portok)) next; key=src"|"dst"|"dport; total[key]+=bytes}
-    END{for(k in total){split(k,a,"|"); printf "%012d %s %s %s\n", total[k], a[1], a[2], a[3]}}
+    /^(tcp|udp)/ && /bytes=/ {src=""; dst=""; dport=""; bytes=0; for(i=1;i<=NF;i++){if($i~/^src=/ && src==""){src=$i; sub(/^src=/,"",src)}; if($i~/^dst=/ && dst==""){dst=$i; sub(/^dst=/,"",dst)}; if($i~/^dport=/ && dport==""){dport=$i; sub(/^dport=/,"",dport)}; if($i~/^bytes=/){b=$i; sub(/^bytes=/,"",b); bytes+=b}}; if(src==""||dst==""||dport=="") next; if(dst !~ /^[0-9.]+$/) next; if(!(dport in portok)) next; key=src"|"dst"|"dport; total[key]+=bytes}
+    END{for(k in total){split(k,a,"|"); printf "%012.0f %s %s %s\n", total[k], a[1], a[2], a[3]}}
   ' | sort -rn | head -30 | while read -r bytes src dst dport; do
     candmark=no; finalmark=no; hint=watch
-    [ -n "$IPSET" ] && $IPSET test "$cand" "$dst" >/dev/null 2>&1 && candmark=yes
-    [ -n "$IPSET" ] && $IPSET test "$ipset" "$dst" >/dev/null 2>&1 && finalmark=yes
-    [ -n "$IPSET" ] && $IPSET test "$exnet" "$dst" >/dev/null 2>&1 && hint=excluded-range
+    if [ -n "$IPSET" ]; then
+      $IPSET test "$cand" "$dst" >/dev/null 2>&1 && candmark=yes
+      $IPSET test "$ipset" "$dst" >/dev/null 2>&1 && { finalmark=yes; hint=final; }
+      [ "$candmark" = yes ] && [ "$finalmark" = no ] && hint=candidate
+      $IPSET test "$waitset" "$dst" >/dev/null 2>&1 && [ "$finalmark" = no ] && hint=waiting
+    fi
+    case "$dst" in 10.*|192.168.*|127.*|169.254.*) hint=local ;;
+      172.*) second="${dst#172.}"; second="${second%%.*}"; [ "$second" -ge 16 ] 2>/dev/null && [ "$second" -le 31 ] 2>/dev/null && hint=local ;;
+    esac
+    if [ -n "$IPSET" ]; then
+      $IPSET test "$exnet" "$dst" >/dev/null 2>&1 && hint=excluded-range
+      fixed=no
+      $IPSET test "$fixdst" "$dst" >/dev/null 2>&1 && fixed=yes
+      if [ "$fixed" = no ] && [ -s "$FIXED_SETS_FILE" ]; then
+        while IFS= read -r fixed_set; do
+          [ -n "$fixed_set" ] && $IPSET test "$fixed_set" "$dst" >/dev/null 2>&1 && { fixed=yes; break; }
+        done < "$FIXED_SETS_FILE"
+      fi
+      [ "$fixed" = yes ] && hint=fixed-route
+      $IPSET test "$fixsrc" "$src" >/dev/null 2>&1 && hint=fixed-device
+    fi
+    case "$router_ips" in *" $src "*) hint=router ;; esac
     printf "%-12s %-15s %-15s %-5s %-5s %-5s %s\n" "$bytes" "$src" "$dst" "$dport" "$candmark" "$finalmark" "$hint"
   done
+}
+
+# Summary of fixed routes as maintained by the engine (VPN Director and
+# other VPN Routing policies), for the WebUI overview.
+fixed_routes_json(){
+  ipset="$(cfg_get IPSET_NAME)"; [ -z "$ipset" ] && ipset="DVR-StreamsVPNSW-v4"
+  dst_count="$(ipset_count "${ipset}_fixed")" || dst_count=0
+  src_count="$(ipset_count "${ipset}_fixsrc")" || src_count=0
+  dst_list=""; src_list=""; policies=""; domain_count=0
+  if [ -n "$IPSET" ]; then
+    dst_list="$($IPSET list "${ipset}_fixed" 2>/dev/null | ${AWK:-awk} '/^Members:/{m=1;next} m && $1 ~ /^[0-9]/ {printf "%s%s", (n++?" ":""), $1}')" || dst_list=""
+    src_list="$($IPSET list "${ipset}_fixsrc" 2>/dev/null | ${AWK:-awk} '/^Members:/{m=1;next} m && $1 ~ /^[0-9]/ {printf "%s%s", (n++?" ":""), $1}')" || src_list=""
+  fi
+  if [ -s "$FIXED_SETS_FILE" ]; then
+    policies="$(${AWK:-awk} '{sub(/^DVR-/,""); sub(/-v4$/,""); printf "%s%s", (n++?" ":""), $0}' "$FIXED_SETS_FILE")" || policies=""
+  fi
+  if [ -f "$FIXED_DOMAINS_FILE" ]; then
+    domain_count="$(wc -l < "$FIXED_DOMAINS_FILE" | tr -d ' ')" || domain_count=0
+  fi
+  printf '{"destinations":"%s","devices":"%s","destination_list":"%s","device_list":"%s","policies":"%s","domains":"%s"}' \
+    "${dst_count:-0}" "${src_count:-0}" "$(printf '%s' "$dst_list" | json_escape)" "$(printf '%s' "$src_list" | json_escape)" \
+    "$(printf '%s' "$policies" | json_escape)" "${domain_count:-0}"
 }
 
 json_array_words(){
@@ -449,7 +504,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.9.17",
+  "version":"2.10.0",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -472,6 +527,7 @@ publish_status(){
   "last_action_status":"$(printf '%s' "$last_action_status" | json_escape)",
   "last_action_message":"$(printf '%s' "$last_action_message" | json_escape)",
   "protected_ips":$(json_array_words "$protected_ips"),
+  "fixed_routes":$(fixed_routes_json),
   "config":{
     "INTERFACES":"$(cfg_get INTERFACES | json_escape)",
     "IPSET_NAME":"$(cfg_get IPSET_NAME | json_escape)",

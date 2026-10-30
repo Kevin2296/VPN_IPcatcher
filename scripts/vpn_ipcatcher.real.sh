@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.9.17
+# Version: 2.10.0
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -97,7 +97,7 @@ PROMOTE_PID=""
 ACCT_OK=0
 STOPPING=0
 CONFIG_CHANGED=0
-SUPPRESS_RESTART_PROMPT=0
+case "${SUPPRESS_RESTART_PROMPT:-0}" in 1) SUPPRESS_RESTART_PROMPT=1 ;; *) SUPPRESS_RESTART_PROMPT=0 ;; esac
 
 say(){ printf '%s\n' "$*"; }
 soft_clear(){ [ -n "$CLEAR" ] && "$CLEAR" 2>/dev/null || printf '\033c'; }
@@ -2161,6 +2161,14 @@ status_report(){
     printf '  Promotie: %-22s Lijst: %s\n' "$promote_state" "$IPSET_NAME"
     printf '  IPs: %s definitief | %s kandidaat | %s wachtend\n' "$final_count" "$(ipset_member_count "$CAND_SET")" "$(ipset_member_count "$WAIT_SET")"
     printf '  LAN: %s | Controle: %ss | Bijgewerkt: %s\n' "$INTERFACES" "$STREAM_SCAN_EVERY" "$now"
+    fixed_dst="$(ipset_member_count "$FIXED_DST_SET")"; fixed_src="$(ipset_member_count "$FIXED_SRC_SET")"
+    fixed_pol="$( [ -s "$CACHE_FIXED_SETS" ] && wc -l < "$CACHE_FIXED_SETS" | $TR -d ' ' || echo 0)"
+    printf '  Vaste routes: %s bestemmingen | %s apparaten | %s VPN Routing-policies\n' "$fixed_dst" "$fixed_src" "$fixed_pol"
+    if [ -n "$SOURCE_IPS" ]; then
+      printf '  IPTV-apparaten: %s\n' "$SOURCE_IPS"
+    else
+      printf '  IPTV-apparaten: alle apparaten  (tip: 5 > 7 om je IPTV-box te kiezen)\n'
+    fi
     return
   fi
   say "Service"
@@ -2326,7 +2334,7 @@ live_log(){
     say "------------------------------------------------------------"
     printf "q + Enter = terug | Enter = verversen: "
     read -t 2 -r key 2>/dev/null || key=""
-    case "$key" in q|Q) return 0 ;; esac
+    case "$key" in q|Q|e|E) return 0 ;; esac
   done
 }
 
@@ -2480,7 +2488,7 @@ manage_domain_exclusions(){
     say " 3) Domeinlijst volledig vervangen"
     say " 4) Domeinlijst leegmaken"
     say " 5) Terug"
-    printf "Choose: "
+    printf "Keuze: "
     read -r choice
     case "$choice" in
       1)
@@ -2507,7 +2515,7 @@ manage_domain_exclusions(){
         printf "Weet je zeker dat je EXCLUDE_DOMAINS leeg wilt maken? (j/N): "; read -r ans
         case "$ans" in j|J|y|Y) set_config_value "EXCLUDE_DOMAINS" ""; say "Domeinlijst leeggemaakt."; maybe_restart_after_config_change ;; esac
         press_enter ;;
-      5|q|Q) return 0 ;;
+      5|e|E|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done
@@ -2529,7 +2537,7 @@ manage_ip_exclusions(){
     say " 4) Eigen IP-lijst leegmaken"
     say " 5) Verwijder uitgesloten IPs uit ipsets"
     say " 6) Terug"
-    printf "Choose: "
+    printf "Keuze: "
     read -r choice
     case "$choice" in
       1)
@@ -2557,7 +2565,7 @@ manage_ip_exclusions(){
         case "$ans" in j|J|y|Y) set_config_value "EXCLUDE_IPS" ""; say "Eigen IP-lijst leeggemaakt."; maybe_restart_after_config_change ;; esac
         press_enter ;;
       5) ipset_remove_excluded; press_enter ;;
-      6|q|Q) return 0 ;;
+      6|e|E|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done
@@ -2797,11 +2805,11 @@ preset_category_menu(){
     preset_menu_count=$((i-1))
     say "------------------------------------------------------------"
     say "  a) Alles toevoegen      r) Alles verwijderen"
-    say "  v) Toon details         q) Terug"
+    say "  v) Toon details         E) Terug"
     printf "Keuze(s): "
     read -r choice
     case "$choice" in
-      q|Q) return 0 ;;
+      e|E|q|Q) return 0 ;;
       v|V)
         say
         for key in $keys; do
@@ -2910,7 +2918,7 @@ exclusion_resolver_settings(){
     say " 4) Cache nu verversen"
     say " 5) Cache bekijken"
     say " 6) Terug"
-    printf "Choose: "
+    printf "Keuze: "
     read -r c
     case "$c" in
       1) printf "Waarde (yes/no) [$EXCLUDE_RESOLVE_CACHE]: "; read -r v; [ -n "$v" ] && case "$v" in yes|no) set_config_value "EXCLUDE_RESOLVE_CACHE" "$v"; maybe_restart_after_config_change ;; *) say "Ongeldig"; press_enter ;; esac ;;
@@ -2918,10 +2926,26 @@ exclusion_resolver_settings(){
       3) say "Reverse DNS is handig als een IP een bruikbare PTR-naam heeft, maar is niet waterdicht en kan iets trager zijn."; printf "Waarde (yes/no) [$REVERSE_DNS_CHECK]: "; read -r v; [ -n "$v" ] && case "$v" in yes|no) set_config_value "REVERSE_DNS_CHECK" "$v"; maybe_restart_after_config_change ;; *) say "Ongeldig"; press_enter ;; esac ;;
       4) refresh_exclusion_ip_cache force; show_resolved_exclusion_cache; press_enter ;;
       5) show_resolved_exclusion_cache; press_enter ;;
-      6|q|Q) return 0 ;;
+      6|e|E|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done
+}
+
+# Dutch names for the shared preset categories (registry keys stay English).
+category_label_nl(){
+  case "$1" in
+    "DNS providers") echo "DNS-providers" ;;
+    "Social / messaging") echo "Sociaal / berichten" ;;
+    "AI assistants") echo "AI-assistenten" ;;
+    "Security cameras / IoT cloud") echo "Camera's / IoT-cloud" ;;
+    "GitHub / dev CDN") echo "GitHub / ontwikkel-CDN" ;;
+    "Games / downloads") echo "Games / downloads" ;;
+    "OS / app updates") echo "Systeem- en app-updates" ;;
+    "Smart TV telemetry") echo "Smart-tv-telemetrie" ;;
+    "Streamingdiensten") echo "Streamingdiensten" ;;
+    *) echo "$1" ;;
+  esac
 }
 
 preset_exclusion_menu(){
@@ -2929,58 +2953,138 @@ preset_exclusion_menu(){
     soft_clear
     load_config
     say "============================================================"
-    say " Exclusion manager"
+    say " Uitsluitingen en presets"
     say "============================================================"
-    say "Hier beheer je wat NIET automatisch naar candidate/final mag."
-    say "De tool past EXCLUDE_DOMAINS en EXCLUDE_IPS in $CONF aan."
-    say "Streamingdiensten alleen uitsluiten als die juist NIET via de VPN-regel mogen."
+    say " Wat hier aan staat wordt NOOIT als IPTV geleerd en blijft via WAN."
+    say " Streamingdiensten: zet alles aan behalve de dienst die je IPTV is."
     say "------------------------------------------------------------"
-    dns_keys="$(preset_keys_for_category "DNS providers")"; [ -n "$dns_keys" ] || dns_keys="dns_cloudflare dns_quad9 dns_google dns_opendns"
-    social_keys="$(preset_keys_for_category "Social / messaging")"; [ -n "$social_keys" ] || social_keys="social_meta social_whatsapp social_instagram social_snapchat social_reddit"
-    ai_keys="$(preset_keys_for_category "AI assistants")"; [ -n "$ai_keys" ] || ai_keys="ai_claude ai_openai"
-    cam_keys="$(preset_keys_for_category "Security cameras / IoT cloud")"; [ -n "$cam_keys" ] || cam_keys="cam_eufy cam_dahua_imou"
-    dev_keys="$(preset_keys_for_category "GitHub / dev CDN")"; [ -n "$dev_keys" ] || dev_keys="dev_github"
-    game_keys="$(preset_keys_for_category "Games / downloads")"; [ -n "$game_keys" ] || game_keys="game_steam game_epic game_xbox game_playstation game_nintendo game_battlenet"
-    upd_keys="$(preset_keys_for_category "OS / app updates")"; [ -n "$upd_keys" ] || upd_keys="upd_windows upd_msstore upd_office upd_apple upd_google upd_google_play"
-    tv_keys="$(preset_keys_for_category "Smart TV telemetry")"; [ -n "$tv_keys" ] || tv_keys="tv_samsung tv_philips tv_android tv_lg"
-    stream_keys="$(preset_keys_for_category "Streamingdiensten")"; [ -n "$stream_keys" ] || stream_keys="stream_netflix stream_youtube stream_disney stream_prime stream_videoland stream_viaplay"
-    say " 1) Bekijk alles"
-    say " 2) Veilige basis toevoegen       DNS + GitHub + Social + Camera clouds"
-    printf " 3) DNS providers                 [%-4s]\n" "$(category_state "$dns_keys")"
-    printf " 4) Social / messaging            [%-4s]\n" "$(category_state "$social_keys")"
-    printf " 5) Security cameras / IoT cloud  [%-4s]\n" "$(category_state "$cam_keys")"
-    printf " 6) GitHub / dev CDN              [%-4s]\n" "$(category_state "$dev_keys")"
-    printf " 7) Games / downloads             [%-4s]\n" "$(category_state "$game_keys")"
-    printf " 8) OS / app updates              [%-4s]\n" "$(category_state "$upd_keys")"
-    printf " 9) Smart TV telemetry            [%-4s]\n" "$(category_state "$tv_keys")"
-    printf "10) Streamingdiensten uitsluiten  [%-4s]\n" "$(category_state "$stream_keys")"
-    say "11) Handmatig domeinen beheren"
-    say "12) Handmatig IPs beheren"
-    say "13) Resolved exclude-cache bekijken/verversen"
-    say "14) Verwijder uitgesloten IPs uit ipsets"
-    say "15) Terug"
-    printf "16) AI assistants                 [%-4s]\n" "$(category_state "$ai_keys")"
-    printf "Choose: "
+    menu_categories="DNS providers|Social / messaging|AI assistants|Security cameras / IoT cloud|GitHub / dev CDN|Games / downloads|OS / app updates|Smart TV telemetry|Streamingdiensten"
+    n=0
+    OLDIFS="$IFS"; IFS='|'
+    set -- $menu_categories
+    IFS="$OLDIFS"
+    for category in "$@"; do
+      n=$((n+1))
+      keys="$(preset_keys_for_category "$category")"
+      eval "cat_name_$n=\"\$category\"; cat_keys_$n=\"\$keys\""
+      printf " %s) %-30s [%-4s]\n" "$n" "$(category_label_nl "$category")" "$(category_state "$keys")"
+    done
+    menu_cat_count="$n"
+    say
+    say " S) Veilige basis toevoegen (DNS, GitHub, sociaal, camera's)"
+    say " D) Eigen domeinen beheren      I) Eigen IP's beheren"
+    say " B) Alles bekijken              C) Opgeloste uitsluit-IP's"
+    say " R) Uitgesloten IP's uit de leerlijsten verwijderen"
+    say " E) Terug"
+    printf "Keuze: "
     read -r choice
     case "$choice" in
-      1) show_all_exclusions; press_enter ;;
-      2) apply_recommended_safe_excludes; press_enter ;;
-      3) preset_category_menu "DNS providers" "$dns_keys" "Advies: deze meestal uitsluiten, zodat DNS-resolvers nooit via VPN Director gaan." ;;
-      4) preset_category_menu "Social / messaging" "$social_keys" "Aanrader als je alle apparaten monitort: voorkomt Meta/WhatsApp/Instagram/Snapchat bijvangst." ;;
-      5) preset_category_menu "Security cameras / IoT cloud" "$cam_keys" "Aanrader voor Eufy, Dahua en Imou Life camera/cloud-verkeer." ;;
-      6) preset_category_menu "GitHub / dev CDN" "$dev_keys" "Voorkomt dat GitHub/CDN-verkeer van laptops onbedoeld via de VPN-ipset gaat." ;;
-      7) preset_category_menu "Games / downloads" "$game_keys" "Handig om grote downloads niet per ongeluk als stream te leren." ;;
-      8) preset_category_menu "OS / app updates" "$upd_keys" "Kies per platform. Apple hoeft dus niet aan als je dat niet wilt." ;;
-      9) preset_category_menu "Smart TV telemetry" "$tv_keys" "Dit vermindert achtergrondruis van smart-TV-platformen." ;;
-      10) preset_category_menu "Streamingdiensten" "$stream_keys" "Alleen kiezen als deze diensten juist NIET via deze VPN mogen." ;;
-      11) manage_domain_exclusions ;;
-      12) manage_ip_exclusions ;;
-      13) exclusion_resolver_settings ;;
-      14) ipset_remove_excluded; press_enter ;;
-      16) preset_category_menu "AI assistants" "$ai_keys" "Voorkomt dat AI-chat, grote antwoorden en bestandsdownloads als IPTV worden geleerd." ;;
-      15|q|Q) return 0 ;;
+      [1-9])
+        if [ "$choice" -le "$menu_cat_count" ]; then
+          eval "sel_name=\"\$cat_name_$choice\"; sel_keys=\"\$cat_keys_$choice\""
+          preset_category_menu "$(category_label_nl "$sel_name")" "$sel_keys" "$(preset_category_note "$sel_name")"
+        else
+          say "Ongeldige keuze."; press_enter
+        fi ;;
+      s|S) apply_recommended_safe_excludes; press_enter ;;
+      d|D) manage_domain_exclusions ;;
+      i|I) manage_ip_exclusions ;;
+      b|B) show_all_exclusions; press_enter ;;
+      c|C) exclusion_resolver_settings ;;
+      r|R) ipset_remove_excluded; press_enter ;;
+      e|E|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
+  done
+}
+
+# Known LAN devices: "ip name" from DHCP leases, with ASUS custom client
+# names (nvram custom_clientlist) taking priority over DHCP host names.
+lan_device_list(){
+  custom_names="$(nvram get custom_clientlist 2>/dev/null)"
+  for leases in /var/lib/misc/dnsmasq.leases /tmp/var/lib/misc/dnsmasq.leases; do
+    [ -r "$leases" ] || continue
+    $AWK -v custom="$custom_names" '
+      BEGIN {
+        n = split(custom, entries, "<")
+        for (i = 1; i <= n; i++) { split(entries[i], f, ">"); if (f[1] != "" && f[2] != "") name[toupper(f[2])] = f[1] }
+      }
+      $3 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
+        label = name[toupper($2)]
+        if (label == "") label = ($4 != "*" ? $4 : $3)
+        gsub(/[^A-Za-z0-9 ._()-]/, "", label)
+        if (!seen[$3]++) print $3, label
+      }' "$leases"
+    return 0
+  done
+}
+
+# Choose the IPTV devices (SOURCE_IPS) from the router's device list.
+choose_source_devices(){
+  while true; do
+    soft_clear
+    load_config
+    say "============================================================"
+    say " IPTV-apparaten kiezen (bron-IP's)"
+    say "============================================================"
+    say " Kies je IPTV-box(en) of tv. Dan leert IP Catcher alleen van die"
+    say " apparaten en kan ander verkeer nooit per ongeluk via de VPN gaan."
+    say " Huidig: ${SOURCE_IPS:-alle apparaten}"
+    say "------------------------------------------------------------"
+    devices_file="$(make_temp_file "$CACHE_DIR/devices")" || { mkdir -p "$CACHE_DIR"; devices_file="$(make_temp_file "$CACHE_DIR/devices")"; }
+    lan_device_list > "$devices_file" 2>/dev/null
+    for ip in $SOURCE_IPS; do
+      $GREP -q "^$ip " "$devices_file" 2>/dev/null || echo "$ip (niet online)" >> "$devices_file"
+    done
+    n=0
+    while read -r dev_ip dev_name; do
+      [ -n "$dev_ip" ] || continue
+      n=$((n+1))
+      mark=" "
+      case " $SOURCE_IPS " in *" $dev_ip "*) mark="x" ;; esac
+      printf " %2s) [%s] %-28s %s\n" "$n" "$mark" "$(printf '%s' "$dev_name" | cut -c1-28)" "$dev_ip"
+    done < "$devices_file"
+    [ "$n" -gt 0 ] || say " Geen apparaten gevonden in de DHCP-lijst; gebruik M om een IP in te voeren."
+    say
+    say " Nummer(s) = aan/uit zetten (bijv. 1 3)"
+    say " M) IP handmatig invoeren    A) Alle apparaten (geen filter)"
+    say " E) Terug"
+    printf "Keuze: "
+    read -r choice
+    case "$choice" in
+      e|E|q|Q) rm -f "$devices_file"; return 0 ;;
+      a|A) set_config_value SOURCE_IPS ""; say "Alle apparaten worden weer bekeken."; maybe_restart_after_config_change ;;
+      m|M)
+        printf "IP-adres: "; read -r manual_ip
+        if valid_ipv4 "$manual_ip"; then
+          set_config_value SOURCE_IPS "$(normalize_words "$SOURCE_IPS $manual_ip" | $AWK '!seen[$0]++' | $TR '\n' ' ' | $SED 's/ *$//')"
+          maybe_restart_after_config_change
+        else
+          say "Ongeldig IPv4-adres."; press_enter
+        fi ;;
+      *)
+        new_sources="$SOURCE_IPS"; changed=0
+        for pick in $(normalize_words "$choice"); do
+          case "$pick" in ''|*[!0-9]*) say "Ongeldige keuze overgeslagen: $pick"; continue ;; esac
+          [ "$pick" -ge 1 ] && [ "$pick" -le "$n" ] || { say "Ongeldige keuze overgeslagen: $pick"; continue; }
+          pick_ip="$($SED -n "${pick}p" "$devices_file" | $AWK '{print $1}')"
+          valid_ipv4 "$pick_ip" || continue
+          case " $new_sources " in
+            *" $pick_ip "*) new_sources="$(printf '%s\n' $new_sources | $GREP -vx "$pick_ip" | $TR '\n' ' ')" ;;
+            *) new_sources="$new_sources $pick_ip" ;;
+          esac
+          changed=1
+        done
+        if [ "$changed" = 1 ]; then
+          new_sources="$(normalize_words "$new_sources" | $TR '\n' ' ' | $SED 's/ *$//')"
+          set_config_value SOURCE_IPS "$new_sources"
+          say "Bron-apparaten: ${new_sources:-alle apparaten}"
+          maybe_restart_after_config_change
+        else
+          press_enter
+        fi ;;
+    esac
+    rm -f "$devices_file"
   done
 }
 
@@ -3075,7 +3179,7 @@ profile_menu(){
     say " 5) Alleen bestaande lijst gebruiken"
     say "    Nieuw leren uit. Handig als TV nu werkt en je geen risico wilt."
     say " 6) Terug"
-    printf "Choose: "
+    printf "Keuze: "
     read -r choice
     case "$choice" in
       1) apply_profile stable_tv; press_enter ;;
@@ -3083,7 +3187,7 @@ profile_menu(){
       3) apply_profile fast_zap; press_enter ;;
       4) apply_profile analysis; press_enter ;;
       5) apply_profile freeze; press_enter ;;
-      6|q|Q) return 0 ;;
+      6|e|E|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done
@@ -3105,7 +3209,7 @@ timeout_settings_menu(){
     say "------------------------------------------------------------"
     say "Candidate timeout = hoe lang tijdelijke IPs blijven staan."
     say "Final timeout     = hoe lang VPN Director IPs blijven staan."
-    printf "Choose: "
+    printf "Keuze: "
     read -r choice
     case "$choice" in
       1) printf "PROMOTE_EVERY seconden [$PROMOTE_EVERY]: "; read -r v; [ -n "$v" ] && set_config_value "PROMOTE_EVERY" "$v" && maybe_restart_after_config_change ;;
@@ -3120,7 +3224,7 @@ timeout_settings_menu(){
         say "Veilige testwaarden ingesteld."
         maybe_restart_after_config_change
         press_enter ;;
-      6|q|Q) return 0 ;;
+      6|e|E|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done
@@ -3156,8 +3260,8 @@ quick_settings_menu(){
     say "    CIDR-ranges zoals Meta/WhatsApp/Instagram, bv. 57.144.0.0/14."
     say " 9) Profielen"
     say "    Stabiel TV, voorzichtig leren, snel zappen, analyse of freeze."
-    say "10) Exclusion manager"
-    say "    Granulair: DNS, Games, OS updates, TV telemetry, streamingdiensten."
+    say "10) Uitsluitingen en presets"
+    say "    Per categorie: DNS, games, updates, smart-tv, streamingdiensten."
     say "11) Timers / cleanup"
     say "    Bekijk/wijzig promote-tijd, candidate TTL en final TTL."
     say "12) Generic host scan : $CAPTURE_GENERIC_HOSTNAMES"
@@ -3166,8 +3270,8 @@ quick_settings_menu(){
     say "    Standaard UIT. Niet aanzetten tenzij je dit bewust wilt."
     say "14) Stream flow scan  : $STREAM_FLOW_SCAN"
     say "    Gedragsdetectie: veel verkeer vanaf apparaten = waarschijnlijk stream."
-    say "15) Source IPs        : ${SOURCE_IPS:-all LAN devices}"
-    say "    Leeg = alle LAN-apparaten. Invullen beperkt de detectie."
+    say "15) IPTV-apparaten    : ${SOURCE_IPS:-alle apparaten}"
+    say "    Kies je IPTV-box/tv uit de apparatenlijst; leeg = alle apparaten."
     say "16) Stream threshold  : $STREAM_MIN_BYTES bytes"
     say "    Totaal verkeer voordat een flow interessant is."
     say "17) Stream delta      : $STREAM_MIN_DELTA bytes/scan"
@@ -3175,7 +3279,7 @@ quick_settings_menu(){
     say "18) Stream target     : $STREAM_FLOW_TARGET"
     say "    candidate = buffer, final = direct via VPN Director."
     say "19) Terug"
-    printf "Choose: "
+    printf "Keuze: "
     read -r choice
     case "$choice" in
       1)
@@ -3269,11 +3373,7 @@ quick_settings_menu(){
         ;;
       15)
         say
-        say "Vul hier optioneel bron-IP's in, gescheiden door spatie."
-        say 'Voorbeeld: SOURCE_IPS="192.168.1.20 192.168.1.21"'
-        say "Leeg laten = alle LAN-apparaten, maar dat geeft veel meer ruis."
-        printf "Source IPs [$SOURCE_IPS]: "; read -r v
-        set_config_value "SOURCE_IPS" "$v"; maybe_restart_after_config_change
+        choose_source_devices
         ;;
       16)
         say
@@ -3295,7 +3395,7 @@ quick_settings_menu(){
         [ -z "$v" ] && v="$STREAM_FLOW_TARGET"
         case "$v" in candidate|final) set_config_value "STREAM_FLOW_TARGET" "$v"; maybe_restart_after_config_change ;; *) say "Ongeldige waarde."; press_enter ;; esac
         ;;
-      19|q|Q) return 0 ;;
+      19|e|E|q|Q) return 0 ;;
       *) say "Ongeldige keuze."; press_enter ;;
     esac
   done
@@ -3333,7 +3433,7 @@ live_sets(){
     say "------------------------------------------------------------"
     printf "q + Enter = terug | Enter = verversen: "
     read -t 2 -r key 2>/dev/null || key=""
-    case "$key" in q|Q) return 0 ;; esac
+    case "$key" in q|Q|e|E) return 0 ;; esac
   done
 }
 
@@ -3407,7 +3507,7 @@ live_stream_flows(){
     say "Hint: active-threshold = total boven drempel EN bytes groeien nu actief."
     printf "q + Enter = terug | Enter = verversen: "
     read -t 2 -r key 2>/dev/null || key=""
-    case "$key" in q|Q) return 0 ;; esac
+    case "$key" in q|Q|e|E) return 0 ;; esac
   done
 }
 
@@ -3451,7 +3551,7 @@ menu_action_key(){
     main:1|main:2|main:3) printf '%s\n' "$2" ;;
     main:4) echo view ;; main:5) echo settings ;; main:6) echo vpn ;; main:7) echo maintenance ;;
     view:1) echo 4 ;; view:2) echo 5 ;; view:3) echo 6 ;; view:4) echo 7 ;; view:5) echo 8 ;; view:6) echo 9 ;; view:7) echo 10 ;;
-    settings:1) echo 11 ;; settings:2) echo 12 ;; settings:3) echo 13 ;; settings:4) echo 14 ;; settings:5) echo 15 ;; settings:6) echo 16 ;;
+    settings:1) echo 11 ;; settings:2) echo 12 ;; settings:3) echo 13 ;; settings:4) echo 14 ;; settings:5) echo 15 ;; settings:6) echo 16 ;; settings:7) echo 28 ;;
     vpn:1) echo 22 ;; vpn:2) echo 23 ;; vpn:3) echo 27 ;;
     maintenance:UC|maintenance:uc) echo UC ;; maintenance:U|maintenance:u) echo U ;; maintenance:FU|maintenance:fu) echo FU ;;
     maintenance:1) echo 20 ;; maintenance:2) echo 24 ;; maintenance:3) echo 26 ;; maintenance:4) echo 21 ;; maintenance:5) echo 25 ;;
@@ -3490,6 +3590,7 @@ menu_loop(){
         say " 2) Profielen             3) Uitsluitingen / presets"
         say " 4) Configuratie bewerken 5) Standaardwaarden herstellen"
         say " 6) Uitgesloten IPs uit leerlijsten verwijderen"
+        say " 7) IPTV-apparaten kiezen (bron-IP's)"
         say " E) Terug"
         ;;
       vpn)
@@ -3550,6 +3651,7 @@ menu_loop(){
       22) /jffs/scripts/vpn_ipcatcher.sh routing-setup; press_enter ;;
       23) /jffs/scripts/vpn_ipcatcher.sh routing-check; press_enter ;;
       27) show_fixed_routes; press_enter ;;
+      28) choose_source_devices ;;
       24)
         say "1) Kleine back-up: code, instellingen en hooks"
         say "2) Uitgebreid: ook DVR-configuratie en addonhistorie"
@@ -3590,7 +3692,7 @@ menu_loop(){
 
 usage(){
   cat <<EOF2
-Gebruik: $SELF [menu|start|stop|restart|status|show-config|edit-config|log|live-log|show-cand|show-final|live-sets|safe-excludes|repair-excludes|resolve-excludes|show-excludes|clean-excluded|fixed-routes|webstatus|run]
+Gebruik: $SELF [menu|start|stop|restart|status|show-config|edit-config|log|live-log|show-cand|show-final|live-sets|safe-excludes|repair-excludes|resolve-excludes|show-excludes|clean-excluded|fixed-routes|choose-devices|webstatus|run]
 
 menu           Interactief menu (standaard)
 start          Start engine op achtergrond
@@ -3609,6 +3711,7 @@ resolve-excludes Ververs resolved exclude-cache nu
 show-excludes   Toon domein/IP/range exclusions
 clean-excluded Verwijder uitgesloten IPs uit candidate/final
 fixed-routes   Toon vaste routes (VPN Director / VPN Routing) die nooit worden geleerd
+choose-devices Kies je IPTV-apparaten (bron-IP's) uit de apparatenlijst
 webstatus      Schrijf actuele WebGUI status JSON
 run            Start capture-engine direct
 EOF2
@@ -3637,6 +3740,7 @@ case "$1" in
   provider-ranges-refresh) refresh_provider_ranges force; show_provider_ranges ;;
   provider-ranges-status) show_provider_ranges ;;
   fixed-routes) show_fixed_routes ;;
+  choose-devices) choose_source_devices ;;
   show-excludes) show_all_exclusions ;;
   clean-excluded) ipset_remove_excluded ;;
   webstatus) write_web_status ;;

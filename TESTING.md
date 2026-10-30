@@ -1,5 +1,9 @@
 # Release Verification / Releasecontrole
 
+## 2.10.0 WebUI and amtm
+
+`tests/webui-flow-status-checks.sh` verifies the per-flow status (final, candidate, waiting, fixed route/device, router, local, excluded), byte counters above 2^31 and the fixed-route JSON summary. `tests/menu-checks.sh` verifies the Dutch exclusion manager layout, E as back key and the IPTV device chooser. The WebUI was additionally rendered in headless Chromium with sample data (overview, live flows, configuration with device picker, presets, help) without script errors; final validation in the router WebUI is still required.
+
 ## 2.9.17 guest networks
 
 `tests/fixed-routes-checks.sh` now also verifies that a guest-network client (`192.168.179.x`) is learned while the router's LAN, WAN and VPN tunnel addresses are excluded.

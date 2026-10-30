@@ -174,6 +174,16 @@ main(){
     "$ADDON_DIR/vpn_ipcatcher_routing.sh" prepare
   else
     "$ADDON_DIR/vpn_ipcatcher_routing.sh" configure
+    # First installation: offer to choose the IPTV devices right away, so
+    # learning is limited to them from the start instead of all devices.
+    if [ -t 0 ]; then
+      printf '\nWil je nu je IPTV-box(en) of tv kiezen? Dan leert IP Catcher alleen van die apparaten. (J/n): '
+      read -r choose_answer || choose_answer=n
+      case "$choose_answer" in
+        n|N|nee|Nee) log "IPTV-apparaten later kiezen via amtm (5 > 7) of de WebGUI." ;;
+        *) SUPPRESS_RESTART_PROMPT=1 "$ENGINE" choose-devices || true ;;
+      esac
+    fi
   fi
 
   install_service_event_block

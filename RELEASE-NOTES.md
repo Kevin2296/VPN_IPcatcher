@@ -1,3 +1,13 @@
+# VPN IP Catcher 2.10.0 — Nieuwe WebUI in ASUS-stijl
+
+**NL:** De WebUI is opnieuw vormgegeven in de stijl van de ASUS/Merlin-pagina's en een stuk overzichtelijker. Nieuw: een tegel voor **vaste routes**, de **wachtlijst** in beeld, en **IPTV-apparaten kiezen** uit de ASUS-apparatenlijst met namen. Liveflows tonen per verbinding een duidelijke status (via VPN, wacht op einde stream, via WAN, vaste route, router zelf, …) en de naam van het apparaat. Het amtm-menu is volledig Nederlands en logischer ingedeeld, met een apparatenkiezer onder **Instellingen → 7**. Een nieuwe installatie vraagt direct naar je IPTV-apparaten.
+
+Tip na de update: kies via de WebUI of amtm je IPTV-box/tv als bronapparaat. Dan kan ander verkeer nooit per ongeluk via de VPN gaan.
+
+**EN:** Redesigned WebUI in the ASUS/Merlin style: fixed-route and waiting-list tiles, IPTV device picker from the ASUS client list, readable per-flow status with device names, grouped maintenance actions and a "your value" column in the help. amtm menus are fully Dutch and better organised, with an IPTV device chooser; first installation asks for IPTV devices.
+
+---
+
 # VPN IP Catcher 2.9.17 — Gastnetwerken weer meegenomen
 
 **NL:** In 2.9.16 keek de flow-scan alleen naar apparaten in het subnet van `br0`, waardoor streams vanaf een gastnetwerk of IoT-VLAN niet meer werden geleerd. 2.9.17 neemt alle apparaten in privé-netwerken weer mee en sluit de router zelf uit op basis van al zijn eigen adressen (LAN, WAN, VPN-tunnels). Nieuw in het amtm-menu: **VPN en routing → Vaste routes tonen**. Alle wijzigingen uit 2.9.16 blijven gelden.

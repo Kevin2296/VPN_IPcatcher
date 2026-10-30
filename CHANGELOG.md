@@ -1,5 +1,26 @@
 # Wijzigingen
 
+## 2.10.0 — Nieuwe WebUI in ASUS-stijl, IPTV-apparaten kiezen, overzichtelijker amtm-menu
+
+**WebUI**
+- Vormgeving sluit aan op de standaard ASUS/Merlin-pagina's: FormTable-secties, `button_gen`-knoppen, ASUS-tabbladen en kleuren.
+- Zes statustegels, nu met **Vaste routes** (VPN Director / VPN Routing) en het aantal IP's op de **wachtlijst**.
+- **IPTV-apparaten kiezen** uit de ASUS-apparatenlijst (met namen) in plaats van IP's typen. Zolang er naar alle apparaten wordt gekeken, toont het overzicht een duidelijke tip.
+- **Liveflows** tonen per bestemming een leesbare status: via VPN, wacht op einde stream, in beoordeling, via WAN, vaste route, vast apparaat, uitgesloten, router zelf of lokaal. De bronkolom toont apparaatnamen; extra filters voor wachtlijst, vaste route en router/lokaal.
+- Verkeer van de router zelf (bijv. het WAN-adres achter een modem) staat als "router zelf" en is niet meer verwarrend.
+- Onderhoud: dagelijkse acties eerst; acties die instellingen overschrijven staan apart onder "Geavanceerd".
+- Presets die "Gedeeltelijk" zijn (bijv. door nieuwe domeinen na een update) leggen uit waarom.
+- Uitleg toont naast de standaardwaarde ook **jouw waarde**.
+- Bytetellers boven 2 GB worden correct weergegeven.
+
+**amtm**
+- Uitsluitingenmanager volledig in het Nederlands, alle categorieën (incl. AI-assistenten) vóór de acties, letters voor acties en overal **E) Terug**.
+- Nieuw: **Instellingen → 7) IPTV-apparaten kiezen** met apparaatnamen uit DHCP en ASUS-clientnamen; ook via `vpn_ipcatcher.sh choose-devices`.
+- Statuskop toont vaste routes en de gekozen IPTV-apparaten.
+- Eerste installatie vraagt direct na de VPN-keuze naar je IPTV-apparaten.
+
+**Tests:** `tests/menu-checks.sh` en `tests/webui-flow-status-checks.sh`.
+
 ## 2.9.17 — Gastnetwerken weer meegenomen in de flow-scan
 
 - **Herstel van een 2.9.16-beperking:** de flow-scan keek alleen naar het subnet van de capture-interface (`br0`). Apparaten op een gastnetwerk of IoT-VLAN (bijv. `192.168.179.x` via Guest Network Pro) werden daardoor niet meer geleerd. Nu telt elk apparaat in een privé-netwerk mee (10/8, 172.16/12, 192.168/16, 100.64/10).
