@@ -3,6 +3,7 @@
 ## 2.10.4 — Namen werken nu ook op Asuswrt-Merlin
 
 - **Bugfix:** de BusyBox van Asuswrt-Merlin heeft geen `mktemp`. Daardoor stopte het opzoeken van namen voor de WebUI direct met een lege lijst. Er wordt nu een eigen unieke tijdelijke map gebruikt.
+- Een mislukte `nslookup` kan het opzoeken van namen niet meer halverwege afbreken.
 - De shell op Merlin kent `command -v` niet. Controles op `nvram` en `jq` gebruiken nu vaste paden. De JSON-controle met `jq` voor het statusbestand werkt daardoor voortaan echt.
 
 ## 2.10.3 — Wachtlijst-fix en vernieuwd amtm-menu

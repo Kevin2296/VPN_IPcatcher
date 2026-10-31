@@ -338,10 +338,10 @@ live_flows_text(){
 ptr_lookup(){
   [ -n "$NSLOOKUP" ] || return 0
   if [ -n "$TIMEOUT_BIN" ]; then
-    case "$("$TIMEOUT_BIN" --help 2>&1)" in *'-t SECS'*|*'[-t '*) ptr_out="$("$TIMEOUT_BIN" -t 2 "$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)" ;;
-      *) ptr_out="$("$TIMEOUT_BIN" 2 "$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)" ;; esac
+    case "$("$TIMEOUT_BIN" --help 2>&1)" in *'-t SECS'*|*'[-t '*) ptr_out="$("$TIMEOUT_BIN" -t 2 "$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)" || ptr_out="" ;;
+      *) ptr_out="$("$TIMEOUT_BIN" 2 "$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)" || ptr_out="" ;; esac
   else
-    ptr_out="$("$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)"
+    ptr_out="$("$NSLOOKUP" "$1" 127.0.0.1 2>/dev/null)" || ptr_out=""
   fi
   printf '%s\n' "$ptr_out" | ${AWK:-awk} -v ip="$1" '
     /name = / {n=$NF; sub(/\.$/,"",n); print tolower(n); exit}
@@ -382,7 +382,7 @@ destination_names_json(){
     ${AWK:-awk} -v ip="$name_ip" '$1==ip {f=1; exit} END{exit f?0:1}' "$names_work/known" && continue
     [ "$lookups" -lt "$PTR_LOOKUPS_PER_PUBLISH" ] || continue
     lookups=$((lookups+1))
-    ptr_name="$(ptr_lookup "$name_ip")"
+    ptr_name="$(ptr_lookup "$name_ip")" || ptr_name=""
     mkdir -p /tmp/vpn_ipcatcher 2>/dev/null
     printf '%s %s %s\n' "$name_ip" "$now" "${ptr_name:--}" >> "$PTR_CACHE"
     printf '%s ptr %s\n' "$name_ip" "${ptr_name:--}" >> "$names_work/known"
