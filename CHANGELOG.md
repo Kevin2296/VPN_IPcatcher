@@ -1,5 +1,11 @@
 # Wijzigingen
 
+## 2.10.3 — Wachtlijst-fix en vernieuwd amtm-menu
+
+- **Bugfix (2.10.1):** een IP op de wachtlijst werd bij elke scan opnieuw toegevoegd. Daardoor werd de herkomst steeds opnieuw ingepakt ("Na einde stream · Na einde stream · …") en begon de wachttijd telkens opnieuw. Een wachtend IP houdt nu zijn oorspronkelijke herkomst en wachttijd; bestaande dubbele teksten worden één keer getoond.
+- **amtm-menu vernieuwd:** gekleurde nummerblokjes zoals amtm zelf, een statuskop met service, leren, capture, VPN-status, lijsten, vaste routes en je IPTV-apparaten met namen, en keuzes gegroepeerd per onderwerp. De toetsen zijn ongewijzigd. Zonder terminal (of met `NO_COLOR`) blijft de uitvoer platte tekst.
+- Diagnose voor de namen in de WebUI: `/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh names-debug <ip>`.
+
 ## 2.10.2 — Echte DNS-namen in Liveflows
 
 - Nieuwe zuinige **DNS-namenvanger**: leest alleen de DNS-antwoorden die de router (dnsmasq of AdGuardHome) aan apparaten stuurt en onthoudt welk IP bij welke opgevraagde naam hoort (2 uur, begrensd). Daardoor tonen Liveflows en de lijsten voor vrijwel elke bestemming de naam die het apparaat echt opvroeg, ook als er geen omgekeerde DNS bestaat. Privé-adressen worden niet opgeslagen; de namen worden alleen voor weergave gebruikt.

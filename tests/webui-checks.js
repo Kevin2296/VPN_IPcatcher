@@ -185,3 +185,5 @@ context.rememberLearnedHosts('Members:\n54.72.210.11 timeout 11 packets 0 bytes 
 assert.equal(context.destinationName('54.72.210.11'),'vas.samsungapps.com');
 assert.equal(context.destinationName('145.53.10.40'),'');
 console.log('PASS: learned hostnames are shown as name even without router-provided names');
+assert.equal(context.describeOrigin('after-idle:after-idle:after-idle:flow-delta1b-total109900000b-192.168.178.146-443').split('Na einde stream').length,2);
+console.log('PASS: nested after-idle comments shown once');

@@ -280,3 +280,31 @@ EOS
 )
 [ "$(cat "$TMP/dns_names")" = "$(printf '185.94.239.64 1761868800 live.iptv.example\n13.107.4.52 1761868803 www.msftconnecttest.com\n13.107.4.53 1761868803 www.msftconnecttest.com')" ] || { echo 'DNS names mismatch:'; cat "$TMP/dns_names"; exit 1; }
 echo 'PASS: DNS-name worker maps answers to the asked name, deduplicates and skips private addresses'
+
+# --- 2.10.3: waiting entries are not rewritten on every scan ---------------
+(
+  : > "$TMP/wait-calls"
+  learning_route_ready(){ return 0; }
+  should_skip_service_ip(){ return 1; }
+  destination_is_idle(){ return 1; }
+  ipset_busy(){
+    case "$1" in
+      test) [ "$2" = "$WAIT_SET" ] && return 0; return 1 ;;
+      add) echo "add $*" >> "$TMP/wait-calls" ;;
+    esac
+  }
+  IPSET=ipset_busy
+  eval "$(sed -n '/^add_final_immediate(){/,/^}/p' "$ROOT/scripts/vpn_ipcatcher.real.sh")"
+  if add_final_immediate 145.53.10.50 'after-idle:flow-x'; then echo 'Busy destination promoted'; exit 1; fi
+  [ ! -s "$TMP/wait-calls" ] || { echo 'Waiting entry rewritten'; cat "$TMP/wait-calls"; exit 1; }
+)
+(
+  : > "$TMP/final-calls"
+  CT=ct_idle; ct_idle(){ :; }
+  ipset_nested(){ case "$1" in save) printf '%s\n' 'add x 145.53.10.51 timeout 80000 comment "src=after-idle:after-idle:flow-delta1b-total2b-192.168.178.20-443;seen=1"' ;; esac; }
+  IPSET=ipset_nested
+  add_final_immediate(){ echo "$1 $2" >> "$TMP/final-calls"; return 1; }
+  promote_deferred
+  grep -qx '145.53.10.51 after-idle:flow-delta1b-total2b-192.168.178.20-443' "$TMP/final-calls"
+)
+echo 'PASS: waiting entries keep their comment and time; nested after-idle prefixes are collapsed'

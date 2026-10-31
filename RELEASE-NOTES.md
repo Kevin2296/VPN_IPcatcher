@@ -1,3 +1,11 @@
+# VPN IP Catcher 2.10.3 — Wachtlijst-fix en vernieuwd amtm-menu
+
+**NL:** Herstelt de herhaalde "Na einde stream"-tekst en de steeds opnieuw beginnende wachttijd op de wachtlijst. Het amtm-menu is vernieuwd in amtm-stijl met een overzichtelijke statuskop. Nieuw diagnosecommando voor de namen in de WebUI: `vpn_ipcatcher_webui.sh names-debug <ip>`.
+
+**EN:** Fixes the repeated waiting-list origin text and the restarting waiting time. amtm menu redesigned in amtm style with a clear status header. New `names-debug` diagnostic for WebUI names.
+
+---
+
 # VPN IP Catcher 2.10.2 — Echte DNS-namen in Liveflows
 
 **NL:** Liveflows en de lijsten tonen nu voor vrijwel elke bestemming de DNS-naam die je apparaat echt opvroeg. Een kleine worker leest daarvoor alleen de DNS-antwoorden van de router (ook met AdGuardHome) mee. Na de update de catcher herstarten en de WebUI met Ctrl+F5 verversen.

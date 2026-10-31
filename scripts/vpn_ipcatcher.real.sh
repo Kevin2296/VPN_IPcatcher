@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.2
+# Version: 2.10.3
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -1693,7 +1693,7 @@ promote_deferred(){
   trap 'exit 1' HUP INT TERM
   $IPSET save "$WAIT_SET" > "$probe/set" 2>/dev/null || exit 1
   # "ip origin": keep how the IP was found (device, port, bytes) after idle.
-  $AWK '$1=="add" {src=""; if (match($0, /comment "src=[^;"]*/)) src=substr($0, RSTART+13, RLENGTH-13); print $3, src}' "$probe/set" > "$probe/waiting"
+  $AWK '$1=="add" {src=""; if (match($0, /comment "src=[^;"]*/)) src=substr($0, RSTART+13, RLENGTH-13); while (sub(/^after-idle:/, "", src)) {}; print $3, src}' "$probe/set" > "$probe/waiting"
   [ -s "$probe/waiting" ] || exit 0
   $CT -L -f ipv4 > "$probe/connections" 2>/dev/null || exit 1
   PROMOTION_SNAPSHOT="$probe/connections"
@@ -1715,7 +1715,11 @@ add_final_immediate(){
   comment="$(make_ipset_comment "$comment")"
   # Refreshing an existing member does not introduce a new destination route.
   if ! $IPSET test "$IPSET_NAME" "$ip" >/dev/null 2>&1 && ! destination_is_idle "$ip"; then
-    $IPSET add "$WAIT_SET" "$ip" -exist timeout 86400 comment "$comment" >/dev/null 2>&1
+    # Already waiting: keep the original comment and waiting time. Re-adding
+    # with -exist on every scan would rewrite both (2.10.1 nested the
+    # comment each time).
+    $IPSET test "$WAIT_SET" "$ip" >/dev/null 2>&1 ||
+      $IPSET add "$WAIT_SET" "$ip" -exist timeout 86400 comment "$comment" >/dev/null 2>&1
     return 1
   fi
   $IPSET add "$IPSET_NAME" "$ip" -exist timeout "$FINAL_TIMEOUT" comment "$comment" >/dev/null 2>&1
@@ -2229,18 +2233,24 @@ status_report(){
   fi
 
   if [ "${1:-}" = compact ]; then
-    printf '  Engine: %-24s Capture: %s\n' "$engine_state" "$capture_state"
-    printf '  Promotie: %-22s Lijst: %s\n' "$promote_state" "$IPSET_NAME"
-    printf '  IPs: %s definitief | %s kandidaat | %s wachtend\n' "$final_count" "$(ipset_member_count "$CAND_SET")" "$(ipset_member_count "$WAIT_SET")"
-    printf '  LAN: %s | Controle: %ss | Bijgewerkt: %s\n' "$INTERFACES" "$STREAM_SCAN_EVERY" "$now"
+    [ -n "${C_RESET+x}" ] || menu_colors
+    case "$engine_state" in OK*) engine_txt="$(state_text ok "actief") (pid $engine_pid)" ;; STARTING*) engine_txt="$(state_text warn "start op")" ;; *) engine_txt="$(state_text bad "gestopt")" ;; esac
+    case "$capture_state" in OK*) capture_txt="$(state_text ok "actief") ($td_count tcpdump)" ;; WARN*|STARTING*) capture_txt="$(state_text warn "controleren")" ;; *) capture_txt="$(state_text bad "uit")" ;; esac
+    case "$promote_state" in OK*) promote_txt="$(state_text ok "actief")" ;; *) promote_txt="$(state_text bad "uit")" ;; esac
+    if learning_route_ready 2>/dev/null; then vpn_txt="$(state_text ok "klaar")"; else vpn_txt="$(state_text warn "niet klaar")"; fi
+    wait_count="$(ipset_member_count "$WAIT_SET")"
     fixed_dst="$(ipset_member_count "$FIXED_DST_SET")"; fixed_src="$(ipset_member_count "$FIXED_SRC_SET")"
     fixed_pol="$( [ -s "$CACHE_FIXED_SETS" ] && wc -l < "$CACHE_FIXED_SETS" | $TR -d ' ' || echo 0)"
-    printf '  Vaste routes: %s bestemmingen | %s apparaten | %s VPN Routing-policies\n' "$fixed_dst" "$fixed_src" "$fixed_pol"
+    printf '  %-10s %-34s %-9s %s\n' "Service" "$engine_txt" "Leren" "$promote_txt"
+    printf '  %-10s %-34s %-9s %s\n' "Capture" "$capture_txt" "VPN" "$vpn_txt"
+    printf '  %-10s %s%s%s via VPN | %s in beoordeling | %s op wachtlijst\n' "Lijsten" "$C_BOLD" "$final_count" "$C_RESET" "$cand_count" "$wait_count"
+    printf '  %-10s %s bestemmingen | %s apparaten | %s VPN Routing-policies\n' "Vast" "$fixed_dst" "$fixed_src" "$fixed_pol"
     if [ -n "$SOURCE_IPS" ]; then
-      printf '  IPTV-apparaten: %s\n' "$SOURCE_IPS"
+      printf '  %-10s %s\n' "IPTV" "$(source_devices_label)"
     else
-      printf '  IPTV-apparaten: alle apparaten  (tip: 5 > 7 om je IPTV-box te kiezen)\n'
+      printf '  %-10s %s\n' "IPTV" "$(state_text warn "alle apparaten") - tip: 5 > 7 om je IPTV-box te kiezen"
     fi
+    printf '  %s%-10s %s | controle elke %ss | %s%s\n' "$C_DIM" "LAN" "$INTERFACES" "$STREAM_SCAN_EVERY" "$now" "$C_RESET"
     return
   fi
   say "Service"
@@ -3583,19 +3593,64 @@ live_stream_flows(){
   done
 }
 
+# --- Menu look (amtm style). Colours only on a real terminal; plain text
+# when piped, so logs and tests stay readable. NO_COLOR disables colours.
+menu_colors(){
+  if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
+    C_RESET="$(printf '\033[0m')"; C_BOLD="$(printf '\033[1m')"; C_DIM="$(printf '\033[2m')"
+    C_GREEN="$(printf '\033[32m')"; C_RED="$(printf '\033[31m')"; C_YELLOW="$(printf '\033[33m')"; C_CYAN="$(printf '\033[36m')"
+    C_KEY="$(printf '\033[30;42m')"; C_TITLE="$(printf '\033[30;47m')"
+  else
+    C_RESET=''; C_BOLD=''; C_DIM=''; C_GREEN=''; C_RED=''; C_YELLOW=''; C_CYAN=''; C_KEY=''; C_TITLE=''
+  fi
+}
+menu_line(){ say "${C_DIM}------------------------------------------------------------${C_RESET}"; }
+menu_section(){ say; say " ${C_TITLE:-} $1 ${C_RESET:-}"; }
+# menu_item KEY LABEL [KEY LABEL]: one or two items on a line.
+menu_item(){
+  if [ -n "${C_KEY:-}" ]; then
+    first="$(printf ' %s %-2s %s %-26s' "$C_KEY" "$1" "$C_RESET" "$2")"
+    [ -n "${3:-}" ] && first="$first$(printf '%s %-2s %s %s' "$C_KEY" "$3" "$C_RESET" "$4")"
+  else
+    first="$(printf ' %3s) %-26s' "$1" "$2")"
+    [ -n "${3:-}" ] && first="$first$(printf ' %3s) %s' "$3" "$4")"
+  fi
+  printf '%s\n' "$first" | $SED 's/[[:space:]]*$//'
+}
+menu_prompt(){ printf "\n ${C_BOLD:-}Keuze:${C_RESET:-} "; }
+state_text(){
+  case "$1" in
+    ok) printf '%s%s%s' "$C_GREEN" "$2" "$C_RESET" ;;
+    warn) printf '%s%s%s' "$C_YELLOW" "$2" "$C_RESET" ;;
+    *) printf '%s%s%s' "$C_RED" "$2" "$C_RESET" ;;
+  esac
+}
+# "Name (ip), ..." for the configured IPTV devices.
+source_devices_label(){
+  [ -n "$SOURCE_IPS" ] || return 0
+  device_names="$(lan_device_list 2>/dev/null)"
+  for ip in $SOURCE_IPS; do
+    name="$(printf '%s\n' "$device_names" | $AWK -v ip="$ip" '$1==ip {$1=""; sub(/^ /,""); print; exit}')"
+    if [ -n "$name" ] && [ "$name" != "$ip" ]; then printf '%s (%s)\n' "$name" "$ip"; else printf '%s\n' "$ip"; fi
+  done | $AWK 'NR>1{printf ", "} {printf "%s", $0} END{print ""}'
+}
+
 print_header(){
   load_config
-  say "============================================================"
+  menu_colors
   version="$($SED -n 's/^# Version: //p' "$0" | head -n 1)"
-  say " VPN IP Catcher ${version:-onbekend} | ASUS Merlin / amtm"
   connection="$($SED -n '2p' /jffs/addons/vpn_ipcatcher.d/routing-selection 2>/dev/null)"
   case "$connection" in
-    ovpnc[1-5]) say " VPN: OpenVPN ${connection#ovpnc}" ;;
-    wgc[1-5]) say " VPN: WireGuard ${connection#wgc}" ;;
+    ovpnc[1-5]) vpn_label="OpenVPN ${connection#ovpnc}" ;;
+    wgc[1-5]) vpn_label="WireGuard ${connection#wgc}" ;;
+    *) vpn_label="geen VPN gekozen" ;;
   esac
-  say "============================================================"
+  menu_line
+  say " ${C_BOLD}${C_CYAN}VPN IP Catcher${C_RESET} ${C_BOLD}${version:-onbekend}${C_RESET}   IPTV via VPN, de rest via WAN"
+  say " ${C_DIM}VPN:${C_RESET} $vpn_label  ${C_DIM}lijst:${C_RESET} $IPSET_NAME"
+  menu_line
   status_report compact
-  say "------------------------------------------------------------"
+  menu_line
 }
 
 reset_config(){
@@ -3635,55 +3690,66 @@ menu_loop(){
   # Belangrijk: Ctrl+C in live schermen mag het hoofdmenu niet doden.
   trap ':' INT
   main_menu_section=main
+  menu_colors
 
   while true; do
     soft_clear
     print_header
     case "$main_menu_section" in
       main)
-        say " 1) Starten       2) Stoppen       3) Herstarten"
-        say " 4) Status en liveweergave"
-        say " 5) Instellingen en presets"
-        say " 6) VPN en routing"
-        say " 7) Onderhoud en updates"
-        say " E) Terug naar amtm"
+        menu_section "Service"
+        menu_item 1 "Starten" 2 "Stoppen"
+        menu_item 3 "Herstarten"
+        menu_section "Bekijken"
+        menu_item 4 "Status en live (flows, log, lijsten)"
+        menu_section "Instellen"
+        menu_item 5 "Instellingen, presets, IPTV-apparaten"
+        menu_item 6 "VPN en routing"
+        menu_section "Beheer"
+        menu_item 7 "Onderhoud en updates"
+        say
+        menu_item E "Terug naar amtm"
         ;;
       view)
-        say "Status en liveweergave"
-        say " 1) Volledige status      2) Live activiteit"
-        say " 3) Live log              4) Live verbindingen"
-        say " 5) Kandidaten            6) VPN-bestemmingen"
-        say " 7) Configuratie tonen"
-        say " E) Terug"
+        menu_section "Status en live"
+        menu_item 1 "Volledige status" 2 "Live activiteit"
+        menu_item 3 "Live log" 4 "Live verbindingen"
+        menu_item 5 "Kandidaten" 6 "VPN-bestemmingen"
+        menu_item 7 "Configuratie tonen"
+        say
+        menu_item E "Terug"
         ;;
       settings)
-        say "Instellingen en presets"
-        say " 1) Begeleide instellingen"
-        say " 2) Profielen             3) Uitsluitingen / presets"
-        say " 4) Configuratie bewerken 5) Standaardwaarden herstellen"
-        say " 6) Uitgesloten IPs uit leerlijsten verwijderen"
-        say " 7) IPTV-apparaten kiezen (bron-IP's)"
-        say " E) Terug"
+        menu_section "Instellingen en presets"
+        menu_item 7 "IPTV-apparaten kiezen"
+        menu_item 3 "Uitsluitingen en presets"
+        menu_item 1 "Begeleide instellingen" 2 "Profielen"
+        menu_item 4 "Configuratie bewerken" 5 "Standaardwaarden"
+        menu_item 6 "Uitgesloten IP's uit de leerlijsten halen"
+        say
+        menu_item E "Terug"
         ;;
       vpn)
-        say "VPN en routing"
-        say " 1) VPN kiezen            2) VPN / lijst controleren"
-        say " 3) Vaste routes tonen (VPN Director / VPN Routing, nooit geleerd)"
-        say " E) Terug"
+        menu_section "VPN en routing"
+        menu_item 1 "VPN kiezen" 2 "VPN / lijst controleren"
+        menu_item 3 "Vaste routes tonen (nooit geleerd)"
+        say
+        menu_item E "Terug"
         ;;
       maintenance)
-        say "Onderhoud en updates"
-        say " UC) Update controleren (alleen kijken)"
-        say "  U) Update installeren (met lokale back-up)"
-        say " FU) Dezelfde versie opnieuw installeren / repareren"
+        menu_section "Updates"
+        menu_item UC "Update controleren (alleen kijken)"
+        menu_item U "Update installeren (met lokale back-up)"
+        menu_item FU "Dezelfde versie opnieuw installeren / repareren"
+        menu_section "Onderhoud"
+        menu_item 1 "Systeemcontrole" 2 "Back-up maken"
+        menu_item 3 "Back-ups beheren" 4 "Vorige versie herstellen"
+        menu_item 5 "Toevoegen aan amtm"
         say
-        say " 1) Systeemcontrole       2) Back-up maken"
-        say " 3) Back-ups beheren      4) Vorige versie herstellen"
-        say " 5) Toevoegen aan amtm"
-        say " E) Terug"
+        menu_item E "Terug"
         ;;
     esac
-    printf "Keuze: "
+    menu_prompt
     read -r choice || { trap - INT; return 0; }
     choice="$(menu_action_key "$main_menu_section" "$choice")"
     echo

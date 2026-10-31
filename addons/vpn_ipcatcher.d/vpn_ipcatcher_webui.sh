@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.10.2
+# Version: 2.10.3
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -579,7 +579,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.10.2",
+  "version":"2.10.3",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -1302,6 +1302,18 @@ service_event(){
 
 case "$1" in
   diagnostic-dns) shift; diagnostic_dns_worker "$@" ;;
+  names-debug)
+    # Show every step of the destination-name lookup for one IP.
+    shift; dbg_ip="${1:-8.8.8.8}"
+    echo "nslookup: ${NSLOOKUP:-ontbreekt} | timeout: ${TIMEOUT_BIN:-ontbreekt} | awk: ${AWK:-awk} | mktemp: $(command -v mktemp || echo ontbreekt)"
+    echo "--- ruwe nslookup $dbg_ip 127.0.0.1:"; [ -n "$NSLOOKUP" ] && "$NSLOOKUP" "$dbg_ip" 127.0.0.1 2>&1 | head -8
+    echo "--- ptr_lookup: '$(ptr_lookup "$dbg_ip")'"
+    for f in "$DNS_NAMES_FILE" "$PTR_CACHE" "$DOM2IP_CACHE"; do
+      if [ -f "$f" ]; then echo "--- $f: $(wc -l < "$f" | tr -d ' ') regels; $(grep -m1 "^$dbg_ip " "$f" 2>/dev/null || echo 'IP niet gevonden')"; else echo "--- $f: ontbreekt"; fi
+    done
+    echo "--- destination_names_json: $(destination_names_json "$dbg_ip" "")"
+    echo "--- in statusbestand: $(grep -o '"destination_names":{[^}]*}\{0,1\}' "$STATUS_JSON" 2>/dev/null | head -c 300 || echo 'geen destination_names')"
+    ;;
   mount) mount_webui ;;
   cron) install_cron ;;
   publish|status) publish_status ;;

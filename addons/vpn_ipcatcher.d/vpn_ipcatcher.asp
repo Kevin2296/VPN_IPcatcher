@@ -1070,7 +1070,7 @@ function deviceName(ip){
 function describeOrigin(src){
   src=String(src||'');
   var m;
-  if((m=src.match(/^after-idle:(.*)$/))) return t('originAfterIdle')+(m[1]&&m[1]!=='unknown'?' · '+describeOrigin(m[1]):'');
+  if((m=src.match(/^(?:after-idle:)+(.*)$/))) return t('originAfterIdle')+(m[1]&&m[1]!=='unknown'&&!/^[wp]romoted-after-idle$/.test(m[1])?' · '+describeOrigin(m[1]):'');
   if(/^[wp]romoted-after-idle$/.test(src)) return t('originAfterIdle');
   if((m=src.match(/^flow-delta(\d+)b-total(\d+)b-(\d+\.\d+\.\d+\.\d+)-(\d+)$/))) return t('originFlow',{dev:deviceName(m[3]),port:m[4],total:formatFlowBytes(m[2])});
   if(/^[wp]romoted-(bytes|age)$/.test(src)) return t('originPromoted');

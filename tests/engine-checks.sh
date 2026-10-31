@@ -171,9 +171,9 @@ echo 'PASS: migration CLI validates configuration without executing it or starti
 # The menu is opened from amtm's directory, not the engine's own directory.
 {
   head -n 5 "$ROOT/scripts/vpn_ipcatcher.real.sh"
-  sed -n '/^print_header(){/,/^}/p' "$ROOT/scripts/vpn_ipcatcher.real.sh"
+  sed -n '/^menu_colors(){/,/^}/p;/^menu_line(){/p;/^print_header(){/,/^}/p' "$ROOT/scripts/vpn_ipcatcher.real.sh"
   printf '%s\n' 'SED=sed' 'load_config(){ :; }' 'say(){ printf "%s\n" "$*"; }' 'status_report(){ :; }' 'print_header'
 } > "$TMP/header-fixture"
 header_output="$(cd / && sh "$TMP/header-fixture")"
-case "$header_output" in *"VPN IP Catcher $(cat "$ROOT/VERSION") |"*) ;; *) echo 'Menu version missing'; exit 1 ;; esac
+case "$header_output" in *"VPN IP Catcher $(cat "$ROOT/VERSION") "*) ;; *) echo 'Menu version missing'; exit 1 ;; esac
 echo 'PASS: menu version is read from the invoked script outside its directory'
