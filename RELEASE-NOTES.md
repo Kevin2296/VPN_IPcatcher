@@ -1,3 +1,11 @@
+# VPN IP Catcher 2.10.4 — Namen in de WebUI op Asuswrt-Merlin
+
+**NL:** De namen bij IP-adressen bleven leeg omdat Merlin geen `mktemp` heeft. Dat is opgelost; na de update verschijnen de namen in Liveflows en de lijsten binnen een minuut.
+
+**EN:** Destination names stayed empty because Asuswrt-Merlin has no `mktemp`; fixed. Names appear in live flows and lists within a minute after updating.
+
+---
+
 # VPN IP Catcher 2.10.3 — Wachtlijst-fix en vernieuwd amtm-menu
 
 **NL:** Herstelt de herhaalde "Na einde stream"-tekst en de steeds opnieuw beginnende wachttijd op de wachtlijst. Het amtm-menu is vernieuwd in amtm-stijl met een overzichtelijke statuskop. Nieuw diagnosecommando voor de namen in de WebUI: `vpn_ipcatcher_webui.sh names-debug <ip>`.

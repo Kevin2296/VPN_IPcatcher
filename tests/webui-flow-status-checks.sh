@@ -104,3 +104,18 @@ if command -v jq >/dev/null 2>&1; then
 fi
 grep -q '^198.51.100.1 [0-9]* -$' "$PTR_CACHE"
 echo 'PASS: destination names from DNS answers, learned hostnames and PTR (both BusyBox styles), missing PTR cached'
+
+# --- 2.10.4: Asuswrt-Merlin has no mktemp and no "command" builtin ----------
+(
+  mktemp(){ echo 'mktemp: not found' >&2; return 127; }
+  command(){ echo 'command: not found' >&2; return 127; }
+  printf '35.190.46.17 %s downloads.claude.ai\n' "$(date +%s)" > "$work/dns_names"
+  DNS_NAMES_FILE="$work/dns_names"; DIAGNOSTIC_DNS="$work/none"; DOM2IP_CACHE="$work/none"; PTR_CACHE="$work/ptr2"
+  out="$(destination_names_json "35.190.46.17" "")"
+  case "$out" in *'"35.190.46.17":{"n":"downloads.claude.ai","k":"dns"}'*) ;; *) echo "Names failed without mktemp: $out"; exit 1 ;; esac
+  [ -z "$(ls -d /tmp/vpn_ipcatcher/names.* 2>/dev/null)" ] || { echo 'Temporary names directory left behind'; exit 1; }
+)
+if grep -n 'mktemp -d\|command -v' "$ROOT/addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh" "$ROOT/scripts/vpn_ipcatcher.real.sh" | grep -v '^\s*#'; then
+  echo 'Router scripts depend on mktemp/command, which Asuswrt-Merlin lacks'; exit 1
+fi
+echo 'PASS: destination names work without mktemp and without the command builtin'

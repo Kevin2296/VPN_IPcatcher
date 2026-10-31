@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.3
+# Version: 2.10.4
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -1076,8 +1076,8 @@ ipset_names(){
 vpndirector_rules_text(){
   if [ -r "$VPNDIRECTOR_RULES" ]; then
     cat "$VPNDIRECTOR_RULES" 2>/dev/null
-  elif command -v nvram >/dev/null 2>&1; then
-    nvram get vpndirector_rulelist 2>/dev/null
+  elif nvram_bin="$(find_bin /bin/nvram /usr/sbin/nvram /sbin/nvram)"; then
+    "$nvram_bin" get vpndirector_rulelist 2>/dev/null
   fi
 }
 

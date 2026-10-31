@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.10.3
+# Version: 2.10.4
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -356,7 +356,15 @@ ptr_lookup(){
 destination_names_json(){
   names_ips="$1"; names_comments="$2"
   mkdir -p /tmp/vpn_ipcatcher 2>/dev/null
-  names_work="$(mktemp -d "/tmp/vpn_ipcatcher/names.XXXXXX" 2>/dev/null)" || { printf '{}'; return 0; }
+  # Asuswrt-Merlin's BusyBox has no mktemp; every WebUI call is its own
+  # process, so $$ plus a sequence number is unique here.
+  names_seq=0
+  while :; do
+    names_seq=$((names_seq+1))
+    names_work="/tmp/vpn_ipcatcher/names.$$.$names_seq"
+    mkdir "$names_work" 2>/dev/null && break
+    [ "$names_seq" -lt 20 ] || { printf '{}'; return 0; }
+  done
   printf '%s\n' $names_ips | ${AWK:-awk} '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && !seen[$0]++' > "$names_work/ips"
   : > "$names_work/known"
   [ -r "$DIAGNOSTIC_DNS" ] && ${AWK:-awk} 'NF>=4 && $4 ~ /^[0-9.]+$/ {print $4, "dns", tolower($3)}' "$DIAGNOSTIC_DNS" >> "$names_work/known" 2>/dev/null
@@ -579,7 +587,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.10.3",
+  "version":"2.10.4",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -662,7 +670,8 @@ JSON
     return 1
   fi
   # jq is part of the validated installer dependencies; avoid publishing broken JSON.
-  if command -v jq >/dev/null 2>&1 && ! jq -e . "$tmp_json" >/dev/null 2>&1; then
+  jq_bin="$(find_bin /opt/bin/jq /usr/bin/jq /bin/jq)"
+  if [ -n "$jq_bin" ] && ! "$jq_bin" -e . "$tmp_json" >/dev/null 2>&1; then
     log "Statuspublicatie mislukt: ongeldige JSON, oud bestand behouden."
     rm -f "$tmp_json" 2>/dev/null
     unset EFFECTIVE_CONFIG
@@ -1305,7 +1314,7 @@ case "$1" in
   names-debug)
     # Show every step of the destination-name lookup for one IP.
     shift; dbg_ip="${1:-8.8.8.8}"
-    echo "nslookup: ${NSLOOKUP:-ontbreekt} | timeout: ${TIMEOUT_BIN:-ontbreekt} | awk: ${AWK:-awk} | mktemp: $(command -v mktemp || echo ontbreekt)"
+    echo "nslookup: ${NSLOOKUP:-ontbreekt} | timeout: ${TIMEOUT_BIN:-ontbreekt} | awk: ${AWK:-awk} | mktemp: $(find_bin /bin/mktemp /usr/bin/mktemp /opt/bin/mktemp || echo ontbreekt)"
     echo "--- ruwe nslookup $dbg_ip 127.0.0.1:"; [ -n "$NSLOOKUP" ] && "$NSLOOKUP" "$dbg_ip" 127.0.0.1 2>&1 | head -8
     echo "--- ptr_lookup: '$(ptr_lookup "$dbg_ip")'"
     for f in "$DNS_NAMES_FILE" "$PTR_CACHE" "$DOM2IP_CACHE"; do
