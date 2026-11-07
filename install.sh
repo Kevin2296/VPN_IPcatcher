@@ -6,7 +6,7 @@ export PATH
 REPO="Kevin2296/VPN_IPcatcher"
 ENGINE="/jffs/scripts/vpn_ipcatcher.sh"
 ADDON="/jffs/addons/vpn_ipcatcher.d"
-FILES='scripts/vpn_ipcatcher.sh scripts/vpn_ipcatcher.real.sh scripts/vpn_ipcatcher_watchdog.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_presets.sh addons/vpn_ipcatcher.d/vpn_ipcatcher.asp addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_amtm.sh'
+FILES='scripts/vpn_ipcatcher.sh scripts/vpn_ipcatcher.real.sh scripts/vpn_ipcatcher_watchdog.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_webui.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_presets.sh addons/vpn_ipcatcher.d/vpn_ipcatcher.asp addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_health.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh addons/vpn_ipcatcher.d/vpn_ipcatcher_amtm.sh'
 fail(){ echo "Installatie: $*" >&2; exit 1; }
 find_bin(){ for directory in /opt/bin /opt/sbin /usr/sbin /usr/bin /sbin /bin; do [ -f "$directory/$1" ] && [ -x "$directory/$1" ] && { echo "$directory/$1"; return; }; done; return 1; }
 effective_uid(){

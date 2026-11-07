@@ -1,5 +1,46 @@
 # Release Verification / Releasecontrole
 
+## 2.10.5 persistence, restore, USB and health
+
+`tests/persistence-health-checks.sh` covers these points with mocks: an ipset mock that ages entries over a controlled clock, a mock conntrack, a mock routing helper and a mock nvram.
+
+- **Saving:**
+  - expiry and origin per IP;
+  - no write for a small timeout refresh;
+  - a bounded rewrite when the stored expiries lag;
+  - a minimum interval for member changes.
+- **Interrupted writes:** a stray partial temp file and a failed rename (power loss mid-write) keep the last good save.
+- **Restoring:**
+  - only the remaining lifetime is given back, capped at `FINAL_TIMEOUT`;
+  - expired, damaged and foreign entries or files are skipped without failing;
+  - with no conntrack everything waits;
+  - active connections wait;
+  - exclusions and VPN Director source devices are re-checked.
+- **Late VPN start and reconnect:** the restore waits, and saving is blocked meanwhile.
+- **Wrong boot clock:** the restore waits, and gives up after 30 minutes.
+- **DVR reload:** an emptied set is refilled, rate limited.
+- **Missing or late USB/Entware:**
+  - quiet waiting with hourly reminders;
+  - no capture restart and the final set stays untouched;
+  - binaries are found again and capture restarts once.
+- **Log rotation.**
+- **Health:**
+  - the time limit is enforced;
+  - a fault counts after two checks, with one bounded report and its throttle;
+  - a recovery message follows.
+- **EPG/DVR:** wildcard and exact policy matching, list lint, and the OpenVPN client state.
+- **WebUI:** the busy-publisher log limit.
+
+**Not proven by these tests; check on the router:**
+- that `ntp_ready`, `vpn_client<N>_state` and `wg show … latest-handshakes` behave as assumed on your firmware;
+- that a save actually appears on `/jffs` and survives a real power cut;
+- that the list returns after a real reboot, a VPN reconnect, `service restart_firewall` and a DVR `querypolicy`/reload;
+- the behaviour when the USB is pulled and plugged back in;
+- that the health check stays light (CPU) and classifies a real WAN, DNS or VPN outage correctly;
+- `epg-check` against your real EPG host.
+
+The WebUI fixtures `webui-lock-checks.sh` and `webui-backend-checks.sh` need `jq`, which the GitHub Ubuntu runner provides.
+
 ## 2.10.2 DNS-name worker
 
 `tests/fixed-routes-checks.sh` feeds tcpdump `-vv` DNS responses (including a CNAME chain, a duplicate answer and a private address) through the DNS-name worker and checks the stored ip/name pairs.

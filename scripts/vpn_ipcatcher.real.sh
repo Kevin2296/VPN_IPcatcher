@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.4
+# Version: 2.10.5
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -30,6 +30,17 @@ CACHE_FIXED_SIG="$CACHE_DIR/fixed.sig"
 DNS_NAMES="$CACHE_DIR/dns_names"
 DNS_NAMES_TTL=7200
 LOGFILE="/tmp/vpn_ipcatcher.log"
+# /tmp is RAM: keep at most two parts of this size (log + log.1).
+LOG_MAX_BYTES=262144
+# The final list survives a reboot or USB incident via /jffs. Written only
+# when its members change, and at most every FINAL_SAVE_EVERY seconds
+# (plus once on a clean stop), to spare the flash.
+FINAL_SAVE_FILE="/jffs/addons/vpn_ipcatcher.d/final_ipset.save"
+FINAL_SAVE_EVERY=1800
+# "epoch reason" while Entware (/opt on USB) or tcpdump is missing.
+OPT_DIR="/opt"
+PREREQ_STATUS="/tmp/vpn_ipcatcher.prereq"
+PREREQ_REPEAT=3600
 LOCK="/tmp/vpn_ipcatcher.lock"
 PIDDIR="/tmp/vpn_ipcatcher_pids"
 ENGINE_PIDFILE="$PIDDIR/engine.pid"
@@ -364,6 +375,277 @@ validate_prereqs(){
   [ -x "$AWK" ] || { echo "awk missing"; return 1; }
   [ -x "$NSLOOKUP" ] || { echo "nslookup missing"; return 1; }
   return 0
+}
+
+# Copy-truncate: writers that hold the file open (tcpdump stderr) keep
+# appending to the same file, so nothing is lost or stranded.
+rotate_log_if_needed(){
+  [ -f "$LOGFILE" ] && [ ! -L "$LOGFILE" ] || return 0
+  log_size="$(wc -c < "$LOGFILE" 2>/dev/null)"
+  log_size="${log_size##* }"
+  case "$log_size" in ''|*[!0-9]*) return 0 ;; esac
+  [ "$log_size" -gt "$LOG_MAX_BYTES" ] || return 0
+  [ ! -L "$LOGFILE.1" ] || return 1
+  (umask 077; cp -f "$LOGFILE" "$LOGFILE.1") 2>/dev/null || return 1
+  : > "$LOGFILE"
+  echo "$(date '+%F %T') Logbestand geroteerd ($log_size bytes); vorige deel staat in $LOGFILE.1" >> "$LOGFILE"
+}
+
+# Prints why the engine cannot run, for example after a USB incident.
+prereq_problem_text(){
+  if [ -n "$TCPDUMP" ] && [ -x "$TCPDUMP" ]; then
+    missing="$(validate_prereqs)" && return 1
+    printf 'Benodigd programma ontbreekt (%s).\n' "${missing% missing}"
+    return 0
+  fi
+  if [ ! -d "$OPT_DIR/bin" ]; then
+    echo "Entware ($OPT_DIR) is niet beschikbaar, dus tcpdump ontbreekt. Is de USB-opslag gemount?"
+  else
+    echo "tcpdump ontbreekt in Entware. Installeer het met: opkg install tcpdump"
+  fi
+  return 0
+}
+# Log a problem once, then again only after PREREQ_REPEAT seconds, so the
+# watchdog does not fill syslog every minute.
+note_prereq_problem(){
+  reason="$1"
+  now="$(current_epoch)"
+  if [ -r "$PREREQ_STATUS" ]; then
+    read -r noted_at noted_reason < "$PREREQ_STATUS"
+    case "$noted_at" in ''|*[!0-9]*) noted_at=0 ;; esac
+    if [ "$noted_reason" = "$reason" ] && [ "$now" -ge "$noted_at" ] && [ $((now - noted_at)) -lt "$PREREQ_REPEAT" ]; then
+      return 0
+    fi
+  fi
+  printf '%s %s\n' "$now" "$reason" > "$PREREQ_STATUS"
+  log "LET OP: $reason IP Catcher wacht en start vanzelf zodra dit is opgelost."
+  schedule_webui_publish
+}
+prereq_gate(){
+  if reason="$(prereq_problem_text)"; then
+    note_prereq_problem "$reason"
+    say "$reason"
+    return 1
+  fi
+  if [ -f "$PREREQ_STATUS" ]; then
+    rm -f "$PREREQ_STATUS"
+    log "Hersteld: Entware en tcpdump zijn weer beschikbaar."
+    schedule_webui_publish
+  fi
+  return 0
+}
+# After a late USB mount the Entware binaries exist again: look them up anew.
+refind_bins(){
+  TCPDUMP="$(find_bin /opt/bin/tcpdump /opt/sbin/tcpdump /usr/sbin/tcpdump /usr/bin/tcpdump /sbin/tcpdump /bin/tcpdump)" || TCPDUMP=""
+  CT="$(find_bin /opt/sbin/conntrack /opt/bin/conntrack /usr/sbin/conntrack /usr/bin/conntrack /sbin/conntrack)" || CT=""
+  CURL="$(find_bin /opt/bin/curl /usr/bin/curl /bin/curl)" || CURL=""
+  JQ="$(find_bin /opt/bin/jq /usr/bin/jq /bin/jq)" || JQ=""
+}
+
+# ---------------------------------------------------------------------------
+# Final list persistence (v2): "ip expires_epoch comment" per line.
+# The expiry is the real ipset expiry, so a restore never hands out a fresh
+# FINAL_TIMEOUT. A save happens when members change (at most every
+# FINAL_CHANGE_EVERY s) or when the stored expiries lag the live ones by more
+# than the refresh slack (at most every FINAL_SAVE_EVERY s). Unchanged
+# content is therefore rewritten only as often as needed to keep it valid.
+# ---------------------------------------------------------------------------
+FINAL_CHANGE_EVERY=600
+FINAL_SAVE_LAST=0
+FINAL_RESTORE_PENDING=0
+FINAL_RESTORE_NOTED=''
+FINAL_RESTORE_FIRST=0
+FINAL_RECONCILE_LAST=0
+# A clock before this epoch (2024-01-01) is a router that has not synced yet.
+CLOCK_SANE_EPOCH=1704067200
+
+clock_is_sane(){
+  clock_now="$(current_epoch)"
+  case "$clock_now" in ''|*[!0-9]*) return 1 ;; esac
+  [ "$clock_now" -ge "$CLOCK_SANE_EPOCH" ] || return 1
+  # Merlin sets ntp_ready=1 after the first sync; absent nvram means a test host.
+  if [ -x /bin/nvram ] || [ -x /usr/sbin/nvram ]; then
+    [ "$(nvram get ntp_ready 2>/dev/null)" = 1 ] || return 1
+  fi
+  return 0
+}
+final_refresh_slack(){
+  slack=$((FINAL_TIMEOUT / 4))
+  [ "$slack" -ge "$FINAL_SAVE_EVERY" ] || slack="$FINAL_SAVE_EVERY"
+  echo "$slack"
+}
+# Live members as "ip expires comment", from one ipset save.
+final_live_members(){
+  live_now="$1"
+  $IPSET save "$IPSET_NAME" 2>/dev/null | $AWK -v set="$IPSET_NAME" -v now="$live_now" '
+    $1=="add" && $2==set && $3 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {
+      t=0; c="src=unknown"
+      for (i=4; i<=NF; i++) if ($i=="timeout") t=$(i+1)+0
+      if (match($0, /comment "[^"]*"/)) c=substr($0, RSTART+9, RLENGTH-10)
+      if (c !~ /^[A-Za-z0-9._:;=-]+$/ || length(c) > 200) c="src=unknown"
+      if (t > 0) print $3, now + t, c
+    }' | sort
+}
+# Valid stored lines only; a damaged line or file is ignored, never fatal.
+final_saved_members(){
+  [ -r "$FINAL_SAVE_FILE" ] || return 1
+  saved_header="$(${HEAD:-head} -n 1 "$FINAL_SAVE_FILE" 2>/dev/null)"
+  saved_check="$(printf '%s\n' "$saved_header" | $AWK -v set="$IPSET_NAME" '
+    $1=="#" && $2=="vpn_ipcatcher" && $3=="final" && $4=="v2" && $5 ~ /^[0-9]+$/ && NF==6 { print ($6==set) ? "ok" : "other"; exit }
+    { print "bad"; exit }')"
+  case "$saved_check" in ok) ;; other) return 2 ;; *) return 1 ;; esac
+  $AWK 'NR>1 && NF==3 && $1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[A-Za-z0-9._:;=-]+$/ {
+    split($1, o, "."); if (o[1]>255 || o[2]>255 || o[3]>255 || o[4]>255) next; print }' "$FINAL_SAVE_FILE" | sort
+}
+save_final_set(){
+  save_mode="${1:-auto}"
+  [ "$FINAL_RESTORE_PENDING" = 1 ] && return 0
+  [ -n "$IPSET" ] || return 1
+  clock_is_sane || return 0
+  save_now="$(current_epoch)"
+  if [ "$save_mode" = auto ] && [ "$save_now" -ge "$FINAL_SAVE_LAST" ] &&
+     [ $((save_now - FINAL_SAVE_LAST)) -lt "$FINAL_CHANGE_EVERY" ]; then
+    return 0
+  fi
+  save_dir="$(dirname "$FINAL_SAVE_FILE")"
+  mkdir -p "$save_dir" 2>/dev/null || return 1
+  save_live="$(final_live_members "$save_now")"
+  save_old="$(final_saved_members 2>/dev/null)" || save_old=""
+  if [ "$(printf '%s\n' "$save_live" | $AWK 'NF{print $1}')" = "$(printf '%s\n' "$save_old" | $AWK 'NF{print $1}')" ]; then
+    [ -n "$save_live" ] || return 0
+    # Same members: only rewrite when stored expiries have fallen behind.
+    lag="$(printf '%s\n%s\n' "$save_old" "--" "$save_live" | $AWK '
+      $0=="--" {live=1; next}
+      !live {old[$1]=$2; next}
+      ($1 in old) { d=$2-old[$1]; if (d>max) max=d }
+      END {print max+0}')"
+    [ "$lag" -gt "$(final_refresh_slack)" ] || return 0
+    if [ "$save_mode" = auto ] && [ "$save_now" -ge "$FINAL_SAVE_LAST" ] &&
+       [ $((save_now - FINAL_SAVE_LAST)) -lt "$FINAL_SAVE_EVERY" ]; then
+      return 0
+    fi
+    save_reason="vervaltijden ververst"
+  else
+    # An empty live set while stored IPs are still valid means the set was
+    # recreated (DVR reload), not that the IPs expired: keep the save so the
+    # reconcile can refill it. Deliberate clearing: "forget-final".
+    if [ -z "$save_live" ] && printf '%s\n' "$save_old" | $AWK -v now="$save_now" 'NF==3 && $2-now>60 {f=1} END{exit f?0:1}'; then
+      return 0
+    fi
+    save_reason="leden gewijzigd"
+  fi
+  save_tmp="$FINAL_SAVE_FILE.tmp.$$"
+  save_count="$(printf '%s\n' "$save_live" | $AWK 'NF{c++} END{print c+0}')"
+  if ! (umask 077
+        printf '# vpn_ipcatcher final v2 %s %s\n' "$save_now" "$IPSET_NAME"
+        [ -z "$save_live" ] || printf '%s\n' "$save_live"
+       ) > "$save_tmp" 2>/dev/null; then
+    rm -f "$save_tmp"; return 1
+  fi
+  # Verify the complete temporary file before it replaces the last good one.
+  if [ "$($AWK 'END{print NR}' "$save_tmp")" != "$((save_count + 1))" ]; then
+    rm -f "$save_tmp"; log "Finale lijst niet bewaard: tijdelijk bestand onvolledig."; return 1
+  fi
+  sync 2>/dev/null
+  mv -f "$save_tmp" "$FINAL_SAVE_FILE" || { rm -f "$save_tmp"; return 1; }
+  FINAL_SAVE_LAST="$save_now"
+  log "Finale lijst bewaard op /jffs: $save_count IP's ($save_reason)."
+}
+# Source device from a comment like "...-192.168.1.20-80" (if present).
+comment_source_ip(){
+  printf '%s\n' "$1" | $SED -n 's/.*-\([0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\)-[0-9]\{1,5\}\(;.*\)\{0,1\}$/\1/p'
+}
+# Only when the intended VPN route is usable now, not merely present.
+restore_route_ready(){
+  [ -x "$ROUTING_HELPER" ] || return 1
+  "$ROUTING_HELPER" ready >/dev/null 2>&1
+}
+restore_exclusions_ready(){
+  [ "$EXCLUDE_RESOLVE_CACHE" = yes ] || return 0
+  [ -s "$CACHE_EXCLUDE_TS" ] || return 1
+  read -r excl_ts < "$CACHE_EXCLUDE_TS"
+  case "$excl_ts" in ''|*[!0-9]*) return 1 ;; esac
+  excl_age=$(( $(current_epoch) - excl_ts ))
+  [ "$excl_age" -ge 0 ] && [ "$excl_age" -le $((EXCLUDE_RESOLVE_EVERY * 2)) ]
+}
+restore_wait_note(){
+  [ "$FINAL_RESTORE_NOTED" = "$1" ] && return 0
+  FINAL_RESTORE_NOTED="$1"
+  log "Finale lijst terugzetten wacht: $1"
+}
+# Returns 0 when done (restored, nothing to do or given up), 1 = try later.
+restore_final_set(){
+  FINAL_RESTORE_PENDING=1
+  [ "$FINAL_RESTORE_FIRST" -gt 0 ] || FINAL_RESTORE_FIRST="$(current_epoch)"
+  rm -f "$FINAL_SAVE_FILE".tmp.* 2>/dev/null
+  saved_rc=0; saved="$(final_saved_members)" || saved_rc=$?
+  if [ "$saved_rc" = 2 ]; then
+    log "Bewaarde finale lijst hoort bij een andere IPSet; niet teruggezet."
+    FINAL_RESTORE_PENDING=0; return 0
+  fi
+  if [ "$saved_rc" != 0 ]; then
+    [ ! -e "$FINAL_SAVE_FILE" ] || log "Bewaarde finale lijst is onleesbaar of beschadigd; genegeerd."
+    FINAL_RESTORE_PENDING=0; return 0
+  fi
+  if ! clock_is_sane; then
+    if [ $(( $(current_epoch) - FINAL_RESTORE_FIRST )) -ge 1800 ]; then
+      log "Klok na 30 minuten nog niet gesynchroniseerd; bewaarde lijst niet teruggezet."
+      FINAL_RESTORE_PENDING=0; return 0
+    fi
+    restore_wait_note "systeemklok is nog niet gesynchroniseerd"; return 1
+  fi
+  restore_now="$(current_epoch)"
+  FINAL_SAVED_AT="$(${HEAD:-head} -n 1 "$FINAL_SAVE_FILE" 2>/dev/null | $AWK '{print $5}')"
+  case "$FINAL_SAVED_AT" in ""|*[!0-9]*) FINAL_SAVED_AT=0 ;; esac
+  if [ "$restore_now" -lt "$FINAL_SAVED_AT" ]; then
+    restore_wait_note "systeemklok staat voor het bewaarmoment"; return 1
+  fi
+  if ! restore_route_ready; then restore_wait_note "de gekozen VPN-route is nog niet bruikbaar"; return 1; fi
+  if ! restore_exclusions_ready; then restore_wait_note "uitsluitingen worden nog ververst"; return 1; fi
+  refresh_fixed_routes force >/dev/null 2>&1
+  restore_snapshot="$CACHE_DIR/final-restore.connections"
+  rm -f "$restore_snapshot"
+  if [ -n "$CT" ] && $CT -L -f ipv4 > "$restore_snapshot" 2>/dev/null; then :; else rm -f "$restore_snapshot"; fi
+  restored=0; waiting=0; skipped=0; expired=0
+  printf '%s\n' "$saved" > "$CACHE_DIR/final-restore.list"
+  while read -r r_ip r_expires r_comment; do
+    [ -n "$r_ip" ] || continue
+    r_left=$((r_expires - restore_now))
+    if [ "$r_left" -le 60 ]; then expired=$((expired+1)); continue; fi
+    [ "$r_left" -le "$FINAL_TIMEOUT" ] || r_left="$FINAL_TIMEOUT"
+    $IPSET test "$IPSET_NAME" "$r_ip" >/dev/null 2>&1 && continue
+    r_src="$(comment_source_ip "$r_comment")"
+    if [ -n "$r_src" ] && source_is_fixed "$r_src"; then skipped=$((skipped+1)); continue; fi
+    if should_skip_service_ip restore "$r_ip" "$r_comment"; then skipped=$((skipped+1)); continue; fi
+    if [ -r "$restore_snapshot" ] && destination_snapshot_is_idle "$r_ip" "$restore_snapshot"; then
+      $IPSET add "$IPSET_NAME" "$r_ip" -exist timeout "$r_left" comment "$r_comment" >/dev/null 2>&1 && restored=$((restored+1))
+    else
+      # Active connection or no conntrack: wait, the stream must not break.
+      [ "$r_left" -le 86400 ] || r_left=86400
+      $IPSET test "$WAIT_SET" "$r_ip" >/dev/null 2>&1 ||
+        $IPSET add "$WAIT_SET" "$r_ip" -exist timeout "$r_left" comment "$r_comment" >/dev/null 2>&1
+      waiting=$((waiting+1))
+    fi
+  done < "$CACHE_DIR/final-restore.list"
+  rm -f "$restore_snapshot" "$CACHE_DIR/final-restore.list"
+  FINAL_RESTORE_PENDING=0; FINAL_RESTORE_NOTED=''; FINAL_RESTORE_FIRST=0
+  FINAL_RECONCILE_LAST="$restore_now"
+  log "Finale lijst teruggezet van /jffs: $restored direct, $waiting op de wachtlijst, $skipped overgeslagen, $expired verlopen."
+  return 0
+}
+# A Domain VPN Routing reload can recreate the DVR set empty. Restore the
+# still valid saved members then, at most every 10 minutes.
+final_reconcile(){
+  [ "$FINAL_RESTORE_PENDING" = 0 ] || return 0
+  rec_now="$(current_epoch)"
+  [ "$rec_now" -lt "$FINAL_RECONCILE_LAST" ] || [ $((rec_now - FINAL_RECONCILE_LAST)) -ge 600 ] || return 0
+  $IPSET list "$IPSET_NAME" >/dev/null 2>&1 || return 0
+  [ "$(ipset_member_count "$IPSET_NAME")" = 0 ] || return 0
+  rec_saved="$(final_saved_members 2>/dev/null)" || return 0
+  printf '%s\n' "$rec_saved" | $AWK -v now="$rec_now" 'NF==3 && $2-now>60 {f=1} END{exit f?0:1}' || return 0
+  FINAL_RECONCILE_LAST="$rec_now"
+  log "Finale lijst is leeg terwijl de bewaarde lijst nog geldig is (bijv. na herladen van VPN Routing); terugzetten."
+  restore_final_set
 }
 
 is_pid_alive(){
@@ -726,6 +1008,16 @@ ensure_workers_alive(){
   [ -n "$TCPDUMP" ] && expected_caps=$((expected_caps+1))
 
   if [ "$alive_capture" -lt "$expected_caps" ]; then
+    # USB/Entware gone: wait quietly. Existing routes in the final set stay.
+    if [ -z "$TCPDUMP" ] || [ ! -x "$TCPDUMP" ]; then refind_bins; fi
+    if capture_reason="$(prereq_problem_text)"; then
+      note_prereq_problem "$capture_reason"
+      return 0
+    fi
+    if [ -f "$PREREQ_STATUS" ]; then
+      rm -f "$PREREQ_STATUS"
+      log "Hersteld: Entware en tcpdump zijn weer beschikbaar; capture wordt opnieuw gestart."
+    fi
     log "Een of meer capture workers zijn weggevallen ($alive_capture/$expected_caps); opnieuw starten"
     kill_pid_list "$CAP_PIDFILE"
     rm -f "$CAP_PIDFILE"
@@ -771,6 +1063,9 @@ cleanup(){
   for p in $CAP_PIDS; do
     kill "$p" 2>/dev/null
   done
+  # Clean stop: keep the latest list. Power loss skips this, which is why
+  # the engine also saves periodically.
+  save_final_set force || :
 
   kill_pid_list "$PROMOTE_PIDFILE"
   kill_pid_list "$CAP_PIDFILE"
@@ -2042,7 +2337,7 @@ capture_iface(){
 
 run_engine(){
   load_config || exit 1
-  validate_prereqs || exit 1
+  prereq_gate >/dev/null || exit 1
   [ -x "$ROUTING_HELPER" ] && "$ROUTING_HELPER" prepare || { log "De gekozen VPN is niet klaar. Zet deze aan of kies opnieuw via routing-setup."; exit 1; }
 
   mkdir -p "$CACHE_DIR" "$PIDDIR"
@@ -2099,6 +2394,8 @@ run_engine(){
   ) &
 
   provider_last_check="$(current_epoch)"
+  restore_last_try=0
+  restore_final_set || :
   # The PID is written once during initialization. Do not rewrite it.
   while true; do
     ensure_workers_alive
@@ -2108,8 +2405,23 @@ run_engine(){
       provider_last_check="$check_time"
       (refresh_provider_ranges auto || :) &
     fi
+    engine_persistence_tick "$check_time"
     sleep 10
   done
+}
+# Restore retries every 30 s until the route is usable; afterwards the
+# list is saved periodically and re-applied if DVR recreated the set empty.
+engine_persistence_tick(){
+  tick_now="$1"
+  if [ "$FINAL_RESTORE_PENDING" = 1 ]; then
+    if [ "$tick_now" -lt "$restore_last_try" ] || [ $((tick_now - restore_last_try)) -ge 30 ]; then
+      restore_last_try="$tick_now"
+      restore_final_set || :
+    fi
+    return 0
+  fi
+  final_reconcile || :
+  save_final_set auto || :
 }
 
 ipset_member_count(){
@@ -2328,12 +2640,15 @@ start_service(){
     return $?
   fi
   load_config || return 1
+  rotate_log_if_needed
   cleanup_stale_state
 
   if is_running; then
     say "vpn_ipcatcher draait al (pid $(cat "$ENGINE_PIDFILE" 2>/dev/null))."
     return 0
   fi
+  # Without Entware/tcpdump: wait quietly, no start attempt and no restart loop.
+  prereq_gate || return 1
 
   mkdir -p "$PIDDIR" "$CACHE_DIR"
   lifecycle_context start
@@ -3851,7 +4166,9 @@ clean-excluded Verwijder uitgesloten IPs uit candidate/final
 fixed-routes   Toon vaste routes (VPN Director / VPN Routing) die nooit worden geleerd
 choose-devices Kies je IPTV-apparaten (bron-IP's) uit de apparatenlijst
 webstatus      Schrijf actuele WebGUI status JSON
-run            Start capture-engine direct
+final-saved    Toon de op /jffs bewaarde finale lijst (ip, vervaltijd, herkomst)
+forget-final   Verwijder de bewaarde finale lijst (de live lijst blijft)
+run           Start capture-engine direct
 EOF2
 }
 
@@ -3882,6 +4199,8 @@ case "$1" in
   show-excludes) show_all_exclusions ;;
   clean-excluded) ipset_remove_excluded ;;
   webstatus) write_web_status ;;
+  final-saved) load_config && { final_saved_members || say "Geen geldige bewaarde finale lijst."; } ;;
+  forget-final) rm -f "$FINAL_SAVE_FILE" "$FINAL_SAVE_FILE".tmp.* && say "Bewaarde finale lijst verwijderd; de live lijst blijft ongewijzigd." ;;
   run) run_engine ;;
   -h|--help|help) usage ;;
   *) usage; exit 1 ;;

@@ -149,6 +149,7 @@ main(){
   ensure_file "$ADDON_DIR/vpn_ipcatcher_presets.sh" || ok=0
   ensure_file "$ADDON_DIR/vpn_ipcatcher_update.sh" || ok=0
   ensure_file "$ADDON_DIR/vpn_ipcatcher_doctor.sh" || ok=0
+  ensure_file "$ADDON_DIR/vpn_ipcatcher_health.sh" || ok=0
   ensure_file "$ADDON_DIR/vpn_ipcatcher_routing.sh" || ok=0
   ensure_file "$CONF" || ok=0
   ensure_file "$WATCHDOG" || ok=0
@@ -160,6 +161,7 @@ main(){
   ensure_executable /jffs/scripts/vpn_ipcatcher.real.sh
   ensure_executable "$ADDON_DIR/vpn_ipcatcher_update.sh"
   ensure_executable "$ADDON_DIR/vpn_ipcatcher_doctor.sh"
+  ensure_executable "$ADDON_DIR/vpn_ipcatcher_health.sh"
   ensure_executable "$ADDON_DIR/vpn_ipcatcher_routing.sh"
   ensure_executable "$WATCHDOG"
   ensure_executable "$WEBUI"

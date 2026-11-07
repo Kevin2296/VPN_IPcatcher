@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.9.7
+# Version: 2.10.5
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 find_on_path(){
@@ -59,4 +59,14 @@ if [ -f "$routing_helper" ]; then
 else
   echo 'VPN/lijstkeuze vereist installatie van de routing-helper.'
 fi
+echo '=== EPG/IPTV-hosts in Domain VPN Routing ==='
+[ ! -f "$routing_helper" ] || sh "$routing_helper" domain-check || true
+echo '=== Gezondheid (WAN / DNS / VPN / Entware) ==='
+health_helper=/jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_health.sh
+if [ -f "$health_helper" ]; then
+  sh "$health_helper" check || true
+  [ ! -s /jffs/addons/vpn_ipcatcher.d/incident-last.txt ] || echo "Laatste storingsrapport: /jffs/addons/vpn_ipcatcher.d/incident-last.txt"
+fi
+saved=/jffs/addons/vpn_ipcatcher.d/final_ipset.save
+[ ! -f "$saved" ] || echo "Bewaarde finale lijst: $(( $(wc -l < "$saved") - 1 )) IP's ($saved)"
 exit "$rc"

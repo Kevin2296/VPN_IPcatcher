@@ -501,6 +501,66 @@ De amtm-updatemanager beheert dit script niet automatisch.
 
 <a name="video-stopt-tijdens-afspelen"></a>
 
+## 🔁 Na een herstart en bij storingen (2.10.5)
+
+**Finale lijst bewaard.** De finale lijst (`DVR-…-v4`) staat in het RAM. Vanaf 2.10.5 bewaart IP Catcher hem ook in `/jffs/addons/vpn_ipcatcher.d/final_ipset.save`. Per IP staan daarin de herkomst en de échte vervaltijd.
+
+- **Wanneer er geschreven wordt:**
+  - bij gewijzigde IP's, hooguit eens per 10 minuten;
+  - als de bewaarde vervaltijden te ver achterlopen (meer dan `max(30 min, FINAL_TIMEOUT/4)`), hooguit eens per 30 minuten;
+  - één keer bij een nette stop.
+- **Atomair schrijven:** eerst gaat alles naar een tijdelijk bestand in dezelfde map. Daarna wordt het vorige bestand in één keer vervangen. Een onderbroken schrijfactie of stroomuitval laat de laatste goede opslag dus heel.
+
+**Terugzetten na een herstart** gebeurt pas als aan alle voorwaarden is voldaan:
+- de systeemklok is gesynchroniseerd (`ntp_ready`);
+- de gekozen VPN-route werkt echt: markering, routingtabel, interface UP, DVR-set én de verbindingsstatus van de VPN-client;
+- de uitsluitingen zijn ververst.
+
+Daarna worden uitsluitingen en vaste routes (VPN Director-bestemmingen en -apparaten) opnieuw gecontroleerd.
+- Een IP zonder actieve verbinding krijgt alleen zijn **resterende** geldigheid terug, nooit een nieuwe `FINAL_TIMEOUT`.
+- Een IP met een actieve verbinding, of als conntrack ontbreekt, gaat eerst naar de wachtlijst.
+- Verlopen, beschadigde of onbekende regels worden overgeslagen.
+
+Maakt Domain VPN Routing de set na een herlaadbeurt leeg opnieuw aan, dan vult IP Catcher hem weer met de nog geldige IP's, hooguit eens per 10 minuten. Er wordt nooit iets geflusht: geen routingtabellen, firewallregels of conntrack.
+
+**USB / Entware weg.** Ontbreekt `/opt` of tcpdump, dan:
+- verschijnt er één duidelijke melding in syslog, het log en de WebUI, daarna hooguit eens per uur;
+- worden capture en engine niet steeds opnieuw gestart;
+- blijven bestaande routes in de finale lijst staan.
+
+Komt de USB terug, dan zoekt IP Catcher de programma's opnieuw op en start hij vanzelf.
+
+**Logbestand.** `/tmp/vpn_ipcatcher.log` wordt bij 256 KB geroteerd naar `vpn_ipcatcher.log.1`.
+
+**Storingsdiagnose.** Elke 2 minuten draait een lichte controle met harde timeouts. Die onderscheidt deze soorten storing:
+- **WAN:** status, default route en ping;
+- **DNS:** `nslookup` via 127.0.0.1;
+- **VPN:** de gekozen route en de clientstatus;
+- **Entware:** `/opt` en tcpdump.
+
+Een storing telt pas na twee mislukte controles achter elkaar. Bij de overgang naar een storing schrijft IP Catcher één klein rapport (max 12 KB, overschreven, hooguit eens per 30 minuten) naar `/jffs/addons/vpn_ipcatcher.d/incident-last.txt`. Daarin staan uptime, belasting, geheugen, USB/Entware, engine/capture, WAN, DNS-processen en VPN-status. Wachtwoorden of tokens staan er niet in. Dit rapport helpt de oorzaak van een uitval te vinden. Het is géén oplossing voor de uitval zelf.
+
+```sh
+/jffs/scripts/vpn_ipcatcher.sh health          # controle nu (alleen lezen)
+/jffs/scripts/vpn_ipcatcher.sh health report   # laatste storingsrapport
+/jffs/scripts/vpn_ipcatcher.sh epg-check http://epg.voorbeeld.tv/xmltv.php   # staat de EPG-host in een DVR-policy?
+/jffs/scripts/vpn_ipcatcher.sh final-saved     # bewaarde finale lijst
+/jffs/scripts/vpn_ipcatcher.sh forget-final    # bewaarde lijst wissen (bijv. na bewust leegmaken)
+```
+
+`epg-check` toont per host:
+- in welke DVR-policy hij staat, ook via een `*.wildcard`;
+- of die VPN bruikbaar is;
+- of de huidige IPv4-adressen in de DVR-set staan.
+
+Daarnaast waarschuwt het voor ongeldige regels in de DVR-domeinlijsten. Hosts die je via "altijd via VPN" toevoegt, controleert `doctor` voortaan automatisch.
+
+**Over `FINAL_TIMEOUT`.** De TTL van een geleerd IP wordt alleen ververst als de flowscan het IP opnieuw als actieve stream ziet, of als het opnieuw wordt gepromoveerd. Zolang er gekeken wordt, blijft het IP dus staan. Na `FINAL_TIMEOUT` seconden zónder kijken verdwijnt het.
+- **Met 7200 (2 uur):** de eerste stream na een langere pauze loopt opnieuw via WAN, tot het IP na het einde van die stream weer is geleerd.
+- **Met de standaard 604800 (7 dagen):** IP's overleven nachten en weekenden.
+
+Of dit de oorzaak van wegvallende kanalen is, is niet bewezen. IP Catcher verandert deze waarde niet zelf.
+
 ## 🎬 Video stopt tijdens afspelen
 
 **Vanaf 2.7.1:** nieuwe finale adressen wachten in de niet-gerouteerde
@@ -564,6 +624,7 @@ sh tests/lifecycle-checks.sh
 sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
+sh tests/persistence-health-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh
@@ -1032,6 +1093,44 @@ The amtm update manager does not automatically manage this personal script.
 
 <a name="video-stops-during-playback"></a>
 
+## 🔁 After a reboot and during outages (2.10.5)
+
+**Saved final list.** The final list is also saved to `/jffs/addons/vpn_ipcatcher.d/final_ipset.save`, with each IP's origin and real expiry.
+
+- **When it is written:**
+  - on member changes, at most every 10 minutes;
+  - when stored expiries lag by more than `max(30 min, FINAL_TIMEOUT/4)`, at most every 30 minutes;
+  - once on a clean stop.
+- **Atomic writes:** a temporary file in the same directory replaces the previous one in one step. A power cut keeps the last good save.
+
+**Restore after a reboot** only happens once:
+- the clock is synced;
+- the selected VPN route is really usable (rule, table, interface UP, DVR set and the VPN client state);
+- exclusions are fresh.
+
+Exclusions and VPN Director rules are then re-checked.
+- An idle IP gets back only its **remaining** lifetime.
+- An IP with an active connection, or any IP when conntrack is missing, waits first.
+- If Domain VPN Routing recreates the set empty, still-valid IPs are restored again, at most every 10 minutes.
+
+Nothing is flushed.
+
+**USB/Entware missing.** One clear message, then at most hourly. No restart loop. Existing routes stay. Binaries are looked up again when the USB returns.
+
+**Log file.** The log rotates at 256 KB.
+
+**Health check.** Every 2 minutes, with hard timeouts, it separates WAN, DNS, VPN and Entware problems. A fault counts after two failed checks in a row. It then writes one small (≤12 KB) report to `incident-last.txt` that survives a reboot, at most every 30 minutes. The report contains no secrets. It helps find the cause of an outage; it is not a fix for it.
+
+```sh
+/jffs/scripts/vpn_ipcatcher.sh health
+/jffs/scripts/vpn_ipcatcher.sh health report
+/jffs/scripts/vpn_ipcatcher.sh epg-check <host or EPG URL>
+/jffs/scripts/vpn_ipcatcher.sh final-saved
+/jffs/scripts/vpn_ipcatcher.sh forget-final
+```
+
+**About `FINAL_TIMEOUT`.** An IP's TTL is refreshed only while it is seen as an active stream or promoted again. It expires `FINAL_TIMEOUT` seconds after the last viewing. With 7200 s the first stream after a longer pause goes via WAN until it is learned again; the 604800 s default bridges nights and weekends. This is not proven to be the cause of missing channels, and IP Catcher does not change it for you.
+
 ## 🎬 Video stops during playback
 
 **Since 2.7.1:** new final destinations wait in the unrouted
@@ -1092,6 +1191,7 @@ sh tests/lifecycle-checks.sh
 sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
+sh tests/persistence-health-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh
