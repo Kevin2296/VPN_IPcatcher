@@ -69,6 +69,9 @@ chmod 755 "$ROUTING_HELPER"
 
 load_config(){ :; }
 validate_prereqs(){ :; }
+prereq_gate(){ :; }
+restore_final_set(){ :; }
+engine_persistence_tick(){ :; }
 cleanup_stale_state(){ :; }
 is_running(){ return 1; }
 write_pidfiles(){ printf '%s\n' "$$" > "$ENGINE_PIDFILE"; : > "$CAP_PIDFILE"; }

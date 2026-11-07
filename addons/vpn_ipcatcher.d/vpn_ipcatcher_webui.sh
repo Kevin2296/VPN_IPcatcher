@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.10.4
+# Version: 2.10.5
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -503,8 +503,37 @@ publish_presets(){
   preset_write_json "$PRESET_JSON"
 }
 
+# A busy publisher (previous run still building) is normal under load: log it
+# at most every PUBLISH_SKIP_REPEAT seconds, with how often it happened.
+PUBLISH_SKIP_STATE="/tmp/vpn_ipcatcher_webui_publish.skipped"
+PUBLISH_SKIP_REPEAT=1800
+note_publish_skipped(){
+  skip_now="$(date +%s 2>/dev/null || echo 0)"
+  skip_since=0; skip_count=0
+  [ -r "$PUBLISH_SKIP_STATE" ] && read -r skip_since skip_count < "$PUBLISH_SKIP_STATE"
+  case "$skip_since:$skip_count" in *[!0-9:]*|:*|*:) skip_since=0; skip_count=0 ;; esac
+  skip_count=$((skip_count+1))
+  if [ "$skip_since" = 0 ] || [ "$skip_now" -lt "$skip_since" ] || [ $((skip_now - skip_since)) -ge "$PUBLISH_SKIP_REPEAT" ]; then
+    log "Statuspublicatie overgeslagen: lock bezet of herstel mislukt (${skip_count}x sinds vorige melding)."
+    skip_since="$skip_now"; skip_count=0
+  fi
+  printf '%s %s\n' "$skip_since" "$skip_count" > "$PUBLISH_SKIP_STATE" 2>/dev/null
+}
+health_text(){
+  health_state_file=/tmp/vpn_ipcatcher_health.state
+  [ -r "$health_state_file" ] || return 0
+  read -r _h_last h_state h_streak _h_since _h_rep < "$health_state_file"
+  case "$h_state:$h_streak" in ok:*|*:0|*:1|:*) return 0 ;; esac
+  case "$h_state" in
+    wan) echo 'Internet (WAN) lijkt onbereikbaar.' ;;
+    dns) echo 'DNS op de router geeft geen antwoord.' ;;
+    vpn) echo 'De gekozen VPN-route is niet bruikbaar.' ;;
+    opt) echo 'Entware/USB (/opt) of tcpdump ontbreekt.' ;;
+  esac
+}
+
 publish_status(){
-  publish_lock_acquire || { log 'Statuspublicatie overgeslagen: lock bezet of herstel mislukt.'; return 75; }
+  publish_lock_acquire || { note_publish_skipped; return 75; }
   ensure_engine >/dev/null 2>&1
   [ -f "$CONF" ] || "$ENGINE" show-config >/dev/null 2>&1
 
@@ -587,13 +616,16 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.10.4",
+  "version":"2.10.5",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
   "last_update":"$last_update",
   "engine":"$engine",
   "engine_pid":"$engine_pid",
+  "prereq_problem":"$(cut -d' ' -f2- /tmp/vpn_ipcatcher.prereq 2>/dev/null | json_escape)",
+  "health_problem":"$(health_text | json_escape)",
+  "final_saved_count":"$(awk 'NR>1 && NF==3 {c++} END{print c+0}' "$ADDON_DIR/final_ipset.save" 2>/dev/null || echo 0)",
   "tcpdump_count":"$td_count",
   "candidate_count":"$cand_count",
   "waiting_count":"$wait_count",

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.10.4
+# Version: 2.10.5
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -165,7 +165,105 @@ domain_add(){
     { error 'DVR heeft het domein niet opgeslagen.'; return 1; }
   "$timeout_bin" -s TERM $timeout_flag 90 "$DVR" querypolicy "$requested_policy" </dev/null ||
     { error 'Domein opgeslagen, maar verversen van DVR is mislukt.'; return 1; }
-  verify_force_domain_route "$requested_policy" "$requested_domain" "$row"
+  verify_force_domain_route "$requested_policy" "$requested_domain" "$row" || return 1
+  remember_epg_host "$requested_domain"
+}
+
+# A tunnel interface that is UP is not enough: the VPN client itself must
+# report a connected state (OpenVPN) or a recent handshake (WireGuard).
+tunnel_usable(){
+  nvram_bin="$(find_bin /bin/nvram /usr/sbin/nvram /sbin/nvram)" || nvram_bin=''
+  case "$CONNECTION" in
+    ovpnc*)
+      [ -n "$nvram_bin" ] || return 0
+      client_state="$("$nvram_bin" get "vpn_client${CONNECTION#ovpnc}_state" 2>/dev/null)"
+      [ "$client_state" = 2 ] || { error "OpenVPN-client ${CONNECTION#ovpnc} is niet verbonden (state=${client_state:-leeg})."; return 1; }
+      ;;
+    wgc*)
+      wg_bin="$(find_bin /usr/sbin/wg /usr/bin/wg /opt/bin/wg)" || return 0
+      handshake="$("$wg_bin" show "$CONNECTION" latest-handshakes 2>/dev/null | awk '{if($2>m)m=$2} END{print m+0}')"
+      now="$(date +%s)"
+      [ "$handshake" -gt 0 ] && [ $((now - handshake)) -le 300 ] ||
+        { error "WireGuard-client ${CONNECTION#wgc} heeft geen recente handshake."; return 1; }
+      ;;
+  esac
+}
+
+# Hostname check for EPG/IPTV hosts: which DVR policy routes it, is that VPN
+# usable and does the DVR set contain its current IPv4 addresses?
+epg_hosts_file(){ echo "$ADDON/epg-domains"; }
+policy_for_host(){
+  host="$1"
+  policy_rows | while IFS='|' read -r row_policy row_connection; do
+    valid_policy "$row_policy" || continue
+    list="$(dirname "$POLICIES")/policy_${row_policy}_domainlist"
+    [ -f "$list" ] && [ ! -L "$list" ] || continue
+    if awk -v h="$host" '
+      { gsub(/\r/,""); d=tolower($0) }
+      d ~ /^#/ || d=="" {next}
+      d==h {found=1; exit}
+      substr(d,1,2)=="*." { s=substr(d,3); if (h==s || (length(h)>length(s) && substr(h, length(h)-length(s))=="." s)) {found=1; exit} }
+      END{exit found?0:1}' "$list"; then
+      printf '%s|%s\n' "$row_policy" "$row_connection"
+    fi
+  done
+}
+# Lines that are neither a hostname, a *.wildcard, an IPv4 nor a comment.
+lint_domainlists(){
+  policy_rows | while IFS='|' read -r row_policy _row_connection; do
+    valid_policy "$row_policy" || continue
+    list="$(dirname "$POLICIES")/policy_${row_policy}_domainlist"
+    [ -r "$list" ] || continue
+    awk -v p="$row_policy" '
+      { line=$0; gsub(/\r/,"",line) }
+      line=="" || line ~ /^#/ {next}
+      line !~ /^(\*\.)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/ {
+        printf "WAARSCHUWING: ongeldige regel %d in policy %s: %s\n", NR, p, substr(line,1,60) }' "$list"
+  done
+}
+domain_check_one(){
+  host="$(normalize_force_vpn_host "$1")" || { error "Ongeldige host of EPG-URL: $1"; return 1; }
+  matches="$(policy_for_host "$host")"
+  [ -n "$matches" ] || { error "FOUT: $host staat in geen enkele DVR-policy; het verkeer loopt dan via WAN tenzij IP Catcher het leert."; return 1; }
+  [ "$(printf '%s\n' "$matches" | wc -l)" -eq 1 ] || { error "FOUT: $host staat in meerdere policies: $(printf '%s' "$matches" | tr '\n' ' ')"; return 1; }
+  chk_policy="${matches%%|*}"; CONNECTION="${matches#*|}"
+  ( mark_read && rule_check && route_check && tunnel_usable ) || { error "FOUT: $host -> policy $chk_policy, maar $CONNECTION is niet bruikbaar."; return 1; }
+  setname="DVR-$chk_policy-v4"
+  $IPSET list "$setname" >/dev/null 2>&1 || { error "FOUT: DVR-IPSet $setname ontbreekt."; return 1; }
+  resolved="$(nslookup "$host" 127.0.0.1 2>/dev/null | awk '/^Name:/ {n=1; next} n && /^Address/ {for(i=2;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/) print $i}' | sort -u)"
+  total=0; inset=0
+  for ip in $resolved; do
+    total=$((total+1))
+    $IPSET test "$setname" "$ip" >/dev/null 2>&1 && inset=$((inset+1))
+  done
+  if [ "$total" -eq 0 ]; then
+    printf 'LET OP: %s -> policy %s -> %s, maar de naam gaf geen IPv4-adres.\n' "$host" "$chk_policy" "$CONNECTION"; return 1
+  fi
+  if [ "$inset" -lt "$total" ]; then
+    printf 'LET OP: %s -> policy %s -> %s, maar %s van %s IPv4-adressen staan (nog) niet in %s. DVR voegt ze toe bij de volgende querypolicy.\n' "$host" "$chk_policy" "$CONNECTION" $((total-inset)) "$total" "$setname"
+    return 1
+  fi
+  printf 'OK: %s -> policy %s -> %s (%s/%s IPv4-adressen in %s)\n' "$host" "$chk_policy" "$CONNECTION" "$inset" "$total" "$setname"
+}
+domain_check(){
+  [ -r "$POLICIES" ] || { error 'Domain VPN Routing-configuratie ontbreekt.'; return 1; }
+  if [ "$#" -eq 0 ]; then
+    [ -s "$(epg_hosts_file)" ] || { echo "Geen EPG-hosts bewaard. Gebruik: vpn_ipcatcher.sh epg-check <host of EPG-URL>"; lint_domainlists; return 0; }
+    set -- $(awk 'NF && $1 !~ /^#/ {print $1}' "$(epg_hosts_file)")
+  fi
+  check_rc=0
+  for check_host in "$@"; do domain_check_one "$check_host" || check_rc=1; done
+  lint_domainlists
+  return "$check_rc"
+}
+remember_epg_host(){
+  [ -n "$1" ] || return 0
+  # Remembering is a convenience for "doctor"; it never fails the routing change.
+  hosts_file="$(epg_hosts_file)"
+  mkdir -p "$ADDON" 2>/dev/null || return 0
+  grep -Fx "$1" "$hosts_file" >/dev/null 2>&1 && return 0
+  (umask 077; printf '%s\n' "$1" >> "$hosts_file") 2>/dev/null || :
+  return 0
 }
 
 selection_read(){
@@ -393,6 +491,10 @@ configure(){
 case "${1:-check}" in
   configure) configure ;;
   check) selection_read && binding_check ;;
+  # Read-only: rule, firewall mark, VPN table route, interface UP, DVR set
+  # and the VPN client state. Used before restoring a saved final list.
+  ready) selection_read && binding_check >/dev/null && tunnel_usable ;;
+  domain-check) shift; domain_check "$@" ;;
   prepare)
     (
       # Firewall hooks and periodic checks must not add the same mark concurrently.

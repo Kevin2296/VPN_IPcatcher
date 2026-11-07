@@ -1,3 +1,25 @@
+# VPN IP Catcher 2.10.5 — Herstel na herstart en storingsdiagnose
+
+**NL:**
+- De finale IPTV-lijst wordt nu zuinig op `/jffs` bewaard, met de echte vervaltijd per IP.
+- Na een herstart zet IP Catcher de lijst pas terug als de klok gesynchroniseerd is en de gekozen VPN echt verbonden is. Uitsluitingen en vaste routes worden dan opnieuw gecontroleerd, en lopende verbindingen gaan eerst naar de wachtlijst.
+- Een ontbrekende USB/Entware geeft één duidelijke melding en automatisch herstel.
+- Het log wordt begrensd.
+- Een nieuwe lichte gezondheidscontrole bewaart bij een storing van internet, DNS of VPN één klein rapport dat een herstart overleeft.
+- `epg-check` laat zien of een EPG-host echt via een DVR-policy loopt.
+
+Na de update draai je `vpn_ipcatcher.sh restart` en ververs je de WebUI met Ctrl+F5.
+
+**EN:**
+- The final list is saved sparingly to `/jffs` with the real expiry per IP.
+- It is restored only once the clock is synced and the selected VPN is really connected, with exclusions and fixed routes re-checked and active connections waiting first.
+- Missing USB/Entware gives one clear message and recovers automatically.
+- The log is bounded.
+- A new light health check keeps one small reboot-proof report when internet, DNS or VPN fail.
+- `epg-check` verifies an EPG host is routed by a DVR policy.
+
+---
+
 # VPN IP Catcher 2.10.4 — Namen in de WebUI op Asuswrt-Merlin
 
 **NL:** De namen bij IP-adressen bleven leeg omdat Merlin geen `mktemp` heeft. Dat is opgelost; na de update verschijnen de namen in Liveflows en de lijsten binnen een minuut.

@@ -1170,6 +1170,7 @@ function updateOverview(d){
   var sourceIps=(d.config && d.config.SOURCE_IPS) ? d.config.SOURCE_IPS : '';
   setText('overviewSourceIps', sourceIps ? sourceDeviceLabel(sourceIps) : t('allDevices'));
   var alertBar=byId('sourceAlert'); if(alertBar) alertBar.hidden=!!sourceIps || !d.config;
+  var systemProblem=[d.prereq_problem||'', d.health_problem||''].filter(Boolean).join(' '); var systemBar=byId('systemAlert'); if(systemBar){ setText('systemAlertText', systemProblem); systemBar.hidden=!systemProblem; }
   setText('waitingCount', d.waiting_count||'0');
   setText('overviewWaiting', t('waitingExplain',{count:d.waiting_count||'0'}));
   var fixed=d.fixed_routes||{}, fixedTotal=(Number(fixed.destinations)||0)+(Number(fixed.devices)||0)+String(fixed.policies||'').split(/\s+/).filter(Boolean).length;
@@ -1420,6 +1421,7 @@ window.addEventListener('load', function(){
                   <div class="card"><h3 data-i18n="excludeRanges">Uitsluitbereiken</h3><div class="big" id="excludeNetCount">-</div><div class="muted" id="excludeNetSet" data-default-i18n="fixedRanges">vaste CIDR-bereiken</div></div>
                   <div class="card violet"><h3 data-i18n="fixedRoutes">Vaste routes</h3><div class="big" id="fixedCount">-</div><div class="muted" id="fixedMeta">VPN Director / VPN Routing, nooit geleerd</div></div>
                 </div>
+                <div class="alertBar" id="systemAlert" hidden><span id="systemAlertText"></span></div>
                 <div class="alertBar" id="sourceAlert" hidden><span data-i18n="sourceAlert">IP Catcher kijkt nu naar alle apparaten. Kies je IPTV-box of tv als bronapparaat, dan kan ander verkeer nooit per ongeluk via de VPN gaan.</span><button type="button" class="btn blue" onclick="openDevicePicker()" data-i18n="chooseDevices">IPTV-apparaten kiezen</button></div>
                 <div class="muted" style="margin:-4px 0 8px 2px">tcpdump: <span id="tcpdumpCount">-</span> - <span data-i18n="updated">bijgewerkt</span>: <span id="lastUpdate">-</span></div>
 

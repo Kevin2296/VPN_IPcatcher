@@ -1,5 +1,35 @@
 # Wijzigingen
 
+## 2.10.5 — Herstel na herstart en storingsdiagnose
+
+- **Finale lijst blijft bewaard** in `/jffs/addons/vpn_ipcatcher.d/final_ipset.save`. Per IP staan daarin de herkomst en de echte vervaltijd.
+  - **Schrijven:** bij gewijzigde leden hooguit eens per 10 minuten. Lopen alleen de vervaltijden achter (meer dan `max(30 min, FINAL_TIMEOUT/4)`), dan hooguit eens per 30 minuten. Daarnaast één keer bij een nette stop.
+  - **Atomair:** eerst naar een volledig tijdelijk bestand in dezelfde map, daarna in één keer vervangen.
+- **Veilig terugzetten** pas als:
+  - de klok gesynchroniseerd is;
+  - de gekozen VPN echt bruikbaar is: nieuw commando `routing ready`, dat ook de OpenVPN-clientstatus of de WireGuard-handshake controleert;
+  - de uitsluitingen vers zijn.
+- **Bij het terugzetten:**
+  - uitsluitingen, VPN Director-bestemmingen en VPN Director-apparaten worden opnieuw gecontroleerd;
+  - een IP met een actieve verbinding, of als conntrack ontbreekt, gaat naar de wachtlijst;
+  - een IP krijgt alleen zijn resterende geldigheid terug;
+  - een beschadigd, ontbrekend of vreemd bestand wordt veilig genegeerd.
+- **Lege DVR-set na herladen van Domain VPN Routing:** de nog geldige IP's worden opnieuw gezet, hooguit eens per 10 minuten. Er wordt niets geflusht.
+- **Entware/USB weg:**
+  - één Nederlandse melding in syslog, het log en de WebUI-banner, daarna hooguit eens per uur;
+  - geen startlus en geen capture-herstart elke 10 seconden;
+  - routes blijven staan;
+  - na een late mount worden de programma's opnieuw gezocht en volgt automatisch herstel.
+- **Logrotatie:** `/tmp/vpn_ipcatcher.log` wordt bij 256 KB geroteerd (copy-truncate, maximaal twee delen).
+- **Nieuw `vpn_ipcatcher_health.sh`:** een lichte controle elke 2 minuten (WAN / DNS / VPN / Entware, harde timeouts).
+  - Een storing telt pas na twee mislukte controles.
+  - Bij een storing komen één melding en één begrensd rapport (`incident-last.txt`, max 12 KB) dat een herstart overleeft, hooguit eens per 30 minuten.
+  - Na herstel volgt een melding met de duur van de storing.
+- **Nieuw `epg-check`:** toont in welke DVR-policy een EPG- of IPTV-host staat (ook via een `*.wildcard`), of die VPN bruikbaar is en of de IPv4-adressen in de DVR-set staan. Ongeldige regels in de DVR-domeinlijsten worden gemeld. `doctor` controleert de onthouden "altijd via VPN"-hosts en draait de gezondheidscontrole.
+- **WebUI:** de melding "Statuspublicatie overgeslagen" komt hooguit eens per 30 minuten, met een teller.
+- **Nieuwe commando's:** `health [check|report|status]`, `epg-check`, `final-saved`, `forget-final`.
+- **Tests:** `tests/persistence-health-checks.sh`.
+
 ## 2.10.4 — Namen werken nu ook op Asuswrt-Merlin
 
 - **Bugfix:** de BusyBox van Asuswrt-Merlin heeft geen `mktemp`. Daardoor stopte het opzoeken van namen voor de WebUI direct met een lege lijst. Er wordt nu een eigen unieke tijdelijke map gebruikt.

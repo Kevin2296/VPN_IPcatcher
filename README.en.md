@@ -462,6 +462,44 @@ The amtm update manager does not automatically manage this personal script.
 
 <a name="video-stops-during-playback"></a>
 
+## 🔁 After a reboot and during outages (2.10.5)
+
+**Saved final list.** The final list is also saved to `/jffs/addons/vpn_ipcatcher.d/final_ipset.save`, with each IP's origin and real expiry.
+
+- **When it is written:**
+  - on member changes, at most every 10 minutes;
+  - when stored expiries lag by more than `max(30 min, FINAL_TIMEOUT/4)`, at most every 30 minutes;
+  - once on a clean stop.
+- **Atomic writes:** a temporary file in the same directory replaces the previous one in one step. A power cut keeps the last good save.
+
+**Restore after a reboot** only happens once:
+- the clock is synced;
+- the selected VPN route is really usable (rule, table, interface UP, DVR set and the VPN client state);
+- exclusions are fresh.
+
+Exclusions and VPN Director rules are then re-checked.
+- An idle IP gets back only its **remaining** lifetime.
+- An IP with an active connection, or any IP when conntrack is missing, waits first.
+- If Domain VPN Routing recreates the set empty, still-valid IPs are restored again, at most every 10 minutes.
+
+Nothing is flushed.
+
+**USB/Entware missing.** One clear message, then at most hourly. No restart loop. Existing routes stay. Binaries are looked up again when the USB returns.
+
+**Log file.** The log rotates at 256 KB.
+
+**Health check.** Every 2 minutes, with hard timeouts, it separates WAN, DNS, VPN and Entware problems. A fault counts after two failed checks in a row. It then writes one small (≤12 KB) report to `incident-last.txt` that survives a reboot, at most every 30 minutes. The report contains no secrets. It helps find the cause of an outage; it is not a fix for it.
+
+```sh
+/jffs/scripts/vpn_ipcatcher.sh health
+/jffs/scripts/vpn_ipcatcher.sh health report
+/jffs/scripts/vpn_ipcatcher.sh epg-check <host or EPG URL>
+/jffs/scripts/vpn_ipcatcher.sh final-saved
+/jffs/scripts/vpn_ipcatcher.sh forget-final
+```
+
+**About `FINAL_TIMEOUT`.** An IP's TTL is refreshed only while it is seen as an active stream or promoted again. It expires `FINAL_TIMEOUT` seconds after the last viewing. With 7200 s the first stream after a longer pause goes via WAN until it is learned again; the 604800 s default bridges nights and weekends. This is not proven to be the cause of missing channels, and IP Catcher does not change it for you.
+
 ## 🎬 Video stops during playback
 
 **Since 2.7.1:** new final destinations wait in the unrouted
@@ -522,6 +560,7 @@ sh tests/lifecycle-checks.sh
 sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
+sh tests/persistence-health-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh

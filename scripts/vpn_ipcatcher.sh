@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.10.4
+# Version: 2.10.5
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
@@ -9,6 +9,7 @@ DISABLED="/tmp/vpn_ipcatcher.disabled"
 UPDATING="$ADDON/updating"
 LIFECYCLE_LOCK="/tmp/vpn_ipcatcher_lifecycle.lock"
 LOGFILE="/tmp/vpn_ipcatcher.log"
+PREREQ_STATUS="/tmp/vpn_ipcatcher.prereq"
 
 process_label(){
   (
@@ -103,7 +104,11 @@ case "$1" in
       watchdog)
         { [ -f "$DISABLED" ] || [ -f "$UPDATING" ]; } && exit 0
         watchdog_pid="$(cat /tmp/vpn_ipcatcher_pids/engine.pid 2>/dev/null)"
-        watchdog_engine_alive "$watchdog_pid" || lifecycle_note watchdog-recovery
+        # Light internet/DNS/VPN/USB check; it throttles itself.
+        [ ! -x "$ADDON/vpn_ipcatcher_health.sh" ] || "$ADDON/vpn_ipcatcher_health.sh" tick >/dev/null 2>&1 &
+        # While Entware/tcpdump is missing the engine logs the reason itself,
+        # at most once an hour; no recovery line every minute.
+        watchdog_engine_alive "$watchdog_pid" || [ -f "$PREREQ_STATUS" ] || lifecycle_note watchdog-recovery
         ;;
       start|restart)
         [ -f "$UPDATING" ] && { echo "Update bezig; start overgeslagen."; exit 1; }
@@ -122,6 +127,8 @@ case "$1" in
   backup) shift; exec "$ADDON/vpn_ipcatcher_backup.sh" "$@" ;;
   amtm-add) exec "$ADDON/vpn_ipcatcher_amtm.sh" ;;
   routing-check) exec "$ADDON/vpn_ipcatcher_routing.sh" check ;;
+  epg-check) shift; exec "$ADDON/vpn_ipcatcher_routing.sh" domain-check "$@" ;;
+  health) shift; exec "$ADDON/vpn_ipcatcher_health.sh" "${@:-check}" ;;
   routing-list) exec "$ADDON/vpn_ipcatcher_routing.sh" list ;;
   routing-setup)
     lock || exit 1

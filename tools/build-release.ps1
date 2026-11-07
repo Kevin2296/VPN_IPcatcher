@@ -20,6 +20,7 @@ $files = @(
     'addons/vpn_ipcatcher.d/vpn_ipcatcher.asp',
     'addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh',
     'addons/vpn_ipcatcher.d/vpn_ipcatcher_doctor.sh',
+    'addons/vpn_ipcatcher.d/vpn_ipcatcher_health.sh',
     'addons/vpn_ipcatcher.d/vpn_ipcatcher_update.sh',
     'addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh',
     'addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh',
