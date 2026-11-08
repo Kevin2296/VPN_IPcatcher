@@ -150,6 +150,12 @@ sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 
 ## 🔄 Updates
 
+**2.10.7 hotfix:** if an update from 2.10.5 stops with
+`Huidige installatie onvolledig: addons/vpn_ipcatcher.d/vpn_ipcatcher_health.sh`,
+use the bootstrap update command below once. It runs the new updater, which
+installs the missing file. Nothing was changed by the failed attempt; it stopped
+before installing.
+
 **2.9.5 hotfix:** if a live update from 2.9.3/2.9.4 fails with
 `Update bezig; start overgeslagen`, use the bootstrap update command below once.
 It runs the corrected updater; retrying the old menu updater still runs old code.
@@ -569,6 +575,7 @@ sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
 sh tests/persistence-health-checks.sh
 sh tests/hardening-2106-checks.sh
+sh tests/update-upgrade-path-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh

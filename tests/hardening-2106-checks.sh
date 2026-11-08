@@ -116,6 +116,8 @@ sed '/^case "\$1" in/,$d' "$ROOT/scripts/vpn_ipcatcher.real.sh" > "$work/engine"
   # An older config that pinned EXCLUDE_DOMAINS without Microsoft/TikTok.
   printf 'EXCLUDE_DOMAINS="quad9.net github.com"\n' >> "$CONF"
   load_config
+  current_epoch(){ echo 1794090000; }
+  DNS_NAMES_TTL=7200
   DNS_NAMES="$work/dns_names"
   cat > "$DNS_NAMES" <<'EOF'
 80.90.20.131 1794086040 endpoints.leaflets.schwarz
@@ -141,6 +143,29 @@ EOF
   should_skip_service_ip final 71.18.240.1 test || fail "guard not used for final"
   grep -q 'Skip bekende dienst final: 71.18.240.1 naam=bsync31-normal-no1a.tiktokv.eu' "$work/log" || fail "no log line"
   if should_skip_service_ip final 172.67.196.194 test; then fail "IPTV EPG skipped"; fi
+  # Only fresh records count (now=1794090000, TTL 7200 => cut-off 1794082800).
+  cat > "$DNS_NAMES" <<'EOF'
+198.51.100.20 1794080000 www.tiktok.com
+198.51.100.21 1794080000 line.oldiptv.cc
+198.51.100.21 1794089000 www.tiktok.com
+EOF
+  if ip_excluded_by_dns_name 198.51.100.20; then fail "expired known-service name still excludes"; fi
+  ip_excluded_by_dns_name 198.51.100.21 || fail "expired unknown name still protects a known-only IP"
+  # Pruning keeps every fresh IP/name pair (shared CDN address), drops expired ones.
+  CACHE_MAX_LINES=3; CACHE_PTR="$work/no_ptr"
+  make_temp_file(){ printf '%s.tmp\n' "$1"; }
+  cat > "$DNS_NAMES" <<'EOF'
+104.16.9.9 1794089000 line.someiptv.cc
+104.16.9.9 1794089500 www.ikea.com
+104.16.9.9 1794089600 www.ikea.com
+198.51.100.30 1794070000 old.example.com
+EOF
+  prune_caches
+  grep -q '^104.16.9.9 1794089000 line.someiptv.cc$' "$DNS_NAMES" || fail "pruning lost the IPTV name of a shared IP"
+  grep -q '^104.16.9.9 1794089600 www.ikea.com$' "$DNS_NAMES" || fail "pruning lost the newest known-service record"
+  grep -q 'old.example.com' "$DNS_NAMES" && fail "pruning kept an expired record"
+  [ "$(wc -l < "$DNS_NAMES" | tr -d ' ')" = 2 ] || fail "pruning kept duplicate pairs"
+  if ip_excluded_by_dns_name 104.16.9.9; then fail "shared IP excluded after pruning"; fi
   # No DNS names file at all: guard is neutral.
   DNS_NAMES="$work/missing"
   if ip_excluded_by_dns_name 71.18.240.1; then fail "guard without names"; fi

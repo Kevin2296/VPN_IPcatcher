@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 2.10.7 — Update vanaf 2.10.5 en nauwkeuriger herkenning
+
+- **Update vastgelopen:** wie van 2.10.4 naar 2.10.5 bijwerkte, kreeg `vpn_ipcatcher_health.sh` niet mee (de oude updater kende dat bestand nog niet). De updater van 2.10.5 stopte daarna met "Huidige installatie onvolledig". Een ontbrekend health-script blokkeert de update nu niet meer; de update zet het gewoon neer. Een nieuwe test bewaakt dat elk later toegevoegd bestand zo'n update nooit meer blokkeert.
+- **Bekende diensten, nauwkeuriger** (n.a.v. code-review):
+  - het opschonen van `dns_names` bewaart nu elk IP/naam-paar in plaats van één naam per IP, zodat een gedeeld CDN-adres met een IPTV-naam na het opschonen niet ten onrechte wordt overgeslagen;
+  - alleen namen die binnen `DNS_NAMES_TTL` (2 uur) zijn opgevraagd tellen mee; verlopen namen sluiten niets meer uit en beschermen ook niets meer.
+
 ## 2.10.6 — Bekende diensten, firewall-herstart en nette haken
 
 - **Bekende diensten nooit leren:** nieuwe vaste lijst `SYSTEM_EXCLUDE_DOMAINS` (Microsoft, TikTok, Lidl/Schwarz, IKEA, advertentieservers, YouTube, Netflix, Spotify, Apple, Meta, Telegram, Snapchat). Die lijst werkt op de namen die LAN-apparaten echt opvroegen (`dns_names`), per achtervoegsel.

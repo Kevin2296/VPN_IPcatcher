@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.10.6
+# Version: 2.10.7
 # Light, read-only health check: WAN, DNS, VPN and Entware/USB.
 # "tick" runs from the watchdog cron and throttles itself to HEALTH_EVERY
 # seconds. A fault must be seen twice in a row before it counts. On a
