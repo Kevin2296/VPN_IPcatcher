@@ -169,6 +169,12 @@ sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 
 ## 🔄 Bijwerken
 
+**Hotfix 2.10.7:** stopt een update vanaf 2.10.5 met
+`Huidige installatie onvolledig: addons/vpn_ipcatcher.d/vpn_ipcatcher_health.sh`,
+gebruik dan eenmaal het updatecommando hieronder. Dat draait de nieuwe updater,
+die het ontbrekende bestand gewoon neerzet. Er is dan nog niets veranderd; de
+mislukte poging stopte vóór de installatie.
+
 **Hotfix 2.9.5:** krijg je bij een live-update op 2.9.3/2.9.4 de melding
 `Update bezig; start overgeslagen`, gebruik dan eenmaal het onderstaande
 updatecommando. Dit gebruikt de nieuwe updater; de oude menu-updater opnieuw
@@ -633,6 +639,7 @@ sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
 sh tests/persistence-health-checks.sh
 sh tests/hardening-2106-checks.sh
+sh tests/update-upgrade-path-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh
@@ -788,6 +795,12 @@ sh /jffs/addons/vpn_ipcatcher.d/install_vpn_ipcatcher.sh
 <a name="updates"></a>
 
 ## 🔄 Updates
+
+**2.10.7 hotfix:** if an update from 2.10.5 stops with
+`Huidige installatie onvolledig: addons/vpn_ipcatcher.d/vpn_ipcatcher_health.sh`,
+use the bootstrap update command below once. It runs the new updater, which
+installs the missing file. Nothing was changed by the failed attempt; it stopped
+before installing.
 
 **2.9.5 hotfix:** if a live update from 2.9.3/2.9.4 fails with
 `Update bezig; start overgeslagen`, use the bootstrap update command below once.
@@ -1208,6 +1221,7 @@ sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
 sh tests/persistence-health-checks.sh
 sh tests/hardening-2106-checks.sh
+sh tests/update-upgrade-path-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.10.6
+# Version: 2.10.7
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -220,7 +220,7 @@ else
     mkdir -p "$BACKUP/$(dirname "$relative")"
     if [ ! -s "/jffs/$relative" ]; then
       case "$relative" in
-        addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh|addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh|addons/vpn_ipcatcher.d/vpn_ipcatcher_amtm.sh) ;;
+        addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh|addons/vpn_ipcatcher.d/vpn_ipcatcher_backup.sh|addons/vpn_ipcatcher.d/vpn_ipcatcher_amtm.sh|addons/vpn_ipcatcher.d/vpn_ipcatcher_health.sh) ;;
         *) [ "$action" = migrate ] || fail "Huidige installatie onvolledig: $relative" ;;
       esac
       : > "$BACKUP/$relative.missing"

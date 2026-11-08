@@ -1,5 +1,12 @@
 # Release Verification / Releasecontrole
 
+## 2.10.7 update path and name freshness
+
+- `tests/update-upgrade-path-checks.sh`: every file in the updater's `FILES` that older releases did not ship is allowed to be absent before an update, so an older install is never blocked with "Huidige installatie onvolledig"; every shipped file is in `SHA256SUMS`. Without the fix the test fails on `vpn_ipcatcher_health.sh`.
+- `tests/hardening-2106-checks.sh` (extended): only names within `DNS_NAMES_TTL` count; pruning keeps every fresh IP/name pair (a shared CDN IP keeps its IPTV name) and drops expired records.
+
+Still to verify on the router: on 2.10.5 without `vpn_ipcatcher_health.sh`, the bootstrap `install.sh update` completes and installs the file; afterwards the menu update works.
+
 ## 2.10.6 known services, firewall restart and hooks
 
 `tests/hardening-2106-checks.sh` covers these points with mocks (temporary hook files, mock iptables/ip/ipset, a fixture `dns_names`):

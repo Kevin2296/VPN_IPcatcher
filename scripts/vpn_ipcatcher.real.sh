@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.6
+# Version: 2.10.7
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -1712,9 +1712,11 @@ prune_caches(){
     case "$dns_lines" in ''|*[!0-9]*) dns_lines=0 ;; esac
     if [ "$dns_lines" -gt "$CACHE_MAX_LINES" ]; then
       dns_tmp="$(make_temp_file "$DNS_NAMES")" && {
+        # Keep the newest record per IP/name pair, not per IP: the
+        # known-service guard needs every name a shared address served.
         $AWK -v now="$(current_epoch)" -v ttl="$DNS_NAMES_TTL" '
-          $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl {last[$1]=$0}
-          END{for(k in last) print last[k]}' "$DNS_NAMES" 2>/dev/null | $TAIL -n "$CACHE_MAX_LINES" > "$dns_tmp"
+          NF>=3 && $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl {k=$1 " " $3; if(!(k in t) || $2>=t[k]) {t[k]=$2; last[k]=$0}}
+          END{for(k in last) print last[k]}' "$DNS_NAMES" 2>/dev/null | sort -n -k2,2 | $TAIL -n "$CACHE_MAX_LINES" > "$dns_tmp"
         mv -f "$dns_tmp" "$DNS_NAMES" 2>/dev/null || rm -f "$dns_tmp"
       }
     fi
@@ -1747,11 +1749,15 @@ name_is_known_service(){
   return 1
 }
 
-# True when every name LAN devices looked up for this IP is a known
-# non-IPTV service. No names seen, or one unknown name, means "not excluded".
+# True when every name LAN devices looked up for this IP within
+# DNS_NAMES_TTL is a known non-IPTV service. No fresh names, or one unknown
+# fresh name, means "not excluded". Expired records never count.
 ip_excluded_by_dns_name(){
   [ -s "$DNS_NAMES" ] || return 1
-  ks_names="$($AWK -v ip="$1" '$1==ip && NF>=3 && !seen[$3]++ {print $3}' "$DNS_NAMES" 2>/dev/null)" || ks_names=""
+  ks_now="$(current_epoch)"
+  case "$ks_now" in ''|*[!0-9]*) return 1 ;; esac
+  ks_names="$($AWK -v ip="$1" -v now="$ks_now" -v ttl="$DNS_NAMES_TTL" '
+    $1==ip && NF>=3 && $2 ~ /^[0-9]+$/ && now-$2>=0 && now-$2<ttl && !seen[$3]++ {print $3}' "$DNS_NAMES" 2>/dev/null)" || ks_names=""
   [ -n "$ks_names" ] || return 1
   for ks_name in $ks_names; do
     name_is_known_service "$ks_name" || return 1

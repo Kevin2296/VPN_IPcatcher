@@ -1,3 +1,15 @@
+# VPN IP Catcher 2.10.7 — Update vanaf 2.10.5 en nauwkeuriger herkenning
+
+**NL:**
+- Bijwerken vanaf 2.10.5 stopte bij sommige routers met "Huidige installatie onvolledig: …vpn_ipcatcher_health.sh". Dat is opgelost; de update zet het ontbrekende bestand gewoon neer.
+- De herkenning van bekende diensten houdt nu rekening met gedeelde CDN-adressen na het opschonen, en met hoe oud een opgevraagde naam is.
+
+Staat je router nog op 2.10.5 en loopt de update vast? Gebruik dan eenmalig het bootstrap-updatecommando uit de README (sectie "Bijwerken"). Dat draait de nieuwe updater; daarna werkt bijwerken via het menu weer.
+
+**EN:**
+- Updating from 2.10.5 stopped on some routers with "Huidige installatie onvolledig: …vpn_ipcatcher_health.sh". Fixed; the update now installs the missing file.
+- Known-service detection now keeps shared CDN addresses correct after pruning and ignores expired names.
+
 # VPN IP Catcher 2.10.6 — Bekende diensten, firewall-herstart en nette haken
 
 **NL:**
