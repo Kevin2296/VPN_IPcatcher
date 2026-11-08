@@ -1,5 +1,21 @@
 # Wijzigingen
 
+## 2.10.6 — Bekende diensten, firewall-herstart en nette haken
+
+- **Bekende diensten nooit leren:** nieuwe vaste lijst `SYSTEM_EXCLUDE_DOMAINS` (Microsoft, TikTok, Lidl/Schwarz, IKEA, advertentieservers, YouTube, Netflix, Spotify, Apple, Meta, Telegram, Snapchat). Die lijst werkt op de namen die LAN-apparaten echt opvroegen (`dns_names`), per achtervoegsel.
+  - Een adres wordt alleen overgeslagen als **alle** opgevraagde namen bekende diensten zijn. Een gedeeld CDN-adres met ook een onbekende naam blijft in aanmerking komen.
+  - De lijst geldt ook als een oudere config een kortere `EXCLUDE_DOMAINS` vastlegt.
+  - Logregel: `Skip bekende dienst <fase>: <ip> naam=<naam>`.
+  - Generieke CDN's (Cloudflare, Akamai, CloudFront, googleapis) staan er bewust niet in.
+- **Firewall-herstart:** `routing prepare` (de firewall-haak) zet voor een DVR-gebonden lijst de ontbrekende PREROUTING/OUTPUT-markering meteen terug, in het eigen formaat van DVR. Er wordt niets gedupliceerd en een bestaande afwijkende regel blijft staan. Voorheen ging de stream tot de volgende DVR-cron (max. 15 minuten) via WAN.
+- **Installer-haken:**
+  - geen extra lege regel meer per update;
+  - alleen herschrijven als de inhoud echt verandert;
+  - reservekopieën in `/jffs/addons/vpn_ipcatcher.d/hook-backups/`, maximaal 3 per haak;
+  - oude kopieën van IP Catcher naast de haken (`*.bak.JJJJMMDD-UUMMSS`, `*.bak-vpnipc-…`) worden daarheen verplaatst; andere bestanden blijven onaangeroerd.
+- **curl:** ook `/usr/sbin/curl` wordt gevonden, waardoor de providerreeksen (Google, Netflix, Meta, GitHub, Apple) weer opgehaald worden.
+- **README:** de links "Problemen oplossen" / "Troubleshooting" wijzen weer naar de juiste sectie.
+
 ## 2.10.5 — Herstel na herstart en storingsdiagnose
 
 - **Finale lijst blijft bewaard** in `/jffs/addons/vpn_ipcatcher.d/final_ipset.save`. Per IP staan daarin de herkomst en de echte vervaltijd.

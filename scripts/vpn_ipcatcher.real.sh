@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.5
+# Version: 2.10.6
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -65,7 +65,7 @@ SED="$(find_bin /bin/sed /usr/bin/sed /opt/bin/sed)"
 GREP="$(find_bin /bin/grep /usr/bin/grep /opt/bin/grep)"
 AWK="$(find_bin /bin/awk /usr/bin/awk /opt/bin/awk)"
 NSLOOKUP="$(find_bin /usr/bin/nslookup /bin/nslookup /opt/bin/nslookup)"
-CURL="$(find_bin /opt/bin/curl /usr/bin/curl /bin/curl)"
+CURL="$(find_bin /opt/bin/curl /usr/sbin/curl /usr/bin/curl /bin/curl)"
 JQ="$(find_bin /opt/bin/jq /usr/bin/jq /bin/jq)"
 IPBIN="$(find_bin /sbin/ip /bin/ip /usr/sbin/ip /usr/bin/ip /opt/sbin/ip /opt/bin/ip)"
 CT="$(find_bin /opt/sbin/conntrack /opt/bin/conntrack /usr/sbin/conntrack /usr/bin/conntrack /sbin/conntrack)"
@@ -316,6 +316,13 @@ load_config(){
   # does NOT cover CDN IPs learned from individual playback/download sessions.
   # Provider-owned block, not a generic Google Cloud/AWS/Cloudflare ban.
   SYSTEM_EXCLUDE_NETS="136.22.128.0/19"
+  # Known non-IPTV services, matched against the names LAN devices actually
+  # looked up (DNS_NAMES), by suffix. Fixed list, independent of an older
+  # EXCLUDE_DOMAINS in the config. An IP is skipped only when EVERY name seen
+  # for it is on this list, so a shared CDN address that also serves an
+  # unknown (IPTV) name stays eligible. Generic CDNs (Cloudflare, Akamai,
+  # CloudFront, googleapis) are deliberately absent: IPTV uses them too.
+  SYSTEM_EXCLUDE_DOMAINS="microsoft.com windows.com windows.net windowsupdate.com msftconnecttest.com msftncsi.com live.com live.net outlook.com office.com office.net office365.com skype.com bing.com msn.com xboxlive.com msedge.net tiktok.com tiktokv.com tiktokv.eu tiktokcdn.com tiktokcdn-eu.com tiktokcdn-us.com byteoversea.com ibyteimg.com ibytedtos.com schwarz lidl.com lidl.nl lidl.de lidl.be kaufland.com ikea.com ikea.net ikea.nl ingka.com smartadserver.com doubleclick.net googlesyndication.com googleadservices.com adnxs.com criteo.com criteo.net amazon-adsystem.com taboola.com outbrain.com scorecardresearch.com youtube.com googlevideo.com ytimg.com ggpht.com spotify.com spotifycdn.com scdn.co apple.com icloud.com mzstatic.com aaplimg.com facebook.com fbcdn.net instagram.com cdninstagram.com whatsapp.com whatsapp.net telegram.org snapchat.com sc-cdn.net netflix.com nflxvideo.net nflxso.net nflximg.net"
   ALLOW_EXTERNAL_DNS="${ALLOW_EXTERNAL_DNS:-no}"
   EXTERNAL_DNS_SERVER="${EXTERNAL_DNS_SERVER:-}"
   CAPTURE_GENERIC_HOSTNAMES="${CAPTURE_GENERIC_HOSTNAMES:-no}"
@@ -438,7 +445,7 @@ prereq_gate(){
 refind_bins(){
   TCPDUMP="$(find_bin /opt/bin/tcpdump /opt/sbin/tcpdump /usr/sbin/tcpdump /usr/bin/tcpdump /sbin/tcpdump /bin/tcpdump)" || TCPDUMP=""
   CT="$(find_bin /opt/sbin/conntrack /opt/bin/conntrack /usr/sbin/conntrack /usr/bin/conntrack /sbin/conntrack)" || CT=""
-  CURL="$(find_bin /opt/bin/curl /usr/bin/curl /bin/curl)" || CURL=""
+  CURL="$(find_bin /opt/bin/curl /usr/sbin/curl /usr/bin/curl /bin/curl)" || CURL=""
   JQ="$(find_bin /opt/bin/jq /usr/bin/jq /bin/jq)" || JQ=""
 }
 
@@ -1732,6 +1739,27 @@ ip_excluded_by_reverse_dns(){
   return 1
 }
 
+name_is_known_service(){
+  domain_is_excluded "$1" && return 0
+  for ks_suffix in $SYSTEM_EXCLUDE_DOMAINS; do
+    case "$1" in "$ks_suffix"|*."$ks_suffix") return 0 ;; esac
+  done
+  return 1
+}
+
+# True when every name LAN devices looked up for this IP is a known
+# non-IPTV service. No names seen, or one unknown name, means "not excluded".
+ip_excluded_by_dns_name(){
+  [ -s "$DNS_NAMES" ] || return 1
+  ks_names="$($AWK -v ip="$1" '$1==ip && NF>=3 && !seen[$3]++ {print $3}' "$DNS_NAMES" 2>/dev/null)" || ks_names=""
+  [ -n "$ks_names" ] || return 1
+  for ks_name in $ks_names; do
+    name_is_known_service "$ks_name" || return 1
+  done
+  KNOWN_SERVICE_NAME="$ks_name"
+  return 0
+}
+
 should_skip_service_ip(){
   stage="$1"
   ip="$2"
@@ -1752,6 +1780,11 @@ should_skip_service_ip(){
   if ip_excluded_by_reverse_dns "$ip"; then
     rdns="$(reverse_lookup_ip "$ip")"
     log "Skip reverse-DNS excluded ${stage}: $ip rdns=${rdns:-unknown} ($comment)"
+    return 0
+  fi
+
+  if ip_excluded_by_dns_name "$ip"; then
+    log "Skip bekende dienst ${stage}: $ip naam=${KNOWN_SERVICE_NAME:-onbekend} ($comment)"
     return 0
   fi
 

@@ -460,7 +460,12 @@ Add `/jffs/scripts/vpn_ipcatcher.sh` through amtm's personal-script feature.
 The amtm update manager does not automatically manage this personal script.
 [Official amtm documentation](https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM).
 
-<a name="video-stops-during-playback"></a>
+## 🧹 Known services and tidy hooks (2.10.6)
+
+- **Known services never via the VPN.** IP Catcher checks the names your devices actually looked up (TikTok, Microsoft, Lidl/Schwarz, IKEA, ad servers, YouTube, Netflix, Spotify, Apple, Meta and similar). If an address only carries such names it is skipped, even when an older `EXCLUDE_DOMAINS` in your config lacks them. A shared CDN address that also serves an unknown (IPTV) name stays eligible. The log shows `Skip bekende dienst`.
+- **Marks back right after a firewall restart.** DVR restores its VPN rules only on its next cron run (up to 15 minutes). The IP Catcher firewall hook now restores the PREROUTING/OUTPUT rule for the selected DVR list at once, in DVR's own format, and only when it is missing. A hand-made "IPTV ipset setup" block in `firewall-start` is no longer needed.
+- **Hooks no longer grow.** `firewall-start`, `service-event` and `services-start` no longer gain a blank line per update and are rewritten only when something really changes. Backups now live in `/jffs/addons/vpn_ipcatcher.d/hook-backups/` (at most 3 per hook); old IP Catcher `*.bak.YYYYMMDD-HHMMSS` copies are moved there.
+- **Provider ranges work again** on routers where `curl` lives in `/usr/sbin`.
 
 ## 🔁 After a reboot and during outages (2.10.5)
 
@@ -499,6 +504,8 @@ Nothing is flushed.
 ```
 
 **About `FINAL_TIMEOUT`.** An IP's TTL is refreshed only while it is seen as an active stream or promoted again. It expires `FINAL_TIMEOUT` seconds after the last viewing. With 7200 s the first stream after a longer pause goes via WAN until it is learned again; the 604800 s default bridges nights and weekends. This is not proven to be the cause of missing channels, and IP Catcher does not change it for you.
+
+<a name="video-stops-during-playback"></a>
 
 ## 🎬 Video stops during playback
 
@@ -561,6 +568,7 @@ sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
 sh tests/persistence-health-checks.sh
+sh tests/hardening-2106-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh

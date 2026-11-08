@@ -499,7 +499,12 @@ Voeg `/jffs/scripts/vpn_ipcatcher.sh` toe via amtm's personal-scriptfunctie.
 De amtm-updatemanager beheert dit script niet automatisch.
 [Officiele amtm-uitleg](https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM).
 
-<a name="video-stopt-tijdens-afspelen"></a>
+## 🧹 Bekende diensten en nette haken (2.10.6)
+
+- **Bekende diensten nooit via de VPN.** IP Catcher kijkt naar de namen die je apparaten echt opvroegen (TikTok, Microsoft, Lidl/Schwarz, IKEA, advertentieservers, YouTube, Netflix, Spotify, Apple, Meta en dergelijke). Staan voor een adres alleen zulke namen, dan wordt het overgeslagen, ook als een oudere `EXCLUDE_DOMAINS` in je config ze mist. Een gedeeld CDN-adres dat ook een onbekende (IPTV-)naam bedient, blijft gewoon in aanmerking komen. In het log zie je `Skip bekende dienst`.
+- **Markeringen direct terug na een firewall-herstart.** DVR zet zijn VPN-regels pas bij zijn volgende cronronde terug (tot 15 minuten). De firewall-haak van IP Catcher zet de PREROUTING/OUTPUT-regel voor de gekozen DVR-lijst nu meteen terug, in precies het formaat van DVR, en alleen als die ontbreekt. Een handmatig "IPTV ipset setup"-blok in `firewall-start` is daarna niet meer nodig.
+- **Haken groeien niet meer.** `firewall-start`, `service-event` en `services-start` krijgen bij een update geen extra lege regel meer en worden alleen herschreven als er echt iets verandert. Reservekopieën staan nu in `/jffs/addons/vpn_ipcatcher.d/hook-backups/` (maximaal 3 per haak); oude `*.bak.JJJJMMDD-UUMMSS`-kopieën van IP Catcher worden daarheen verplaatst.
+- **Providerreeksen werken weer** op routers waar `curl` in `/usr/sbin` staat.
 
 ## 🔁 Na een herstart en bij storingen (2.10.5)
 
@@ -560,6 +565,8 @@ Daarnaast waarschuwt het voor ongeldige regels in de DVR-domeinlijsten. Hosts di
 - **Met de standaard 604800 (7 dagen):** IP's overleven nachten en weekenden.
 
 Of dit de oorzaak van wegvallende kanalen is, is niet bewezen. IP Catcher verandert deze waarde niet zelf.
+
+<a name="video-stopt-tijdens-afspelen"></a>
 
 ## 🎬 Video stopt tijdens afspelen
 
@@ -625,6 +632,7 @@ sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
 sh tests/persistence-health-checks.sh
+sh tests/hardening-2106-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh
@@ -1091,7 +1099,12 @@ Add `/jffs/scripts/vpn_ipcatcher.sh` through amtm's personal-script feature.
 The amtm update manager does not automatically manage this personal script.
 [Official amtm documentation](https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM).
 
-<a name="video-stops-during-playback"></a>
+## 🧹 Known services and tidy hooks (2.10.6)
+
+- **Known services never via the VPN.** IP Catcher checks the names your devices actually looked up (TikTok, Microsoft, Lidl/Schwarz, IKEA, ad servers, YouTube, Netflix, Spotify, Apple, Meta and similar). If an address only carries such names it is skipped, even when an older `EXCLUDE_DOMAINS` in your config lacks them. A shared CDN address that also serves an unknown (IPTV) name stays eligible. The log shows `Skip bekende dienst`.
+- **Marks back right after a firewall restart.** DVR restores its VPN rules only on its next cron run (up to 15 minutes). The IP Catcher firewall hook now restores the PREROUTING/OUTPUT rule for the selected DVR list at once, in DVR's own format, and only when it is missing. A hand-made "IPTV ipset setup" block in `firewall-start` is no longer needed.
+- **Hooks no longer grow.** `firewall-start`, `service-event` and `services-start` no longer gain a blank line per update and are rewritten only when something really changes. Backups now live in `/jffs/addons/vpn_ipcatcher.d/hook-backups/` (at most 3 per hook); old IP Catcher `*.bak.YYYYMMDD-HHMMSS` copies are moved there.
+- **Provider ranges work again** on routers where `curl` lives in `/usr/sbin`.
 
 ## 🔁 After a reboot and during outages (2.10.5)
 
@@ -1130,6 +1143,8 @@ Nothing is flushed.
 ```
 
 **About `FINAL_TIMEOUT`.** An IP's TTL is refreshed only while it is seen as an active stream or promoted again. It expires `FINAL_TIMEOUT` seconds after the last viewing. With 7200 s the first stream after a longer pause goes via WAN until it is learned again; the 604800 s default bridges nights and weekends. This is not proven to be the cause of missing channels, and IP Catcher does not change it for you.
+
+<a name="video-stops-during-playback"></a>
 
 ## 🎬 Video stops during playback
 
@@ -1192,6 +1207,7 @@ sh tests/path-checks.sh
 sh tests/routing-checks.sh
 sh tests/managed-routing-checks.sh
 sh tests/persistence-health-checks.sh
+sh tests/hardening-2106-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh
