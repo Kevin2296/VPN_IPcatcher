@@ -1,5 +1,12 @@
 # Wijzigingen
 
+## 2.10.9 — WebUI-tab blijft zichtbaar na een update
+
+- **Tab verdween na een update:** bij het opnieuw inschrijven verving IP Catcher `/tmp/menuTree.js` (`sed -i` en `mv`). De bind-mount op `/www/require/modules/menuTree.js` bleef daarna het oude bestand tonen, dus zonder IP Catcher, tot de volgende herstart. Het menu wordt nu in één keer en in hetzelfde bestand bijgewerkt (`cat >`), en alleen als er echt iets verandert.
+- **Verouderde mount herstellen:** toont de WebUI een ander menu dan `/tmp/menuTree.js` (ook als een andere addon het bestand verving), dan koppelt IP Catcher het opnieuw, zoals de Merlin Addons API aanraadt. Logregel: `WebUI menu opnieuw gekoppeld (verouderde bind-mount)`.
+- **Mislukte invoeging** laat het menu nu helemaal ongemoeid, in plaats van een reservekopie terug te zetten.
+- `/tmp` houdt nog maar de drie nieuwste `menuTree.js.bak_vpn_*`-kopieën.
+
 ## 2.10.8 — Logniveaus voor syslog/Graylog
 
 - **Logniveau per melding** in syslog: problemen als `warning`, statuswijzigingen als `notice`, regels per IP als `info`. Daardoor kunnen scribe/syslog-ng en Graylog filteren zonder op tekst te zoeken. Een `logger` zonder `-p` logt gewoon één keer zonder niveau.

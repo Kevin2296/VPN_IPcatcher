@@ -1,5 +1,11 @@
 # Release Verification / Releasecontrole
 
+## 2.10.9 WebUI menu after an update
+
+- `tests/webui-menu-mount-checks.sh` models the bind mount with a hard link (it keeps the old inode, like a real bind mount): the tab is served after the first mount, still served exactly once after a repeated mount (update), a stale mount left by another addon replacing `/tmp/menuTree.js` is remounted and logged, and a failed insert leaves the menu byte-identical. `menu_apply` contains no `mv`/`sed -i` on the menu file.
+
+Still to verify on the router: after a menu update (`U`), `cmp /tmp/menuTree.js /www/require/modules/menuTree.js` reports no difference and the tab stays under Addons without a reboot.
+
 ## 2.10.8 syslog levels
 
 - `tests/logging-2108-checks.sh` (mock logger): problem messages map to `warning`, state changes to `notice`, per-IP lines to `info`; with `LOG_SYSLOG` unset or `all` every line goes to syslog with its level; with `important` per-IP lines stay in the `/tmp` file only; a logger without `-p` still logs once; the default config carries `LOG_SYSLOG="all"`, `important` loads, an invalid value is rejected; the WebUI keeps the key; the restore message counts IPs already present.
