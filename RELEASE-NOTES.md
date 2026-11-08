@@ -1,3 +1,12 @@
+# VPN IP Catcher 2.10.9 — WebUI-tab blijft zichtbaar na een update
+
+**NL:**
+- Na een update kon de IP Catcher-tab uit het ASUS-menu verdwijnen tot de volgende herstart. Dat is opgelost: het menu wordt nu bijgewerkt zonder de koppeling van de WebUI te breken, en een verouderde koppeling wordt vanzelf hersteld.
+- Is de tab bij jou nu weg? Na deze update komt hij terug; ververs de WebUI met Ctrl+F5.
+
+**EN:**
+- After an update the IP Catcher tab could disappear from the ASUS menu until the next reboot. Fixed: the menu is updated without breaking the WebUI bind mount, and a stale mount is repaired automatically.
+
 # VPN IP Catcher 2.10.8 — Logniveaus voor syslog/Graylog
 
 **NL:**

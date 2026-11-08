@@ -1,6 +1,6 @@
 #!/bin/sh
 # vpn_ipcatcher WebUI helper for Asuswrt-Merlin Addons API
-# Version: 2.10.8
+# Version: 2.10.9
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 
@@ -616,7 +616,7 @@ publish_status(){
   case "$vpn_connection" in ovpnc[1-5]|wgc[1-5]) ;; *) vpn_connection='' ;; esac
   if ! cat > "$tmp_json" <<JSON
 {
-  "version":"2.10.8",
+  "version":"2.10.9",
   "vpn_connection":"$vpn_connection",
   "amtmupdate_enabled":"$([ -f "$ADDON_DIR/amtmupdate.enabled" ] && echo yes || echo no)",
   "dvr_policies":"$("$ADDON_DIR/vpn_ipcatcher_routing.sh" policies 2>/dev/null | json_escape)",
@@ -723,6 +723,60 @@ JSON
   return 0
 }
 
+# Put our tab into the Addons menu and make sure the WebUI serves it.
+menu_apply(){
+  page="$1"; bak="$2"
+  # Remove only our old lines and insert the current one in a single pass.
+  # Write the result back INTO the existing file (cat >), never mv/sed -i:
+  # those create a new file, and the bind mount on $MENU_TREE would keep
+  # serving the old one, so the tab disappears after an update.
+  tmpout="${TMP_MENU_TREE}.vpnnew.$$"
+  awk -v page="$page" '
+    BEGIN { inaddons=0; inserted=0 }
+    /tabName: "vpn_ipcatcher"/ { next }
+    /menuName: "Addons"/ { inaddons=1 }
+    inaddons && inserted==0 && /tabName: "__INHERIT__"/ {
+      print "{url: \"" page "\", tabName: \"vpn_ipcatcher\"},"
+      inserted=1
+    }
+    { print }
+    END { if (inserted==0) exit 2 }
+  ' "$TMP_MENU_TREE" > "$tmpout"
+  rc="$?"
+
+  if [ "$rc" -ne 0 ]; then
+    rm -f "$tmpout" 2>/dev/null
+    say "[ERROR] Kon vpn_ipcatcher niet veilig invoegen in Addons-menu. Niets gewijzigd."
+    log "Safe Addons insert failed; menu unchanged"
+    return 5
+  fi
+
+  if ! cmp -s "$tmpout" "$TMP_MENU_TREE"; then
+    cat "$tmpout" > "$TMP_MENU_TREE" || { cat "$bak" > "$TMP_MENU_TREE" 2>/dev/null; rm -f "$tmpout"; say "[ERROR] Menu schrijven mislukt; backup teruggezet."; return 5; }
+  fi
+  rm -f "$tmpout" 2>/dev/null
+  chmod 664 "$TMP_MENU_TREE" 2>/dev/null
+
+  # Bind-mount when absent. When present but serving other content (an older
+  # file left behind by any addon that replaced /tmp/menuTree.js), remount it
+  # onto the current file, as the Merlin Addons API advises.
+  if ! mount | grep -q "on $MENU_TREE "; then
+    mount -o bind "$TMP_MENU_TREE" "$MENU_TREE" 2>/dev/null || {
+      say "[ERROR] Bind-mount naar $MENU_TREE mislukt."
+      log "Bind mount failed"
+      return 5
+    }
+  elif ! cmp -s "$TMP_MENU_TREE" "$MENU_TREE"; then
+    umount "$MENU_TREE" 2>/dev/null
+    mount -o bind "$TMP_MENU_TREE" "$MENU_TREE" 2>/dev/null || {
+      say "[ERROR] Opnieuw bind-mounten naar $MENU_TREE mislukt."
+      log "Bind remount failed"
+      return 5
+    }
+    log "WebUI menu opnieuw gekoppeld (verouderde bind-mount)"
+  fi
+}
+
 mount_webui(){
   # Also repair an old event block when upgrading through a pre-2.9 updater.
   if [ -f "$ADDON_DIR/install_vpn_ipcatcher.sh" ] && ! grep -q 'vipcD\*|vipcE' /jffs/scripts/service-event 2>/dev/null; then
@@ -815,42 +869,10 @@ mount_webui(){
   bak="/tmp/menuTree.js.bak_vpn_$(date +%Y%m%d_%H%M%S 2>/dev/null || echo now)"
   cp -f "$TMP_MENU_TREE" "$bak" 2>/dev/null
   say "[INFO] Backup gemaakt: $bak"
+  # /tmp is RAM: keep only the three newest menu backups.
+  ls -1 /tmp/menuTree.js.bak_vpn_* 2>/dev/null | sort -r | tail -n +4 | while IFS= read -r old_bak; do rm -f "$old_bak"; done
 
-  # Verwijder alleen oude vpn_ipcatcher-regels, niet de rest van Addons.
-  sed -i '/tabName: "vpn_ipcatcher"/d' "$TMP_MENU_TREE" 2>/dev/null
-
-  tmpout="${TMP_MENU_TREE}.vpnnew.$$"
-  awk -v page="$page" '
-    BEGIN { inaddons=0; inserted=0 }
-    /menuName: "Addons"/ { inaddons=1 }
-    inaddons && inserted==0 && /tabName: "__INHERIT__"/ {
-      print "{url: \"" page "\", tabName: \"vpn_ipcatcher\"},"
-      inserted=1
-    }
-    { print }
-    END { if (inserted==0) exit 2 }
-  ' "$TMP_MENU_TREE" > "$tmpout"
-  rc="$?"
-
-  if [ "$rc" -ne 0 ]; then
-    rm -f "$tmpout" 2>/dev/null
-    cp -f "$bak" "$TMP_MENU_TREE" 2>/dev/null
-    say "[ERROR] Kon vpn_ipcatcher niet veilig invoegen in Addons-menu. Backup teruggezet."
-    log "Safe Addons insert failed; backup restored"
-    return 5
-  fi
-
-  mv -f "$tmpout" "$TMP_MENU_TREE"
-  chmod 664 "$TMP_MENU_TREE" 2>/dev/null
-
-  # Alleen bind-mounten als die nog niet actief is. Bestaande bind-mount niet loshalen.
-  if ! mount | grep -q "on $MENU_TREE "; then
-    mount -o bind "$TMP_MENU_TREE" "$MENU_TREE" 2>/dev/null || {
-      say "[ERROR] Bind-mount naar $MENU_TREE mislukt."
-      log "Bind mount failed"
-      return 5
-    }
-  fi
+  menu_apply "$page" "$bak" || return 5
 
   publish_status
   say "[OK] vpn_ipcatcher veilig toegevoegd onder bestaande Addons via /user/$page"

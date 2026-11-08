@@ -648,6 +648,7 @@ sh tests/persistence-health-checks.sh
 sh tests/hardening-2106-checks.sh
 sh tests/update-upgrade-path-checks.sh
 sh tests/logging-2108-checks.sh
+sh tests/webui-menu-mount-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh
@@ -1238,6 +1239,7 @@ sh tests/persistence-health-checks.sh
 sh tests/hardening-2106-checks.sh
 sh tests/update-upgrade-path-checks.sh
 sh tests/logging-2108-checks.sh
+sh tests/webui-menu-mount-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh

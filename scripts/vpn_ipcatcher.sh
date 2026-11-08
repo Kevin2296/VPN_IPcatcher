@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.10.8
+# Version: 2.10.9
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 REAL="/jffs/scripts/vpn_ipcatcher.real.sh"
