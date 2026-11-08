@@ -1,6 +1,6 @@
 #!/bin/sh
 # install_vpn_ipcatcher.sh - safe installer/repair script for vpn_ipcatcher WebGUI setup
-# Version: 2.9.7
+# Version: 2.10.6
 set -e
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
@@ -27,10 +27,72 @@ ensure_file(){
   return 0
 }
 
+# Backups of the shared Merlin hook scripts live in our own addon folder
+# (Addons API: keep /jffs/scripts clean), at most HOOK_BACKUP_KEEP per hook.
+HOOK_BACKUP_DIR="$ADDON_DIR/hook-backups"
+HOOK_BACKUP_KEEP=3
+
+prune_hook_backups(){
+  base="$1"
+  # Names carry a sortable timestamp; keep the newest HOOK_BACKUP_KEEP.
+  ls -1 "$HOOK_BACKUP_DIR" 2>/dev/null | grep -E "^${base}\.[0-9]{8}-[0-9]{6}" | sort -r |
+    tail -n +$((HOOK_BACKUP_KEEP+1)) | while IFS= read -r old; do
+      rm -f "$HOOK_BACKUP_DIR/$old"
+    done
+}
+
 backup_file(){
   f="$1"
   [ -f "$f" ] || return 0
-  cp "$f" "${f}.bak.$(date '+%Y%m%d-%H%M%S')" 2>/dev/null
+  mkdir -p "$HOOK_BACKUP_DIR" 2>/dev/null || return 0
+  base="$(basename "$f")"
+  cp -p "$f" "$HOOK_BACKUP_DIR/$base.$(date '+%Y%m%d-%H%M%S')" 2>/dev/null
+  prune_hook_backups "$base"
+}
+
+# Older versions left a timestamped backup next to the hook on every run.
+# Move only those (exact names this installer made) into the backup folder.
+migrate_hook_backups(){
+  for hook in "$SERVICE_EVENT" "$SERVICES_START" "$FIREWALL_START"; do
+    base="$(basename "$hook")"
+    found=0
+    for old in "$hook".bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] \
+               "$hook".bak-vpnipc-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]; do
+      [ -f "$old" ] || continue
+      mkdir -p "$HOOK_BACKUP_DIR" 2>/dev/null || return 0
+      stamp="$(printf '%s\n' "$old" | sed -n 's/.*\([0-9]\{8\}-[0-9]\{6\}\)$/\1/p')"
+      mv -f "$old" "$HOOK_BACKUP_DIR/$base.$stamp" 2>/dev/null && found=1
+    done
+    [ "$found" = 1 ] && prune_hook_backups "$base"
+  done
+  return 0
+}
+
+# Remove our marker blocks plus the blank lines right before them and at the
+# end of the file, so reinstalling never grows the hook by a blank line.
+strip_blocks(){
+  awk -v begin="$2" -v end="$3" '
+    skip { if ($0 ~ end) skip=0; next }
+    $0 ~ begin { pend=0; skip=1; next }
+    /^[[:space:]]*$/ { pend++; next }
+    { while (pend > 0) { print ""; pend-- } print }
+  ' "$1"
+}
+
+# Install tmp over hook only when the content really changed.
+replace_hook(){
+  hook="$1"; tmp="$2"; label="$3"
+  sh -n "$tmp" || { rm -f "$tmp"; log "FOUT: $label niet geldig, niets gewijzigd."; return 1; }
+  if cmp -s "$tmp" "$hook"; then
+    rm -f "$tmp"
+    chmod 755 "$hook"
+    log "$label ongewijzigd."
+    return 0
+  fi
+  backup_file "$hook"
+  mv "$tmp" "$hook"
+  chmod 755 "$hook"
+  log "$label bijgewerkt."
 }
 
 ensure_executable(){
@@ -44,16 +106,10 @@ install_service_event_block(){
 #!/bin/sh
 EOS
   }
-  backup_file "$SERVICE_EVENT"
-
   tmp="${SERVICE_EVENT}.$$"
-  awk '
-    /# BEGIN vpn_ipcatcher WebGUI/{skip=1; next}
-    /# END vpn_ipcatcher WebGUI/{skip=0; next}
-    /### vpn_ipcatcher WebUI start/{skip=1; next}
-    /### vpn_ipcatcher WebUI end/{skip=0; next}
-    skip!=1 {print}
-  ' "$SERVICE_EVENT" > "$tmp" 2>/dev/null
+  strip_blocks "$SERVICE_EVENT" \
+    '# BEGIN vpn_ipcatcher WebGUI|### vpn_ipcatcher WebUI start' \
+    '# END vpn_ipcatcher WebGUI|### vpn_ipcatcher WebUI end' > "$tmp" 2>/dev/null
 
   cat >> "$tmp" <<'EOS'
 
@@ -71,10 +127,7 @@ esac
 # END vpn_ipcatcher WebGUI
 EOS
 
-  sh -n "$tmp"
-  mv "$tmp" "$SERVICE_EVENT"
-  chmod 755 "$SERVICE_EVENT"
-  log "service-event bijgewerkt."
+  replace_hook "$SERVICE_EVENT" "$tmp" service-event
 }
 
 install_services_start_block(){
@@ -83,16 +136,10 @@ install_services_start_block(){
 #!/bin/sh
 EOS
   }
-  backup_file "$SERVICES_START"
-
   tmp="${SERVICES_START}.$$"
-  awk '
-    /# BEGIN vpn_ipcatcher startup/{skip=1; next}
-    /# END vpn_ipcatcher startup/{skip=0; next}
-    /# BEGIN vpn_ipcatcher SAFE/{skip=1; next}
-    /# END vpn_ipcatcher SAFE/{skip=0; next}
-    skip!=1 {print}
-  ' "$SERVICES_START" > "$tmp" 2>/dev/null
+  strip_blocks "$SERVICES_START" \
+    '# BEGIN vpn_ipcatcher (startup|SAFE)' \
+    '# END vpn_ipcatcher (startup|SAFE)' > "$tmp" 2>/dev/null
 
   cat >> "$tmp" <<'EOS'
 
@@ -107,20 +154,13 @@ cru a vpn_ipcatcher_watchdog "* * * * * /jffs/scripts/vpn_ipcatcher_watchdog.sh"
 # END vpn_ipcatcher startup
 EOS
 
-  sh -n "$tmp"
-  mv "$tmp" "$SERVICES_START"
-  chmod 755 "$SERVICES_START"
-  log "services-start bijgewerkt."
+  replace_hook "$SERVICES_START" "$tmp" services-start
 }
 
 install_firewall_start_block(){
   [ -f "$FIREWALL_START" ] || printf '#!/bin/sh\n' > "$FIREWALL_START"
-  backup_file "$FIREWALL_START"
   tmp="${FIREWALL_START}.$$"
-  awk '
-    /# BEGIN vpn_ipcatcher firewall/{skip=1;next}
-    /# END vpn_ipcatcher firewall/{skip=0;next}
-    skip!=1{print}' "$FIREWALL_START" > "$tmp"
+  strip_blocks "$FIREWALL_START" '# BEGIN vpn_ipcatcher firewall' '# END vpn_ipcatcher firewall' > "$tmp"
   cat >> "$tmp" <<'EOS'
 
 # BEGIN vpn_ipcatcher firewall
@@ -128,13 +168,11 @@ install_firewall_start_block(){
 /jffs/addons/vpn_ipcatcher.d/vpn_ipcatcher_routing.sh prepare >/dev/null 2>&1 &
 # END vpn_ipcatcher firewall
 EOS
-  sh -n "$tmp"
-  mv "$tmp" "$FIREWALL_START"
-  chmod 755 "$FIREWALL_START"
-  log 'firewall-start bijgewerkt.'
+  replace_hook "$FIREWALL_START" "$tmp" firewall-start
 }
 
 main(){
+  migrate_hook_backups
   if [ "${1:-}" = hooks ]; then
     install_service_event_block
     install_services_start_block

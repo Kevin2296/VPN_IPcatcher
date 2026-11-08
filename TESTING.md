@@ -1,5 +1,20 @@
 # Release Verification / Releasecontrole
 
+## 2.10.6 known services, firewall restart and hooks
+
+`tests/hardening-2106-checks.sh` covers these points with mocks (temporary hook files, mock iptables/ip/ipset, a fixture `dns_names`):
+
+- **Hooks:** a reinstall leaves `firewall-start`, `service-event` and `services-start` byte-identical; no backup is made when nothing changed; leftover blank lines from older installers are removed once; legacy `*.bak.YYYYMMDD-HHMMSS` / `*.bak-vpnipc-*` copies move to `hook-backups/` and at most 3 per hook remain; a user's own `.bak` is not touched.
+- **Firewall restart:** missing PREROUTING/OUTPUT marks for a DVR-bound list are restored in DVR's format; repeated calls add nothing; a different existing rule is left alone; managed mode, DVR off, a missing set or a missing ip rule change nothing.
+- **Known services:** IPs whose looked-up names are all known services (TikTok, Microsoft, Lidl/Schwarz, smartadserver) are skipped even with an older `EXCLUDE_DOMAINS`; an IPTV EPG name, a shared CDN IP that also serves an IPTV name, look-alike names (`notmicrosoft.com`, `evilschwarz`) and IPs without names stay eligible.
+- **curl:** `/usr/sbin/curl` is looked up at start and after a late USB mount.
+
+Still to verify on the router:
+- after `service restart_firewall`, `iptables -t mangle -S | grep DVR-<policy>-v4` shows the PREROUTING/OUTPUT marks within seconds, and syslog shows `Markering hersteld na firewall-herstart` once;
+- after the update, `/jffs/scripts` holds no new `*.bak.*` files from IP Catcher and the hooks stay the same size on a second update;
+- `/tmp/vpn_ipcatcher.log` shows `Provider network prefixes: … result=0` instead of `Provider lookup failed` (needs `jq` from Entware);
+- `Skip bekende dienst` lines appear for TikTok/Microsoft traffic, while IPTV streams on the box are still learned.
+
 ## 2.10.5 persistence, restore, USB and health
 
 `tests/persistence-health-checks.sh` covers these points with mocks: an ipset mock that ages entries over a controlled clock, a mock conntrack, a mock routing helper and a mock nvram.

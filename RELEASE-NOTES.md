@@ -1,3 +1,19 @@
+# VPN IP Catcher 2.10.6 — Bekende diensten, firewall-herstart en nette haken
+
+**NL:**
+- Grote bekende diensten (TikTok, Microsoft, Lidl, IKEA, advertenties, YouTube, Netflix en dergelijke) komen niet meer per ongeluk op de VPN. IP Catcher herkent ze aan de namen die je apparaten opvroegen.
+- Na een firewall-herstart (bijvoorbeeld door Skynet) staat de VPN-markering van je IPTV-lijst meteen weer goed, in plaats van pas na de volgende DVR-ronde.
+- `firewall-start`, `service-event` en `services-start` groeien niet meer bij elke update; reservekopieën staan netjes in de addonmap (maximaal 3 per haak).
+- De automatische uitsluitingen van Google, Netflix, Meta, GitHub en Apple werken weer op routers met `curl` in `/usr/sbin`.
+
+Na de update draai je `vpn_ipcatcher.sh restart` en ververs je de WebUI met Ctrl+F5.
+
+**EN:**
+- Big known services (TikTok, Microsoft, Lidl, IKEA, ads, YouTube, Netflix and similar) no longer end up on the VPN by accident; IP Catcher recognises them by the names your devices looked up.
+- After a firewall restart (for example by Skynet) the VPN mark of your IPTV list is back at once instead of after the next DVR run.
+- `firewall-start`, `service-event` and `services-start` no longer grow on every update; backups are kept in the addon folder (at most 3 per hook).
+- Automatic Google, Netflix, Meta, GitHub and Apple exclusions work again on routers with `curl` in `/usr/sbin`.
+
 # VPN IP Catcher 2.10.5 — Herstel na herstart en storingsdiagnose
 
 **NL:**

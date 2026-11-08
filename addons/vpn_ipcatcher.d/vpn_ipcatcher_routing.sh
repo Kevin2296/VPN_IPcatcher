@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.10.5
+# Version: 2.10.6
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
 ADDON="/jffs/addons/vpn_ipcatcher.d"
@@ -297,6 +297,27 @@ mark_read(){
   MASK="$(setting "$GLOBAL" "${key}MASK")"
   printf '%s\n' "$MARK/$MASK" | grep -Eq '^0x[0-9a-fA-F]+/0x[0-9a-fA-F]+$' || { error 'VPN-markering ontbreekt of is ongeldig.'; return 1; }
 }
+# DVR restores its own mark rules only on its next cron run (up to 15 min);
+# a firewall restart (Skynet, WebUI, VPN change) wipes them meanwhile. For a
+# DVR-bound list, re-add exactly DVR's own PREROUTING/OUTPUT rule when that
+# chain has no mark rule for the set. DVR's "-C" then sees it as its own, so
+# nothing is duplicated. An existing (possibly different) rule is left alone;
+# firewall_check reports conflicts. Needs a rule to the VPN table and the set.
+dvr_bound_restore(){
+  [ -z "${MODE:-}" ] || return 0
+  [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || return 0
+  { binding_read && rule_check; } 2>/dev/null || return 0
+  $IPSET list "$SET" >/dev/null 2>&1 || return 0
+  rules="$($IPTABLES -t mangle -S 2>/dev/null)" || return 0
+  for chain in PREROUTING OUTPUT; do
+    printf '%s\n' "$rules" | awk -v set="$SET" -v chain="$chain" '
+      $1=="-A" && $2==chain {for(i=3;i<NF;i++) if($i=="--match-set" && $(i+1)==set) {for(j=i;j<=NF;j++) if($j=="--set-xmark" || $j=="--set-mark") found=1}}
+      END{exit found?0:1}' && continue
+    $IPTABLES -t mangle -A "$chain" -m set --match-set "$SET" dst -j MARK --set-xmark "$MARK/$MASK" 2>/dev/null &&
+      logger -t vpn_ipcatcher "Markering hersteld na firewall-herstart: $chain $SET $MARK/$MASK" 2>/dev/null
+  done
+  return 0
+}
 managed_prepare(){
   [ "${MODE:-}" = managed-v1 ] || return 0
   [ "$(setting "$GLOBAL" ENABLE)" = 1 ] || { error 'De VPN-routing addon staat uit.'; return 1; }
@@ -502,7 +523,7 @@ case "${1:-check}" in
       echo $$ > "$CONFIG_LOCK/pid"
       trap 'rm -f "$CONFIG_LOCK/pid"; rmdir "$CONFIG_LOCK" 2>/dev/null' EXIT
       trap 'exit 1' HUP INT TERM
-      selection_read && managed_prepare && binding_check
+      selection_read && managed_prepare && dvr_bound_restore && binding_check
     )
     ;;
   domain-add) shift; domain_add "$@" ;;
