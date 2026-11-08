@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version: 2.10.7
+# Version: 2.10.8
 set -eu
 PATH="/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH

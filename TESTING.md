@@ -1,5 +1,11 @@
 # Release Verification / Releasecontrole
 
+## 2.10.8 syslog levels
+
+- `tests/logging-2108-checks.sh` (mock logger): problem messages map to `warning`, state changes to `notice`, per-IP lines to `info`; with `LOG_SYSLOG` unset or `all` every line goes to syslog with its level; with `important` per-IP lines stay in the `/tmp` file only; a logger without `-p` still logs once; the default config carries `LOG_SYSLOG="all"`, `important` loads, an invalid value is rejected; the WebUI keeps the key; the restore message counts IPs already present.
+
+Still to verify on the router: `grep vpn_ipcatcher /opt/var/log/messages` keeps showing the catcher lines; in Graylog `application_name:vpn_ipcatcher` shows `level` 4/5/6 per message.
+
 ## 2.10.7 update path and name freshness
 
 - `tests/update-upgrade-path-checks.sh`: every file in the updater's `FILES` that older releases did not ship is allowed to be absent before an update, so an older install is never blocked with "Huidige installatie onvolledig"; every shipped file is in `SHA256SUMS`. Without the fix the test fails on `vpn_ipcatcher_health.sh`.

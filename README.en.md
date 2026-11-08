@@ -466,6 +466,13 @@ Add `/jffs/scripts/vpn_ipcatcher.sh` through amtm's personal-script feature.
 The amtm update manager does not automatically manage this personal script.
 [Official amtm documentation](https://github.com/RMerl/asuswrt-merlin.ng/wiki/AMTM).
 
+## 📜 Logging, syslog and Graylog (2.10.8)
+
+- **Everything already goes to syslog.** Every IP Catcher log line is sent to syslog with tag `vpn_ipcatcher`, and also to `/tmp/vpn_ipcatcher.log` (RAM, at most 2 × 256 KB). With scribe/syslog-ng it lands in `/opt/var/log/messages` and, with a network destination (e.g. Graylog), there too.
+- **Level per message:** problems (`LET OP`, failed, missing) as `warning`, state changes (restored, started, restored list) as `notice`, per-IP lines as `info`. In Graylog filter on `application_name:vpn_ipcatcher` and `level:<=5` for the important part only.
+- **`LOG_SYSLOG`** in `/jffs/scripts/vpn_ipcatcher.conf`: `all` (default, as before) or `important` (only notice and warning to syslog; the `/tmp` file always gets everything).
+- **After a restore** the message also says how many IPs were already present (`… N stonden er al …`).
+
 ## 🧹 Known services and tidy hooks (2.10.6)
 
 - **Known services never via the VPN.** IP Catcher checks the names your devices actually looked up (TikTok, Microsoft, Lidl/Schwarz, IKEA, ad servers, YouTube, Netflix, Spotify, Apple, Meta and similar). If an address only carries such names it is skipped, even when an older `EXCLUDE_DOMAINS` in your config lacks them. A shared CDN address that also serves an unknown (IPTV) name stays eligible. The log shows `Skip bekende dienst`.
@@ -576,6 +583,7 @@ sh tests/managed-routing-checks.sh
 sh tests/persistence-health-checks.sh
 sh tests/hardening-2106-checks.sh
 sh tests/update-upgrade-path-checks.sh
+sh tests/logging-2108-checks.sh
 sh tests/update-checks.sh
 sh tests/bootstrap-checks.sh
 sh tests/stream-safety-checks.sh
