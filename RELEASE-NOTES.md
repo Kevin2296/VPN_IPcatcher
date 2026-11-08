@@ -1,3 +1,15 @@
+# VPN IP Catcher 2.10.8 — Logniveaus voor syslog/Graylog
+
+**NL:**
+- Elke melding gaat nu met een passend niveau naar syslog: problemen als warning, statuswijzigingen als notice, de regels per IP als info. In Graylog filter je zo makkelijk op alleen het belangrijke.
+- Met `LOG_SYSLOG="important"` in de config gaan de regels per IP alleen nog naar het logbestand in `/tmp`, niet meer naar syslog/USB/Graylog. Standaard blijft alles gaan (`all`).
+- Na het terugzetten van de lijst staat er ook hoeveel IP's er al stonden.
+
+**EN:**
+- Every message now reaches syslog with a matching level: problems as warning, state changes as notice, per-IP lines as info, so Graylog can filter on the important part.
+- With `LOG_SYSLOG="important"` the per-IP lines stay in the `/tmp` log file only. The default stays `all`.
+- After a list restore the message also counts IPs that were already present.
+
 # VPN IP Catcher 2.10.7 — Update vanaf 2.10.5 en nauwkeuriger herkenning
 
 **NL:**

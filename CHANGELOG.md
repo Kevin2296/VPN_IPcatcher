@@ -1,5 +1,11 @@
 # Wijzigingen
 
+## 2.10.8 — Logniveaus voor syslog/Graylog
+
+- **Logniveau per melding** in syslog: problemen als `warning`, statuswijzigingen als `notice`, regels per IP als `info`. Daardoor kunnen scribe/syslog-ng en Graylog filteren zonder op tekst te zoeken. Een `logger` zonder `-p` logt gewoon één keer zonder niveau.
+- **Nieuwe instelling `LOG_SYSLOG`:** `all` (standaard, ongewijzigd gedrag) of `important` (alleen notice en warning naar syslog). Het bestand `/tmp/vpn_ipcatcher.log` krijgt altijd alles. De WebUI laat de instelling staan bij het opslaan.
+- **Melding na terugzetten** telt nu ook de IP's die er al stonden (`N stonden er al`), zodat "0 direct" na een update niet meer als een fout leest.
+
 ## 2.10.7 — Update vanaf 2.10.5 en nauwkeuriger herkenning
 
 - **Update vastgelopen:** wie van 2.10.4 naar 2.10.5 bijwerkte, kreeg `vpn_ipcatcher_health.sh` niet mee (de oude updater kende dat bestand nog niet). De updater van 2.10.5 stopte daarna met "Huidige installatie onvolledig". Een ontbrekend health-script blokkeert de update nu niet meer; de update zet het gewoon neer. Een nieuwe test bewaakt dat elk later toegevoegd bestand zo'n update nooit meer blokkeert.

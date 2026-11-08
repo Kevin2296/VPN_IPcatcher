@@ -1,7 +1,7 @@
 #!/bin/sh
 # vpn_ipcatcher.sh - ASUS Merlin / amtm menu edition
 # Built from the previously working engine, with menu controls and safer process handling.
-# Version: 2.10.7
+# Version: 2.10.8
 
 CONF="/jffs/scripts/vpn_ipcatcher.conf"
 CACHE_DIR="/tmp/vpn_ipcatcher"
@@ -144,8 +144,20 @@ config_write_lock(){
 }
 config_write_unlock(){ rm -rf "$CONFIG_WRITE_LOCK" 2>/dev/null; }
 
+# Syslog level per message, so scribe/Graylog can filter: problems are
+# warning, state changes notice, everything else (per-IP detail) info.
+log_priority(){
+  case "$1" in
+    *"LET OP"*|*FOUT*|*mislukt*|*Mislukt*|*failed*|*Failed*|*ERROR*|*Ongeldig*|*ongeldig*|*weggevallen*|*ontbreekt*|*Invalid*) LOG_PRIO=warning ;;
+    *ersteld*|Lifecycle*|*gestart*|*gestopt*|*geroteerd*|"Finale lijst teruggezet"*|"Provider network prefixes"*|"SIGTERM"*|"cleanup"*) LOG_PRIO=notice ;;
+    *) LOG_PRIO=info ;;
+  esac
+}
 log(){
-  $LOGGER -t vpn_ipcatcher "$*"
+  log_priority "$*"; log_prio="$LOG_PRIO"
+  if [ "${LOG_SYSLOG:-all}" = all ] || [ "$log_prio" != info ]; then
+    $LOGGER -t vpn_ipcatcher -p "user.$log_prio" "$*" 2>/dev/null || $LOGGER -t vpn_ipcatcher "$*"
+  fi
   echo "$(date '+%F %T') $*" >> "$LOGFILE"
 }
 process_label(){
@@ -254,6 +266,12 @@ REVERSE_DNS_CHECK="no"
 
 RETRY_DELAY="20"
 MAX_RETRY_DELAY="60"
+
+# Wat naar syslog (en dus naar scribe/Graylog) gaat. Het logbestand in /tmp
+# krijgt altijd alles.
+# all       = elke regel (info), meldingen als notice, problemen als warning
+# important = alleen notice en warning (geen regels per IP)
+LOG_SYSLOG="all"
 EOC
 }
 
@@ -264,7 +282,7 @@ ensure_config(){
   chmod 600 "$CONF" 2>/dev/null
 }
 
-CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY PROVIDER_RANGE_AUTO REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY'
+CONFIG_KEYS='INTERFACES IPSET_NAME PORTS PROMOTE_MODE PROMOTE_EVERY MIN_AGE MIN_BYTES CANDIDATE_TIMEOUT FINAL_TIMEOUT STREAM_FLOW_SCAN SOURCE_IPS STREAM_SCAN_EVERY STREAM_MIN_BYTES STREAM_MIN_DELTA STREAM_REQUIRE_GROWTH STREAM_FLOW_TARGET EXCLUDE_DOMAINS EXCLUDE_IPS EXCLUDE_NETS EXCLUDE_RESOLVE_CACHE EXCLUDE_RESOLVE_EVERY PROVIDER_RANGE_AUTO REVERSE_DNS_CHECK CAPTURE_GENERIC_HOSTNAMES ALLOW_EXTERNAL_DNS EXTERNAL_DNS_SERVER RETRY_DELAY MAX_RETRY_DELAY LOG_SYSLOG'
 
 load_config(){
   ensure_config
@@ -275,7 +293,7 @@ load_config(){
     case "$config_line" in ''|\#*) continue ;; esac
     config_key="${config_line%%=*}"
     case "$config_key" in
-      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY) ;;
+      INTERFACES|IPSET_NAME|PORTS|PROMOTE_MODE|PROMOTE_EVERY|MIN_AGE|MIN_BYTES|CANDIDATE_TIMEOUT|FINAL_TIMEOUT|STREAM_FLOW_SCAN|SOURCE_IPS|STREAM_SCAN_EVERY|STREAM_MIN_BYTES|STREAM_MIN_DELTA|STREAM_REQUIRE_GROWTH|STREAM_FLOW_TARGET|EXCLUDE_DOMAINS|EXCLUDE_IPS|EXCLUDE_NETS|EXCLUDE_RESOLVE_CACHE|EXCLUDE_RESOLVE_EVERY|PROVIDER_RANGE_AUTO|REVERSE_DNS_CHECK|CAPTURE_GENERIC_HOSTNAMES|ALLOW_EXTERNAL_DNS|EXTERNAL_DNS_SERVER|RETRY_DELAY|MAX_RETRY_DELAY|LOG_SYSLOG) ;;
       *) say "Ongeldige configuratieregel: $config_key" >&2; return 1 ;;
     esac
     config_value="${config_line#*=}"
@@ -338,6 +356,8 @@ load_config(){
   PROVIDER_RANGE_AUTO="${PROVIDER_RANGE_AUTO:-yes}"
   case "$PROVIDER_RANGE_AUTO" in yes|no) ;; *) say "Ongeldige PROVIDER_RANGE_AUTO waarde" >&2; return 1 ;; esac
   REVERSE_DNS_CHECK="${REVERSE_DNS_CHECK:-no}"
+  LOG_SYSLOG="${LOG_SYSLOG:-all}"
+  case "$LOG_SYSLOG" in all|important) ;; *) say "Ongeldige LOG_SYSLOG waarde (all of important)" >&2; return 1 ;; esac
 
   RETRY_DELAY="${RETRY_DELAY:-20}"
   MAX_RETRY_DELAY="${MAX_RETRY_DELAY:-60}"
@@ -613,14 +633,14 @@ restore_final_set(){
   restore_snapshot="$CACHE_DIR/final-restore.connections"
   rm -f "$restore_snapshot"
   if [ -n "$CT" ] && $CT -L -f ipv4 > "$restore_snapshot" 2>/dev/null; then :; else rm -f "$restore_snapshot"; fi
-  restored=0; waiting=0; skipped=0; expired=0
+  restored=0; waiting=0; skipped=0; expired=0; present=0
   printf '%s\n' "$saved" > "$CACHE_DIR/final-restore.list"
   while read -r r_ip r_expires r_comment; do
     [ -n "$r_ip" ] || continue
     r_left=$((r_expires - restore_now))
     if [ "$r_left" -le 60 ]; then expired=$((expired+1)); continue; fi
     [ "$r_left" -le "$FINAL_TIMEOUT" ] || r_left="$FINAL_TIMEOUT"
-    $IPSET test "$IPSET_NAME" "$r_ip" >/dev/null 2>&1 && continue
+    if $IPSET test "$IPSET_NAME" "$r_ip" >/dev/null 2>&1; then present=$((present+1)); continue; fi
     r_src="$(comment_source_ip "$r_comment")"
     if [ -n "$r_src" ] && source_is_fixed "$r_src"; then skipped=$((skipped+1)); continue; fi
     if should_skip_service_ip restore "$r_ip" "$r_comment"; then skipped=$((skipped+1)); continue; fi
@@ -637,7 +657,7 @@ restore_final_set(){
   rm -f "$restore_snapshot" "$CACHE_DIR/final-restore.list"
   FINAL_RESTORE_PENDING=0; FINAL_RESTORE_NOTED=''; FINAL_RESTORE_FIRST=0
   FINAL_RECONCILE_LAST="$restore_now"
-  log "Finale lijst teruggezet van /jffs: $restored direct, $waiting op de wachtlijst, $skipped overgeslagen, $expired verlopen."
+  log "Finale lijst teruggezet van /jffs: $restored direct, $waiting op de wachtlijst, $present stonden er al, $skipped overgeslagen, $expired verlopen."
   return 0
 }
 # A Domain VPN Routing reload can recreate the DVR set empty. Restore the
