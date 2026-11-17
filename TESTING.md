@@ -1,5 +1,12 @@
 # Release Verification / Releasecontrole
 
+## 2.10.10 amtm 7.1+ personal scripts
+
+- `tests/amtm-checks.sh` covers both registry formats: with an amtm that reaches four slots, entries are counted per word and a fifth is refused; with amtm 7.1+ (`[Pp][1-8]` in `amtm.mod`), an entry with arguments counts once, the new entry lands on its own line and the reported slot matches, blank lines are dropped, an existing IP Catcher entry with arguments is not duplicated, and a ninth entry is refused.
+- Checked against the published amtm 7.2 `amtm.mod` and `personal_script.mod`; the `amtmupdate check` / `amtmupdate` calls match what the wrapper answers.
+
+Still to verify on the router: after **7 > 5**, amtm shows IP Catcher under the reported `pN` and `pN` opens the menu.
+
 ## 2.10.9 WebUI menu after an update
 
 - `tests/webui-menu-mount-checks.sh` models the bind mount with a hard link (it keeps the old inode, like a real bind mount): the tab is served after the first mount, still served exactly once after a repeated mount (update), a stale mount left by another addon replacing `/tmp/menuTree.js` is remounted and logged, and a failed insert leaves the menu byte-identical. `menu_apply` contains no `mv`/`sed -i` on the menu file.

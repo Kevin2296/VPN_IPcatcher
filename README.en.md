@@ -6,7 +6,7 @@
 
 IPv4 learning for your Asuswrt-Merlin VPN routing.
 
-![Version 2.10.4](https://img.shields.io/badge/version-2.10.4-087F8C?style=for-the-badge)
+![Version 2.10.10](https://img.shields.io/badge/version-2.10.10-087F8C?style=for-the-badge)
 ![Asuswrt Merlin](https://img.shields.io/badge/platform-Asuswrt--Merlin-30363D?style=for-the-badge)
 ![POSIX Shell](https://img.shields.io/badge/runtime-POSIX%20shell-476A30?style=for-the-badge)
 ![Router validation required](https://img.shields.io/badge/status-router%20validation%20required-B45309?style=for-the-badge)
@@ -37,7 +37,7 @@ VPN IP Catcher observes traffic, learns suitable IPv4 addresses and automaticall
 manages a corresponding list and its own routing rules. It uses your router/DVR
 VPN routing tables. IP Catcher itself is not a VPN client.
 
-**Version: 2.10.4.** [Changelog, Dutch](CHANGELOG.md) |
+**Version: 2.10.10.** [Changelog, Dutch](CHANGELOG.md) |
 [Releases](https://github.com/Kevin2296/VPN_IPcatcher/releases)
 
 **2.10.0 New WebUI:** ASUS-style design with fixed-route and waiting-list tiles, an **IPTV device picker** and a readable per-connection status in Live flows. In amtm: **Settings → 7) choose IPTV devices**.
@@ -261,8 +261,9 @@ space and maintain your own router backup as well.
 ## 🎛️ Controls and amtm
 
 Choose **7 > 5 · Toevoegen aan amtm** to register IP Catcher as a personal script.
-Existing entries are preserved; duplicates and the four-slot limit are checked.
-Reopen amtm to see it under `p1`–`p4`. Update amtm first if unsupported.
+Existing entries are preserved; duplicates and the slot limit are checked
+(eight with amtm 7.1 and later, four with older versions).
+Reopen amtm; the message names the slot (`p1`–`p8`). Update amtm first if unsupported.
 This is not an official amtm addon. Its own updater manages updates.
 
 ### 🔄 amtm AU
@@ -270,7 +271,7 @@ This is not an official amtm addon. Its own updater manages updates.
 `au` manages automatic updates for the supported scripts shown by amtm.
 Option **1** configures the schedule, **2** enables/disables participation,
 **3** shows the update log and **4** resets the supported-script list.
-Registration under `p1`–`p4` does not automatically provide AU support.
+Registration under `p1`–`p8` does not automatically provide AU support.
 Version 2.9.1 supports the `amtmupdate` protocol, disabled by default. Opt in through
 WebUI > Maintenance or `vpn_ipcatcher.sh auto-update enable`. This does **not** enroll
 the addon in the central amtm AU catalog; enrollment requires the amtm maintainer.

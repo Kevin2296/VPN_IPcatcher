@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 2.10.10 — Registratie past bij amtm 7.1 en nieuwer
+
+- **Acht plaatsen in plaats van vier:** amtm 7.1 biedt acht persoonlijke scripts (`p1` t/m `p8`), één per regel, met argumenten. **Toevoegen aan amtm** (7 > 5) weigerde nog bij vier vermeldingen en telde een script met argumenten als meerdere. De registratie herkent nu de amtm-versie: acht plaatsen en tellen per regel bij 7.1+, vier plaatsen bij oudere versies.
+- **Geen lege regel meer:** amtm nummert `p1`…`p8` per regel. Een lege regel in `personalscript.conf` verschoof de nummering; lege regels worden bij het toevoegen weggelaten.
+- **Dubbel voorkomen:** een bestaande vermelding van IP Catcher mét argumenten wordt ook herkend.
+- De melding noemt nu de exacte plaats, bijvoorbeeld `IP Catcher staat bij p3`.
+- Nagelopen tegen amtm 7.2 (15 november 2026) en de changelog van Asuswrt-Merlin 3006.102.10: het `amtmupdate`-protocol (`amtmupdate check` en `amtmupdate`) is ongewijzigd; verder waren geen aanpassingen nodig.
+
 ## 2.10.9 — WebUI-tab blijft zichtbaar na een update
 
 - **Tab verdween na een update:** bij het opnieuw inschrijven verving IP Catcher `/tmp/menuTree.js` (`sed -i` en `mv`). De bind-mount op `/www/require/modules/menuTree.js` bleef daarna het oude bestand tonen, dus zonder IP Catcher, tot de volgende herstart. Het menu wordt nu in één keer en in hetzelfde bestand bijgewerkt (`cat >`), en alleen als er echt iets verandert.
