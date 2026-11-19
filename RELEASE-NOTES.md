@@ -1,3 +1,13 @@
+# VPN IP Catcher 2.10.10 — Registratie past bij amtm 7.1 en nieuwer
+
+**NL:**
+- amtm 7.1 en nieuwer heeft acht plaatsen voor persoonlijke scripts in plaats van vier. **Toevoegen aan amtm** (7 > 5) gebruikt die nu ook, telt per regel en laat geen lege regel meer achter die de nummering `p1`…`p8` verschuift.
+- De melding noemt de exacte plaats, bijvoorbeeld `p3`. Oudere amtm-versies houden vier plaatsen.
+
+**EN:**
+- amtm 7.1 and later offers eight personal-script slots instead of four. **Add to amtm** (7 > 5) now uses them, counts per line and no longer leaves a blank line that shifts the `p1`…`p8` numbering.
+- The message names the exact slot, for example `p3`. Older amtm versions keep four slots.
+
 # VPN IP Catcher 2.10.9 — WebUI-tab blijft zichtbaar na een update
 
 **NL:**
