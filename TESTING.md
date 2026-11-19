@@ -2,10 +2,10 @@
 
 ## 2.10.10 amtm 7.1+ personal scripts
 
-- `tests/amtm-checks.sh` covers both registry formats: with an amtm that reaches four slots, entries are counted per word and a fifth is refused; with amtm 7.1+ (`[Pp][1-8]` in `amtm.mod`), an entry with arguments counts once, the new entry lands on its own line and the reported slot matches, blank lines are dropped, an existing IP Catcher entry with arguments is not duplicated, and a ninth entry is refused.
+- `tests/amtm-checks.sh` covers both registry formats: with an amtm that reaches four slots, entries are counted per word and a fifth is refused; with amtm 7.1+ (`[Pp][1-8]` in `amtm.mod`), an entry with arguments counts once, the new entry lands on its own line and the reported slot matches, blank lines are dropped, an existing IP Catcher entry with arguments is not duplicated, a path passed as an argument to another script leaves `p8` available, and a ninth entry is refused. A stale module cannot override the firmware menu’s slot limit.
 - Checked against the published amtm 7.2 `amtm.mod` and `personal_script.mod`; the `amtmupdate check` / `amtmupdate` calls match what the wrapper answers.
 
-Still to verify on the router: after **7 > 5**, amtm shows IP Catcher under the reported `pN` and `pN` opens the menu.
+Still to verify on the router: with seven existing personal scripts, use **7 > 5**, reopen amtm, verify that IP Catcher is listed under `p8`, and select `p8` to open its menu.
 
 ## 2.10.9 WebUI menu after an update
 

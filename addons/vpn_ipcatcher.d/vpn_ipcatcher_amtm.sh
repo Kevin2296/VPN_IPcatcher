@@ -10,7 +10,15 @@ REGISTRY="$DIRECTORY/personalscript.conf"
 ENGINE=/jffs/scripts/vpn_ipcatcher.sh
 LOCK=/tmp/vpn_ipcatcher_amtm.lock
 [ -s "$ENGINE" ] || { echo 'IP Catcher ontbreekt.' >&2; exit 1; }
-if ! grep -q 'personalscript.conf' "$DIRECTORY/a_fw/amtm.mod" "$DIRECTORY/amtm.mod" "$DIRECTORY/personal_script.mod" 2>/dev/null; then
+# The firmware launcher loads a_fw/amtm.mod. Older installations can use amtm.mod.
+MENU_MODULE="$DIRECTORY/a_fw/amtm.mod"
+[ -f "$MENU_MODULE" ] || MENU_MODULE="$DIRECTORY/amtm.mod"
+if [ -f "$MENU_MODULE" ]; then
+  SUPPORT_MODULE="$MENU_MODULE"
+else
+  SUPPORT_MODULE="$DIRECTORY/personal_script.mod"
+fi
+if ! grep -Eq 'personalscript\.conf|personal_script\.mod' "$SUPPORT_MODULE" 2>/dev/null; then
   echo 'Open eerst amtm en werk amtm bij. Persoonlijke scripts worden door deze versie nog niet herkend.' >&2
   exit 1
 fi
@@ -21,13 +29,20 @@ trap 'exit 1' HUP INT TERM
 # amtm 7.1+ keeps one entry per line (arguments allowed) and offers eight
 # slots; older versions split on whitespace and reach four.
 slots=4
-if grep -q '\[Pp\]\[1-8\]' "$DIRECTORY/a_fw/amtm.mod" "$DIRECTORY/amtm.mod" 2>/dev/null ||
-   grep -q 'up to eight' "$DIRECTORY/a_fw/personal_script.mod" "$DIRECTORY/personal_script.mod" 2>/dev/null; then
+if grep -Eq '^[[:blank:]]*\(?\[Pp\]\[1-8\][|)]' "$MENU_MODULE" 2>/dev/null; then
   slots=8
 fi
 count=0
 if [ -f "$REGISTRY" ]; then
-  if awk -v e="$ENGINE" '{for(i=1;i<=NF;i++) if($i==e) f=1} END{exit !f}' "$REGISTRY"; then
+  if awk -v engine="$ENGINE" -v slots="$slots" '
+    {
+      fields = (slots == 8 ? 1 : NF)
+      for (i = 1; i <= fields; i++) {
+        if ($i == engine) found = 1
+      }
+    }
+    END { exit !found }
+  ' "$REGISTRY"; then
     echo 'IP Catcher staat al bij de persoonlijke scripts in amtm.'; exit 0
   fi
   if [ "$slots" = 8 ]; then
